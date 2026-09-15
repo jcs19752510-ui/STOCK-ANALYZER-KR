@@ -1,0 +1,56 @@
+# 캘린더 데이터 파일 예시 (REQ-012).
+#
+# 이 파일 자체가 "휴장일 목록"이라는 도메인 데이터다 — 코드가 아니라
+# 데이터 파일로 관리되므로, 연도가 바뀌거나 KRX 공식 발표가 갱신되면
+# 이 파일만 새로 작성해 scripts/load_calendar.py로 적재하면 된다
+# (코드 배포 불필요, 03-system-design.md §3-3).
+#
+# 주의: 아래 날짜는 예시용 플레이스홀더이며 실제 KRX 공식 발표 기준으로
+# 검증된 값이 아니다. 실사용 전 KRX 공식 발표로 재확인이 필요하다
+# (02-planning.md §8-A6, 03-system-design.md §8-2 항목3).
+
+year: 2026
+source: "KRX 공식 공고 2026 (예시 데이터 - 실사용 전 재확인 필요)"
+
+markets:
+  KRX:
+    default_close_time: "15:30:00"
+    holidays:
+      - date: 2026-01-01
+        name: "신정"
+      - date: 2026-03-01
+        name: "삼일절"
+      - date: 2026-05-05
+        name: "어린이날"
+      - date: 2026-06-06
+        name: "현충일"
+      - date: 2026-08-15
+        name: "광복절"
+      - date: 2026-10-03
+        name: "개천절"
+      - date: 2026-10-09
+        name: "한글날"
+      - date: 2026-12-25
+        name: "크리스마스"
+    special_trading_days: []
+
+  NXT:
+    default_close_time: "20:00:00"
+    holidays:
+      - date: 2026-01-01
+        name: "신정"
+      - date: 2026-03-01
+        name: "삼일절"
+      - date: 2026-05-05
+        name: "어린이날"
+      - date: 2026-06-06
+        name: "현충일"
+      - date: 2026-08-15
+        name: "광복절"
+      - date: 2026-10-03
+        name: "개천절"
+      - date: 2026-10-09
+        name: "한글날"
+      - date: 2026-12-25
+        name: "크리스마스"
+    special_trading_days: []

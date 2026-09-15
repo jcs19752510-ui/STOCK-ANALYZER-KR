@@ -1,0 +1,127 @@
+/* 04-ux-design.md §3 디자인 토큰 — 이번 유닛 범위(공통 셸/규제 컴포넌트)에
+   필요한 토큰만 정의한다. 그 외 화면별 토큰 사용은 후속 유닛에서 확장한다. */
+:root {
+  --color-text-primary: #111827;
+  --color-text-secondary: #4b5563;
+  --color-brand-primary: #1d4ed8;
+  --color-semantic-warning: #b45309;
+  --color-surface-bg: #ffffff;
+  --color-surface-subtle: #f3f4f6;
+  --color-border-default: #6b7280;
+  --color-focus-ring: #1d4ed8;
+
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--color-text-primary);
+  background: var(--color-surface-bg);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* 04-ux-design.md §2-0 — 스킵 링크: 평소 숨김, 키보드 포커스 시 노출 */
+.skip-link {
+  position: absolute;
+  top: -999px;
+  left: 0;
+  z-index: 1100;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-brand-primary);
+  color: #ffffff;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* 04-ux-design.md §2-0 — 면책 배너: sticky, 닫기 버튼 없음, 텍스트 말줄임 금지 */
+.disclaimer-banner {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-text-primary);
+  color: #ffffff;
+  border-bottom: 1px solid var(--color-border-default);
+}
+
+.disclaimer-banner__text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+  white-space: normal; /* 말줄임(...) 금지 — 좁은 화면에서는 자동 줄바꿈 허용 */
+}
+
+.disclaimer-banner__link {
+  color: #ffffff;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.site-header {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-surface-subtle);
+}
+
+.site-header__wordmark {
+  color: var(--color-text-primary);
+  font-weight: 700;
+  font-size: 18px;
+  text-decoration: none;
+}
+
+main {
+  min-height: 50vh;
+  padding: var(--space-6) var(--space-4);
+}
+
+.site-footer {
+  padding: var(--space-6) var(--space-4);
+  border-top: 1px solid var(--color-surface-subtle);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.site-footer__disclaimer {
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+/* REQ-006 — 데이터 기준시각 배지 */
+.data-freshness-badge__text {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.data-freshness-badge__warning {
+  margin: var(--space-2) 0 0;
+  color: var(--color-semantic-warning);
+  font-size: 14px;
+}
+
+.data-freshness-badge--unavailable {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}

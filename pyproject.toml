@@ -1,0 +1,19 @@
+[project]
+name = "stock-screener-kr"
+version = "0.1.0"
+description = "국내 주식(코스피/코스닥) 조건 기반 스크리닝 정보 웹서비스 - 백엔드"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+# B008: FastAPI의 Depends()/Query() 기본값 패턴은 프레임워크 관용구이므로 제외.
+# UP046: PEP 695 제네릭 문법은 pydantic 제네릭 모델과 호환성이 안정화되기 전까지 보류.
+ignore = ["B008", "UP046"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
