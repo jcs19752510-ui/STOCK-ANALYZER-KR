@@ -1,0 +1,36 @@
+{
+  "disclaimer": {
+    "banner": "이 서비스는 투자자문업 등록 사업자가 아니며, 제공되는 정보는 투자 조언이 아닙니다. 투자 판단과 책임은 이용자 본인에게 있습니다.",
+    "bannerMoreLinkText": "자세히 보기",
+    "footerFull": "이 서비스는 투자자문업 등록 사업자가 아니며, 제공되는 정보는 투자 조언이 아닙니다. 투자 판단과 책임은 이용자 본인에게 있습니다.",
+    "footerDataSource": "데이터 출처: 공공데이터포털 금융위원회_주식시세정보(가공 후 제공)",
+    "footerNoRawData": "본 서비스는 원본 시세 데이터를 그대로 제공하지 않으며, 가공된 지표만 제공합니다.",
+    "footerAboutLinkText": "서비스 안내 자세히 보기"
+  },
+  "nav": {
+    "skipLink": "본문 바로가기",
+    "homeLinkLabel": "국내주식 조건 스크리닝 정보 서비스 홈"
+  },
+  "dataFreshness": {
+    "sessionLabelPrefix": "국내증권시장",
+    "closedSuffix": "마감 데이터",
+    "updatedSuffix": "갱신",
+    "unavailableText": "데이터 기준시각을 확인하는 중입니다",
+    "staleFallbackWarning": "예상보다 지연된 데이터입니다"
+  },
+  "about": {
+    "title": "서비스 안내",
+    "serviceDefinitionHeading": "이 서비스는 무엇인가요",
+    "serviceDefinitionBody": "이 서비스는 투자 판단을 대신 내려주는 서비스가 아니라, 이용자가 스스로 세운 조건에 따라 공개 데이터를 가공한 지표를 정렬·필터링해 보여주는 정보 조회 도구입니다.",
+    "registrationHeading": "투자자문업 등록 여부",
+    "registrationBody": "이 서비스는 자본시장법상 투자자문업 등록 사업자가 아니며, 제공되는 정보는 투자 조언이 아닙니다. 투자 판단과 그에 따른 책임은 전적으로 이용자 본인에게 있습니다.",
+    "dataDelayHeading": "데이터 지연 및 기준시각",
+    "dataDelayBody": "이 서비스가 사용하는 공공 데이터는 최대 1영업일 지연되어 제공될 수 있습니다. 모든 화면에는 데이터가 어느 시점 기준인지(기준시각)가 항상 표시됩니다.",
+    "dataProcessingHeading": "데이터 가공 원칙",
+    "dataProcessingBody": "이 서비스는 원본 시세 데이터(시가/고가/저가/종가/거래량)를 표나 차트 형태로 그대로 제공하지 않습니다. 등락률 순위, 이동평균 대비 괴리율, 거래량 이상치 스코어 등 가공된 지표만 제공합니다.",
+    "dataSourceHeading": "데이터 출처",
+    "dataSourceBody": "공공데이터포털 금융위원회_주식시세정보(가공 후 제공)",
+    "contactHeading": "문의",
+    "contactBody": "서비스 관련 문의 채널은 준비 중입니다."
+  }
+}
