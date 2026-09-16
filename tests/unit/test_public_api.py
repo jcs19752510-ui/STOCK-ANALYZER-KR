@@ -1,13 +1,31 @@
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 from fastapi.testclient import TestClient
 
+import services.public_api.api.metrics as metrics_module
 from services.public_api.api.calendar import get_calendar_repository
+from services.public_api.api.metrics import (
+    get_calendar_repository as get_metrics_calendar_repository,
+)
+from services.public_api.api.metrics import get_stock_metrics_repository
 from services.public_api.api.stocks import get_stock_search_repository
+from services.public_api.db.metrics_repository import DerivedMetricsRow, StockRow
 from services.public_api.db.session import get_db
 from services.public_api.db.stock_repository import StockSearchResultRow
 from services.public_api.main import app
 from shared.calendar_service.types import CalendarRow
+
+KST = ZoneInfo("Asia/Seoul")
+
+
+def _patch_now(monkeypatch, fixed: datetime) -> None:
+    class _FixedDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return fixed
+
+    monkeypatch.setattr(metrics_module, "datetime", _FixedDatetime)
 
 
 class FakeRepository:
@@ -254,3 +272,238 @@ def test_search_stocks_invalid_market_returns_400():
     assert resp.status_code == 400
     assert resp.json()["error"]["code"] == "INVALID_PARAMETER"
     assert repo.calls == []
+
+
+# --- GET /api/v1/stocks/{code}/metrics (UNIT-06, REQ-002) ---
+
+
+class FakeMetricsRepository:
+    def __init__(
+        self,
+        *,
+        stock: StockRow | None,
+        published_trade_date: date | None,
+        metrics_by_date: dict[date, DerivedMetricsRow],
+    ):
+        self._stock = stock
+        self._published_trade_date = published_trade_date
+        self._metrics_by_date = metrics_by_date
+
+    def get_stock(self, stock_code: str) -> StockRow | None:
+        return self._stock
+
+    def get_current_published_trade_date(self, market: str) -> date | None:
+        return self._published_trade_date
+
+    def get_metrics(self, stock_code: str, trade_date: date) -> DerivedMetricsRow | None:
+        return self._metrics_by_date.get(trade_date)
+
+
+def _override_metrics_repository(repository: FakeMetricsRepository):
+    def _factory():
+        return repository
+
+    return _factory
+
+
+_FULL_METRICS_ROW = DerivedMetricsRow(
+    return_pct=3.2,
+    return_rank_pct=5.0,
+    ma5_gap_pct=1.1,
+    ma20_gap_pct=-0.5,
+    volume_anomaly_score=2.3,
+    per_percentile=20.0,
+    pbr_percentile=30.0,
+    market_cap_percentile=10.0,
+)
+
+
+def test_get_stock_metrics_latest_success(monkeypatch):
+    trading_day = date(2026, 9, 11)
+    _patch_now(monkeypatch, datetime(2026, 9, 11, 20, 0, tzinfo=KST))
+    calendar_rows = {
+        (trading_day, "KRX"): CalendarRow(
+            trade_date=trading_day,
+            market="KRX",
+            is_trading_day=True,
+            session_close_at=time(15, 30),
+            holiday_name=None,
+            source="test",
+        )
+    }
+    repo = FakeMetricsRepository(
+        stock=StockRow(stock_code="005930", name="삼성전자", market="KOSPI"),
+        published_trade_date=trading_day,
+        metrics_by_date={trading_day: _FULL_METRICS_ROW},
+    )
+    app.dependency_overrides[get_stock_metrics_repository] = _override_metrics_repository(repo)
+    app.dependency_overrides[get_metrics_calendar_repository] = _override_repository(
+        calendar_rows
+    )
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/stocks/005930/metrics")
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["data"]["stock_code"] == "005930"
+    assert body["data"]["return_rank_pct"] == 5.0
+    assert body["meta"]["data_freshness"]["trade_date"] == "2026-09-11"
+    assert body["meta"]["data_freshness"]["is_latest_trading_day"] is True
+
+
+def test_get_stock_metrics_stock_not_found_returns_404():
+    repo = FakeMetricsRepository(stock=None, published_trade_date=None, metrics_by_date={})
+    app.dependency_overrides[get_stock_metrics_repository] = _override_metrics_repository(repo)
+    app.dependency_overrides[get_metrics_calendar_repository] = _override_repository({})
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/stocks/999999/metrics")
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 404
+    assert resp.json()["error"]["code"] == "STOCK_NOT_FOUND"
+
+
+def test_get_stock_metrics_no_published_data_returns_503_data_pipeline_stale(monkeypatch):
+    trading_day = date(2026, 9, 11)
+    _patch_now(monkeypatch, datetime(2026, 9, 11, 20, 0, tzinfo=KST))
+    calendar_rows = {
+        (trading_day, "KRX"): CalendarRow(
+            trade_date=trading_day,
+            market="KRX",
+            is_trading_day=True,
+            session_close_at=time(15, 30),
+            holiday_name=None,
+            source="test",
+        )
+    }
+    repo = FakeMetricsRepository(
+        stock=StockRow(stock_code="005930", name="삼성전자", market="KOSPI"),
+        published_trade_date=None,  # Derivation Batch가 아직 한 번도 발행하지 않음
+        metrics_by_date={},
+    )
+    app.dependency_overrides[get_stock_metrics_repository] = _override_metrics_repository(repo)
+    app.dependency_overrides[get_metrics_calendar_repository] = _override_repository(
+        calendar_rows
+    )
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/stocks/005930/metrics")
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 503
+    assert resp.json()["error"]["code"] == "DATA_PIPELINE_STALE"
+
+
+def test_get_stock_metrics_calendar_not_confirmed_returns_424():
+    repo = FakeMetricsRepository(
+        stock=StockRow(stock_code="005930", name="삼성전자", market="KOSPI"),
+        published_trade_date=date(2026, 9, 11),
+        metrics_by_date={},
+    )
+    app.dependency_overrides[get_stock_metrics_repository] = _override_metrics_repository(repo)
+    app.dependency_overrides[get_metrics_calendar_repository] = _override_repository({})
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/stocks/005930/metrics")
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 424
+    assert resp.json()["error"]["code"] == "CALENDAR_NOT_CONFIRMED"
+
+
+def test_get_stock_metrics_missing_row_for_date_returns_null_fields(monkeypatch):
+    """종목은 존재하나 그 거래일의 파생 지표 행이 없으면(휴장/거래정지 등)
+    전 지표 필드가 null인 200 응답을 반환한다(§3-2 결측치 처리 원칙의 확장 —
+    unit-06-note.md §2 참조)."""
+    trading_day = date(2026, 9, 11)
+    _patch_now(monkeypatch, datetime(2026, 9, 11, 20, 0, tzinfo=KST))
+    calendar_rows = {
+        (trading_day, "KRX"): CalendarRow(
+            trade_date=trading_day,
+            market="KRX",
+            is_trading_day=True,
+            session_close_at=time(15, 30),
+            holiday_name=None,
+            source="test",
+        )
+    }
+    repo = FakeMetricsRepository(
+        stock=StockRow(stock_code="005930", name="삼성전자", market="KOSPI"),
+        published_trade_date=trading_day,
+        metrics_by_date={},  # 그 날짜의 파생 지표 행이 없음
+    )
+    app.dependency_overrides[get_stock_metrics_repository] = _override_metrics_repository(repo)
+    app.dependency_overrides[get_metrics_calendar_repository] = _override_repository(
+        calendar_rows
+    )
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/stocks/005930/metrics")
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["stock_code"] == "005930"
+    assert data["return_pct"] is None
+    assert data["return_rank_pct"] is None
+    assert data["market_cap_percentile"] is None
+
+
+def test_get_stock_metrics_explicit_date_bypasses_published_pointer(monkeypatch):
+    requested_day = date(2026, 9, 10)
+    expected_latest = date(2026, 9, 11)
+    _patch_now(monkeypatch, datetime(2026, 9, 11, 20, 0, tzinfo=KST))
+    calendar_rows = {
+        (requested_day, "KRX"): CalendarRow(
+            trade_date=requested_day,
+            market="KRX",
+            is_trading_day=True,
+            session_close_at=time(15, 30),
+            holiday_name=None,
+            source="test",
+        ),
+        (expected_latest, "KRX"): CalendarRow(
+            trade_date=expected_latest,
+            market="KRX",
+            is_trading_day=True,
+            session_close_at=time(15, 30),
+            holiday_name=None,
+            source="test",
+        ),
+    }
+    repo = FakeMetricsRepository(
+        stock=StockRow(stock_code="005930", name="삼성전자", market="KOSPI"),
+        published_trade_date=expected_latest,
+        metrics_by_date={requested_day: _FULL_METRICS_ROW},
+    )
+    app.dependency_overrides[get_stock_metrics_repository] = _override_metrics_repository(repo)
+    app.dependency_overrides[get_metrics_calendar_repository] = _override_repository(
+        calendar_rows
+    )
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/stocks/005930/metrics", params={"date": "2026-09-10"})
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["data"]["return_rank_pct"] == 5.0
+    assert body["meta"]["data_freshness"]["trade_date"] == "2026-09-10"
+    assert body["meta"]["data_freshness"]["is_latest_trading_day"] is False
+    assert "지연" in body["meta"]["data_freshness"]["staleness_note"]
+
+
+def test_get_stock_metrics_invalid_date_format_returns_400():
+    repo = FakeMetricsRepository(stock=None, published_trade_date=None, metrics_by_date={})
+    app.dependency_overrides[get_stock_metrics_repository] = _override_metrics_repository(repo)
+    app.dependency_overrides[get_metrics_calendar_repository] = _override_repository({})
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/stocks/005930/metrics", params={"date": "not-a-date"})
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "INVALID_PARAMETER"

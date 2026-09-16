@@ -4,6 +4,7 @@ from shared.calendar_service.last_trading_day import (
     CalendarScanLimitExceeded,
     get_last_trading_day,
 )
+from shared.calendar_service.sql_repository import SqlCalendarRepository
 from shared.calendar_service.types import (
     VALID_MARKETS,
     CalendarLookup,
@@ -19,5 +20,6 @@ __all__ = [
     "CalendarRow",
     "CalendarScanLimitExceeded",
     "Market",
+    "SqlCalendarRepository",
     "get_last_trading_day",
 ]

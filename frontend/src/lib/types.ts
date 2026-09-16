@@ -13,3 +13,37 @@ export interface DataFreshness {
   expected_last_trading_day: string;
   staleness_note: string | null;
 }
+
+/**
+ * `GET /api/v1/stocks/{code}/metrics` 응답(REQ-002, 03-system-design.md §4-2).
+ * 원본 시세 필드(open/high/low/close/volume)와 PER/PBR/시가총액 원시값은
+ * 백엔드 응답 자체에 존재하지 않으므로 이 타입에도 없다(§4-3).
+ */
+export interface StockMetricsData {
+  stock_code: string;
+  name: string;
+  market: string;
+  return_pct: number | null;
+  return_rank_pct: number | null;
+  ma5_gap_pct: number | null;
+  ma20_gap_pct: number | null;
+  volume_anomaly_score: number | null;
+  per_percentile: number | null;
+  pbr_percentile: number | null;
+  market_cap_percentile: number | null;
+}
+
+export interface ApiErrorDetail {
+  code: string;
+  message: string;
+}
+
+export interface Envelope<T> {
+  meta: {
+    data_freshness: DataFreshness | null;
+    disclaimer: string;
+    generated_at: string;
+  };
+  data: T | null;
+  error: ApiErrorDetail | null;
+}

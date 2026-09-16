@@ -5,6 +5,9 @@
   --color-text-secondary: #4b5563;
   --color-brand-primary: #1d4ed8;
   --color-semantic-warning: #b45309;
+  --color-semantic-error: #b91c1c;
+  --color-semantic-up: #b91c1c;
+  --color-semantic-down: #1d4ed8;
   --color-surface-bg: #ffffff;
   --color-surface-subtle: #f3f4f6;
   --color-border-default: #6b7280;
@@ -14,6 +17,20 @@
   --space-3: 12px;
   --space-4: 16px;
   --space-6: 24px;
+  --space-8: 32px;
+}
+
+/* 표준 스크린리더 전용 텍스트 유틸리티(시각적으로 숨김, 스크린리더는 읽음) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 * {
@@ -84,6 +101,15 @@ input:focus-visible {
   border-bottom: 1px solid var(--color-surface-subtle);
 }
 
+.site-header__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  max-width: 1200px;
+  margin-inline: auto;
+}
+
 .site-header__wordmark {
   color: var(--color-text-primary);
   font-weight: 700;
@@ -91,9 +117,93 @@ input:focus-visible {
   text-decoration: none;
 }
 
+/* 04-ux-design.md §4/§6 GlobalNav — 모바일: 하단 고정 탭바(< 768px) */
+.global-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 900; /* 배너(1000)/스킵링크(1100)보다 낮게 — 상호 겹침 없음(§1-4) */
+  background: var(--color-surface-bg);
+  border-top: 1px solid var(--color-surface-subtle);
+}
+
+.global-nav__list {
+  display: flex;
+  justify-content: space-around;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.global-nav__item {
+  flex: 1;
+}
+
+.global-nav__link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px; /* §5-6 모바일 터치 타겟 최소 44x44px */
+  padding: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  text-decoration: none;
+  transition: color 150ms ease-out;
+}
+
+.global-nav__link[aria-current="page"] {
+  color: var(--color-brand-primary);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .global-nav__link {
+    transition: none;
+  }
+}
+
 main {
   min-height: 50vh;
-  padding: var(--space-6) var(--space-4);
+  /* 하단 고정 탭바(모바일)에 콘텐츠가 가리지 않도록 여백 확보(§6 디바이스별 세부 규칙) */
+  padding: var(--space-6) var(--space-4) calc(var(--space-6) + 56px);
+}
+
+/* 04-ux-design.md §6 — md(태블릿, ≥768px): 상단 탭 내비게이션으로 전환 */
+@media (min-width: 768px) {
+  .global-nav {
+    position: static;
+    border-top: none;
+    background: transparent;
+  }
+
+  .global-nav__list {
+    justify-content: flex-start;
+    gap: var(--space-4);
+  }
+
+  .global-nav__item {
+    flex: none;
+  }
+
+  .global-nav__link {
+    min-height: auto;
+    padding: var(--space-2) var(--space-3);
+  }
+
+  main {
+    padding-bottom: var(--space-6);
+  }
+}
+
+/* 04-ux-design.md §6 — xl(≥1280px): 본문 최대 1200px 중앙 정렬 */
+@media (min-width: 1280px) {
+  main {
+    max-width: 1200px;
+    margin-inline: auto;
+  }
 }
 
 .site-footer {
@@ -124,4 +234,175 @@ main {
 .data-freshness-badge--unavailable {
   color: var(--color-text-secondary);
   font-size: 14px;
+}
+
+/* REQ-002 — 종목 상세 화면(04-ux-design.md §2-4) */
+.stock-detail-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.stock-detail-header__title {
+  margin: 0;
+  font-size: 24px;
+}
+
+.stock-detail-header__code {
+  color: var(--color-text-secondary);
+  font-weight: 400;
+  font-size: 16px;
+}
+
+.market-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-3);
+  border-radius: 999px;
+  background: var(--color-surface-subtle);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.metric-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+@media (min-width: 640px) {
+  .metric-card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .metric-card-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.metric-card {
+  padding: var(--space-4);
+  border: 1px solid var(--color-surface-subtle);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.metric-card__label {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.metric-card__value {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.metric-card__value--up {
+  color: var(--color-semantic-up);
+}
+
+.metric-card__value--down {
+  color: var(--color-semantic-down);
+}
+
+.metric-card__missing {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-style: italic;
+}
+
+.metric-card__helper {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.valuation-card__list {
+  margin: 0;
+}
+
+.valuation-card__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-surface-subtle);
+}
+
+.valuation-card__row:last-child {
+  border-bottom: none;
+}
+
+.valuation-card__row dt {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.valuation-card__row dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+/* 04-ux-design.md §4 LoadingSkeleton — 실제 콘텐츠와 동일한 높이로 고정(CLS 방지) */
+.loading-skeleton {
+  background: var(--color-surface-subtle);
+  border-radius: 8px;
+}
+
+.loading-skeleton--card {
+  height: 88px;
+}
+
+.loading-skeleton--header {
+  height: 32px;
+  width: 240px;
+  margin-bottom: var(--space-6);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .loading-skeleton {
+    animation: loading-skeleton-pulse 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes loading-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* 04-ux-design.md §1-4 Flow D — ErrorState/EmptyState 공통 */
+.error-state,
+.empty-state {
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.error-state__message {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-primary);
+}
+
+.error-state__retry {
+  display: inline-block;
+  padding: var(--space-2) var(--space-4);
+  border-radius: 4px;
+  background: var(--color-brand-primary);
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 500;
 }

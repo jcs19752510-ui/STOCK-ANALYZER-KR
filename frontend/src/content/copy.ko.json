@@ -9,7 +9,11 @@
   },
   "nav": {
     "skipLink": "본문 바로가기",
-    "homeLinkLabel": "국내주식 조건 스크리닝 정보 서비스 홈"
+    "homeLinkLabel": "국내주식 조건 스크리닝 정보 서비스 홈",
+    "ariaLabel": "주요 메뉴",
+    "home": "홈",
+    "screener": "조건 스크리닝",
+    "stocks": "종목 검색"
   },
   "dataFreshness": {
     "sessionLabelPrefix": "국내증권시장",
@@ -17,6 +21,33 @@
     "updatedSuffix": "갱신",
     "unavailableText": "데이터 기준시각을 확인하는 중입니다",
     "staleFallbackWarning": "예상보다 지연된 데이터입니다"
+  },
+  "stockDetail": {
+    "returnRankLabel": "등락률 순위",
+    "percentileUpPrefix": "상위",
+    "ma5Label": "5일 이평 대비",
+    "ma20Label": "20일 이평 대비",
+    "volumeAnomalyLabel": "거래량 이상치 스코어",
+    "volumeAnomalySuffix": "(20일 평균 대비 표준편차 배수)",
+    "volumeAnomalyHelper": "값이 클수록 최근 거래량이 평소 패턴에서 크게 벗어났다는 의미입니다",
+    "valuationLabel": "밸류에이션(PER/PBR/시가총액)",
+    "perLabel": "PER 백분위",
+    "pbrLabel": "PBR 백분위",
+    "marketCapLabel": "시가총액 백분위",
+    "valuationHelper": "PER·PBR은 낮을수록, 시가총액은 클수록 상위 %가 낮게 표시됩니다",
+    "valuationUnavailableText": "PER 산정 불가(적자기업 등)",
+    "missingDataText": "데이터 부족 (상장 20영업일 미만)",
+    "notFoundHeading": "요청하신 종목 정보를 찾을 수 없습니다",
+    "backToSearchCta": "종목 검색으로 돌아가기"
+  },
+  "errorState": {
+    "networkTitle": "일시적인 오류가 발생했습니다.",
+    "calendarNotConfirmedTitle": "기준 거래일 계산에 필요한 휴장일 정보가 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.",
+    "rateLimitedTitle": "요청이 많아 잠시 지연되고 있습니다. 잠시 후 다시 시도해주세요.",
+    "retryButtonLabel": "다시 시도"
+  },
+  "emptyState": {
+    "noDataYetTitle": "표시할 데이터가 아직 없습니다. 서비스 데이터 준비 중입니다."
   },
   "about": {
     "title": "서비스 안내",
