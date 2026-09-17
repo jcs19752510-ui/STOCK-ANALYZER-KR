@@ -3,10 +3,10 @@
 #   cp automation/git-hooks/pre-commit.sample .git/hooks/pre-commit
 #   chmod +x .git/hooks/pre-commit
 #
-# 규칙 J(중단-안전 정리) 점검: 커밋 직전에 검증용 임시 아티팩트(.harness-tmp/, 레거시 .venv_* 등)가
+# 규칙 K(중단-안전 정리) 점검: 커밋 직전에 검증용 임시 아티팩트(.harness-tmp/, 레거시 .venv_* 등)가
 # 남아있는지 확인해 실수로 같이 커밋되는 것을 막는다.
 # 이 훅은 커밋 자체를 막지 않는다 — 경고만 하고 항상 exit 0으로 끝난다. 실제로 지울지는 사람이 판단한다
-# (규칙 A/J5: 애매한 파일을 훅이 임의로 지우거나 커밋을 강제로 막지 않는다).
+# (규칙 A/K5: 애매한 파일을 훅이 임의로 지우거나 커밋을 강제로 막지 않는다).
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"

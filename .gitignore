@@ -7,10 +7,15 @@ __pycache__/
 venv/
 .env
 
-# 하네스 규칙 J(중단-안전 정리) — 검증/테스트 단계(06/07/08/09/10/12)가 만드는
-# venv/임시 DB/임시 설정 등 일회성 아티팩트 전용 디렉터리.
+# 하네스 규칙 K(중단-안전 정리, 13단계 업그레이드로 J→K 재정렬됨 — DEC-021 참고)
+# 검증/테스트 단계(06/07/08/09/10/13)가 만드는 venv/임시 DB/임시 설정 등 일회성 아티팩트 전용 디렉터리.
 .harness-tmp/
 .venv_*/
+*.sqlite3
+db.sqlite3
+
+# CI 헤드리스 실행 로그 (automation/run-harness-agent.sh 산출물)
+docs/harness/_ci-logs/
 
 # frontend (Next.js)
 frontend/node_modules/
