@@ -9,8 +9,10 @@
 
 ## 파일
 - `run-harness-agent.sh` — 실제 실행 스크립트. `claude -p "..." --agent <stage> --output-format json --allowedTools "<해당 에이전트의 tools:>" --permission-mode dontAsk --permission-prompts none` 로 호출하고, 결과 첫 줄이 `HARNESS_DONE: PASS`/`HARNESS_DONE: FAIL`/`HARNESS_BLOCKED:` 중 무엇인지로 종료 코드를 결정한다 (0/1/75). 사용법과 종료 코드 의미는 파일 상단 주석 참고.
+- `harness-janitor.sh` — 규칙 J(중단-안전 정리) 점검 스크립트. `.harness-tmp/`와 레거시 위치(저장소 루트의 `.venv_*`, `venv/` 등)에 검증용 임시 아티팩트가 남아있는지 스캔한다. 기본(`--check`)은 읽기 전용 점검(잔여물 있으면 종료코드 1), `--clean`은 `.harness-tmp/` 안만 실제로 삭제한다 — 그 밖의 위치는 사용자 작업물일 가능성이 있어 자동 삭제하지 않고 목록만 안내한다(규칙 A/J5). 세션/파이프라인 재개 전, 그리고 커밋 전에 실행하는 것을 권장한다.
 - `github-actions-harness.yml` — 위 스크립트를 호출하는 GitHub Actions 예시. 브랜치/태그 이벤트에 따라 5~10, 12단계를 매핑하고, 11단계(배포)는 GitHub Environments의 `required reviewers` 보호 규칙으로 사람 승인 없이는 절대 실행되지 않도록 게이트를 건다 (**이 environment 보호 규칙은 GitHub 저장소 Settings에서 직접 등록해야 하며, 파일만으로는 걸리지 않는다**).
 - `git-hooks/post-merge.sample` — work unit 브랜치가 로컬에 병합됐을 때 6단계(단위테스트)를 실제로 실행하는 훅. `.git/hooks/post-merge`로 복사 후 실행권한을 줘야 활성화된다 (파일명이 `.sample`인 동안은 git이 무시함).
+- `git-hooks/pre-commit.sample` — 커밋 직전 `harness-janitor.sh --check`를 실행해, 검증용 임시 아티팩트가 스테이징되려는 걸 사전에 경고하는 훅 (규칙 J). `.git/hooks/pre-commit`으로 복사 후 실행권한을 줘야 활성화된다.
 
 ## 아직 구현되지 않은 것 (알고 있어야 할 한계)
 - **1~4단계(트렌드분석/기획/설계/디자인서)는 자동 트리거가 없다.** 의도적 설계다 — 이 상류 단계는 비즈니스 판단이 들어가므로 사람이 트리거·검토하는 것을 권장한다.
