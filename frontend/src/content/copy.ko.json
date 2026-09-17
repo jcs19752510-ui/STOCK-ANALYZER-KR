@@ -47,7 +47,49 @@
     "retryButtonLabel": "다시 시도"
   },
   "emptyState": {
-    "noDataYetTitle": "표시할 데이터가 아직 없습니다. 서비스 데이터 준비 중입니다."
+    "noDataYetTitle": "표시할 데이터가 아직 없습니다. 서비스 데이터 준비 중입니다.",
+    "noScreenConditionsTitle": "조건을 설정하고 [조건 적용]을 눌러주세요",
+    "noScreenResultTitle": "조건을 충족하는 종목이 없습니다. 조건 범위를 넓혀 다시 시도해 보세요."
+  },
+  "screener": {
+    "marketLabel": "시장 구분",
+    "marketOptionAll": "전체",
+    "marketOptionKospi": "코스피",
+    "marketOptionKosdaq": "코스닥",
+    "marketCapLabel": "시가총액(억원)",
+    "marketCapMinPlaceholder": "최소",
+    "marketCapMaxPlaceholder": "최대",
+    "volumeLabel": "거래량(주)",
+    "volumeMinSuffix": "이상",
+    "returnPctLabel": "등락률(%)",
+    "perLabel": "PER(배)",
+    "perSuffix": "이하",
+    "pbrLabel": "PBR(배)",
+    "pbrSuffix": "이하",
+    "sortByLabel": "정렬 기준",
+    "sortByReturnPct": "등락률순",
+    "sortByMarketCap": "시가총액순",
+    "sortByPer": "PER순",
+    "sortByPbr": "PBR순",
+    "sortByVolumeAnomalyScore": "거래량 변동성순",
+    "sortDirLabel": "정렬 방향",
+    "sortDirDesc": "값이 큰 순",
+    "sortDirAsc": "값이 작은 순",
+    "submitButtonLabel": "조건 적용",
+    "mobileOpenFilterLabel": "조건 필터 열기",
+    "mobileCloseFilterLabel": "필터 닫기",
+    "resultsHeadingPrefix": "조건 충족 종목 목록 (총",
+    "resultsHeadingSuffix": "건)",
+    "percentileScopeNotice": "PER·PBR·시가총액 백분위는 코스피+코스닥 전체 종목 기준입니다.",
+    "paginationPrev": "이전",
+    "paginationNext": "다음",
+    "metricLabels": {
+      "returnPct": "등락률",
+      "marketCap": "시가총액",
+      "per": "PER",
+      "pbr": "PBR",
+      "volumeAnomalyScore": "거래량 변동성"
+    }
   },
   "about": {
     "title": "서비스 안내",

@@ -138,6 +138,11 @@ class DerivedMetricsDaily(Base):
     per_raw: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
     pbr_raw: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
     market_cap_raw_krw: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    # 필터 전용(REQ-003 `GET /screen?volume_min=`), API 응답에 절대 노출하지
+    # 않는다 — per_raw/pbr_raw/market_cap_raw_krw와 동일한 원칙(0007 마이그레이션,
+    # `unit-07-note.md` §2 참조). 대응하는 `*_percentile` 컬럼은 만들지 않는다
+    # (04-ux-design.md에 "거래량 백분위" 표시 문구/개념이 정의되어 있지 않음).
+    volume_raw: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     per_percentile: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
     pbr_percentile: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
     market_cap_percentile: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)

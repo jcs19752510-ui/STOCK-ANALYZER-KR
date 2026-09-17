@@ -33,6 +33,24 @@ export interface StockMetricsData {
   market_cap_percentile: number | null;
 }
 
+/**
+ * `GET /api/v1/screen` 응답(REQ-003, 03-system-design.md §4-2). `matched_metrics`는
+ * 필터 조건에 실제 값이 지정된 지표 ∪ `sort_by` 지표만 담는 화이트리스트
+ * 딕셔너리다(DEC-013) — 원본 시세/원시값은 여기에도, 이 타입 어디에도 없다(§4-3).
+ */
+export interface ScreenResultItem {
+  stock_code: string;
+  name: string;
+  market: string;
+  matched_metrics: Record<string, number | null>;
+}
+
+export interface ScreenData {
+  items: ScreenResultItem[];
+  total_count: number;
+  page: number;
+}
+
 export interface ApiErrorDetail {
   code: string;
   message: string;

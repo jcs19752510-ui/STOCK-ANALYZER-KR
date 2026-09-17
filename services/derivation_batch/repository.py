@@ -100,9 +100,10 @@ class DerivedMetricsInput:
     per_raw: Decimal | None
     pbr_raw: Decimal | None
     market_cap_raw_krw: int | None
-    per_percentile: Decimal | None
-    pbr_percentile: Decimal | None
-    market_cap_percentile: Decimal | None
+    volume_raw: int | None = None
+    per_percentile: Decimal | None = None
+    pbr_percentile: Decimal | None = None
+    market_cap_percentile: Decimal | None = None
 
 
 def upsert_derived_metrics(
@@ -123,6 +124,7 @@ def upsert_derived_metrics(
             per_raw=row.per_raw,
             pbr_raw=row.pbr_raw,
             market_cap_raw_krw=row.market_cap_raw_krw,
+            volume_raw=row.volume_raw,
             per_percentile=row.per_percentile,
             pbr_percentile=row.pbr_percentile,
             market_cap_percentile=row.market_cap_percentile,
@@ -144,6 +146,7 @@ def upsert_derived_metrics(
                 "per_raw": stmt.excluded.per_raw,
                 "pbr_raw": stmt.excluded.pbr_raw,
                 "market_cap_raw_krw": stmt.excluded.market_cap_raw_krw,
+                "volume_raw": stmt.excluded.volume_raw,
                 "per_percentile": stmt.excluded.per_percentile,
                 "pbr_percentile": stmt.excluded.pbr_percentile,
                 "market_cap_percentile": stmt.excluded.market_cap_percentile,

@@ -97,6 +97,9 @@ class StockDayMetrics:
     per_raw: Decimal | None
     pbr_raw: Decimal | None
     market_cap_raw_krw: int | None
+    # REQ-003 `GET /screen?volume_min=` 필터 전용(unit-07-note.md §2 참조).
+    # API 응답에는 절대 노출하지 않는다 — per_raw/pbr_raw와 동일한 원칙.
+    volume_raw: int | None = None
 
 
 def compute_stock_day_metrics(
@@ -140,6 +143,7 @@ def compute_stock_day_metrics(
         per_raw=fundamentals.per if fundamentals else None,
         pbr_raw=fundamentals.pbr if fundamentals else None,
         market_cap_raw_krw=fundamentals.market_cap if fundamentals else None,
+        volume_raw=window[0].volume,
     )
 
 
@@ -181,6 +185,7 @@ def build_derivation_inputs(
             per_raw=r.per_raw,
             pbr_raw=r.pbr_raw,
             market_cap_raw_krw=r.market_cap_raw_krw,
+            volume_raw=r.volume_raw,
             per_percentile=per_percentiles.get(r.stock_code),
             pbr_percentile=pbr_percentiles.get(r.stock_code),
             market_cap_percentile=market_cap_percentiles.get(r.stock_code),

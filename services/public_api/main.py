@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from services.public_api.api import calendar, health, metrics, stocks
+from services.public_api.api import calendar, health, metrics, screen, stocks
 from services.public_api.errors import ApiError
 from services.public_api.schemas.envelope import Envelope, ErrorDetail, Meta
 
@@ -19,6 +19,7 @@ app.include_router(health.router, prefix="/api/v1")
 app.include_router(calendar.router, prefix="/api/v1")
 app.include_router(stocks.router, prefix="/api/v1")
 app.include_router(metrics.router, prefix="/api/v1")
+app.include_router(screen.router, prefix="/api/v1")
 
 
 def _error_envelope(status_code: int, code: str, message: str) -> JSONResponse:

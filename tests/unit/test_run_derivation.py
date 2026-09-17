@@ -149,6 +149,16 @@ def test_compute_stock_day_metrics_with_fundamentals():
     assert result.per_raw == Decimal("15.5")
     assert result.pbr_raw == Decimal("1.2")
     assert result.market_cap_raw_krw == 1_000_000
+    # REQ-003 `GET /screen?volume_min=` 필터 전용 값(unit-07-note.md §2) —
+    # 당일(window[0]) 거래량 그대로.
+    assert result.volume_raw == 1000
+
+
+def test_compute_stock_day_metrics_volume_raw_uses_todays_volume_not_baseline():
+    window = _points((_TARGET, "100", 5000), (date(2026, 9, 11), "100", 900))
+    result = compute_stock_day_metrics(_STOCK, window, None, target_date=_TARGET)
+    assert result is not None
+    assert result.volume_raw == 5000
 
 
 # --- build_derivation_inputs / _validation_passed ---
@@ -168,6 +178,7 @@ def test_build_derivation_inputs_computes_cross_sectional_percentiles():
             per_raw=Decimal("5"),
             pbr_raw=None,
             market_cap_raw_krw=1000,
+            volume_raw=12000,
         ),
         StockDayMetrics(
             stock_code="B",
@@ -179,6 +190,7 @@ def test_build_derivation_inputs_computes_cross_sectional_percentiles():
             per_raw=Decimal("20"),
             pbr_raw=None,
             market_cap_raw_krw=2000,
+            volume_raw=None,
         ),
     ]
     inputs = build_derivation_inputs(rows, target_date=_TARGET)
@@ -189,6 +201,9 @@ def test_build_derivation_inputs_computes_cross_sectional_percentiles():
     assert by_code["B"].per_percentile == Decimal("100.0")
     assert by_code["A"].market_cap_percentile == Decimal("100.0")  # 시총 클수록 상위
     assert by_code["B"].market_cap_percentile == Decimal("50.0")
+    # volume_raw는 순위/백분위 계산 대상이 아니라 그대로 통과(pass-through)되어야 한다.
+    assert by_code["A"].volume_raw == 12000
+    assert by_code["B"].volume_raw is None
 
 
 def test_validation_passed_below_threshold():

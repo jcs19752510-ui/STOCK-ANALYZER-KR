@@ -1,4 +1,5 @@
 from datetime import date, datetime, time, timedelta
+from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from fastapi.testclient import TestClient
@@ -507,3 +508,307 @@ def test_get_stock_metrics_invalid_date_format_returns_400():
     app.dependency_overrides.clear()
     assert resp.status_code == 400
     assert resp.json()["error"]["code"] == "INVALID_PARAMETER"
+
+
+# --- GET /api/v1/screen (UNIT-07, REQ-003) ---
+
+import services.public_api.api.screen as screen_module  # noqa: E402
+from services.public_api.api.screen import (  # noqa: E402
+    get_calendar_repository as get_screen_calendar_repository,
+)
+from services.public_api.api.screen import get_screen_repository  # noqa: E402
+from services.public_api.db.screen_repository import (  # noqa: E402
+    ScreenFilters,
+    ScreenQueryResult,
+    ScreenRow,
+)
+
+
+def _patch_screen_now(monkeypatch, fixed: datetime) -> None:
+    class _FixedDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return fixed
+
+    monkeypatch.setattr(screen_module, "datetime", _FixedDatetime)
+
+
+_TRADING_DAY = date(2026, 9, 11)
+_CALENDAR_ROWS = {
+    (_TRADING_DAY, "KRX"): CalendarRow(
+        trade_date=_TRADING_DAY,
+        market="KRX",
+        is_trading_day=True,
+        session_close_at=time(15, 30),
+        holiday_name=None,
+        source="test",
+    )
+}
+
+_SCREEN_ROW = ScreenRow(
+    stock_code="005930",
+    name="삼성전자",
+    market="KOSPI",
+    return_pct=Decimal("3.2"),
+    per_percentile=Decimal("20.0"),
+    pbr_percentile=Decimal("30.0"),
+    market_cap_percentile=Decimal("10.0"),
+    volume_anomaly_score=Decimal("2.3"),
+)
+
+
+class FakeScreenRepository:
+    def __init__(
+        self,
+        *,
+        published_trade_date: date | None,
+        result: ScreenQueryResult,
+    ):
+        self._published_trade_date = published_trade_date
+        self._result = result
+        self.captured_filters: ScreenFilters | None = None
+
+    def get_current_published_trade_date(self, market: str) -> date | None:
+        return self._published_trade_date
+
+    def search(self, filters: ScreenFilters) -> ScreenQueryResult:
+        self.captured_filters = filters
+        return self._result
+
+
+def _override_screen_repository(repository: FakeScreenRepository):
+    def _factory():
+        return repository
+
+    return _factory
+
+
+def _setup_screen_overrides(
+    monkeypatch, *, repository: FakeScreenRepository, calendar_rows=None
+) -> None:
+    _patch_screen_now(monkeypatch, datetime(2026, 9, 11, 20, 0, tzinfo=KST))
+    app.dependency_overrides[get_screen_repository] = _override_screen_repository(repository)
+    app.dependency_overrides[get_screen_calendar_repository] = _override_repository(
+        _CALENDAR_ROWS if calendar_rows is None else calendar_rows
+    )
+
+
+def test_screen_default_params_success(monkeypatch):
+    repo = FakeScreenRepository(
+        published_trade_date=_TRADING_DAY,
+        result=ScreenQueryResult(items=[_SCREEN_ROW], total_count=1),
+    )
+    _setup_screen_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/screen")
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["data"]["total_count"] == 1
+    assert body["data"]["page"] == 1
+    item = body["data"]["items"][0]
+    assert item["stock_code"] == "005930"
+    # sort_by 기본값(return_pct)만 matched_metrics에 포함되어야 한다(필터 값 없음).
+    assert item["matched_metrics"] == {"return_pct": 3.2}
+    assert body["meta"]["data_freshness"]["is_latest_trading_day"] is True
+    assert repo.captured_filters.market == "ALL"
+    assert repo.captured_filters.sort_by == "return_pct"
+    assert repo.captured_filters.sort_dir == "desc"
+    assert repo.captured_filters.page == 1
+    assert repo.captured_filters.page_size == 50
+
+
+def test_screen_market_cap_filter_included_in_matched_metrics(monkeypatch):
+    repo = FakeScreenRepository(
+        published_trade_date=_TRADING_DAY,
+        result=ScreenQueryResult(items=[_SCREEN_ROW], total_count=1),
+    )
+    _setup_screen_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/screen", params={"market_cap_min": 100_000_000_000})
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    item = resp.json()["data"]["items"][0]
+    # 필터 조건(market_cap) ∪ sort_by 기본값(return_pct) — 둘 다 포함되어야 한다(DEC-013).
+    assert item["matched_metrics"] == {"market_cap": 10.0, "return_pct": 3.2}
+    assert repo.captured_filters.market_cap_min == 100_000_000_000
+
+
+def test_screen_volume_min_filters_but_excluded_from_matched_metrics(monkeypatch):
+    """§4-3(원본 거래량 노출 금지)에 따라 volume_min은 필터로는 동작하되
+    matched_metrics에는 노출되지 않는다(unit-07-note.md §2 참조)."""
+    repo = FakeScreenRepository(
+        published_trade_date=_TRADING_DAY,
+        result=ScreenQueryResult(items=[_SCREEN_ROW], total_count=1),
+    )
+    _setup_screen_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/screen", params={"volume_min": 10_000})
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    item = resp.json()["data"]["items"][0]
+    assert item["matched_metrics"] == {"return_pct": 3.2}
+    assert repo.captured_filters.volume_min == 10_000
+
+
+def test_screen_per_pbr_sort_by_matched_metrics(monkeypatch):
+    repo = FakeScreenRepository(
+        published_trade_date=_TRADING_DAY,
+        result=ScreenQueryResult(items=[_SCREEN_ROW], total_count=1),
+    )
+    _setup_screen_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get(
+        "/api/v1/screen", params={"pbr_max": 1.5, "sort_by": "per", "sort_dir": "asc"}
+    )
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    item = resp.json()["data"]["items"][0]
+    assert item["matched_metrics"] == {"pbr": 30.0, "per": 20.0}
+
+
+def test_screen_zero_results_returns_empty_list(monkeypatch):
+    repo = FakeScreenRepository(
+        published_trade_date=_TRADING_DAY,
+        result=ScreenQueryResult(items=[], total_count=0),
+    )
+    _setup_screen_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/screen", params={"market": "KOSDAQ"})
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["data"]["items"] == []
+    assert body["data"]["total_count"] == 0
+    assert repo.captured_filters.market == "KOSDAQ"
+
+
+def test_screen_invalid_market_returns_400(monkeypatch):
+    repo = FakeScreenRepository(published_trade_date=None, result=ScreenQueryResult([], 0))
+    _setup_screen_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/screen", params={"market": "NASDAQ"})
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "INVALID_PARAMETER"
+    assert repo.captured_filters is None
+
+
+def test_screen_invalid_sort_by_returns_400(monkeypatch):
+    repo = FakeScreenRepository(published_trade_date=None, result=ScreenQueryResult([], 0))
+    _setup_screen_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/screen", params={"sort_by": "volume"})
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "INVALID_PARAMETER"
+
+
+def test_screen_invalid_sort_dir_returns_400(monkeypatch):
+    repo = FakeScreenRepository(published_trade_date=None, result=ScreenQueryResult([], 0))
+    _setup_screen_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/screen", params={"sort_dir": "descending"})
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "INVALID_PARAMETER"
+
+
+def test_screen_page_size_exceeds_max_returns_400(monkeypatch):
+    repo = FakeScreenRepository(published_trade_date=None, result=ScreenQueryResult([], 0))
+    _setup_screen_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/screen", params={"page_size": 201})
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "INVALID_PARAMETER"
+
+
+def test_screen_market_cap_min_greater_than_max_returns_400(monkeypatch):
+    repo = FakeScreenRepository(published_trade_date=None, result=ScreenQueryResult([], 0))
+    _setup_screen_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get(
+        "/api/v1/screen", params={"market_cap_min": 2_000, "market_cap_max": 1_000}
+    )
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "INVALID_PARAMETER"
+    assert repo.captured_filters is None
+
+
+def test_screen_return_pct_min_greater_than_max_returns_400(monkeypatch):
+    repo = FakeScreenRepository(published_trade_date=None, result=ScreenQueryResult([], 0))
+    _setup_screen_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get(
+        "/api/v1/screen", params={"return_pct_min": 5, "return_pct_max": -5}
+    )
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "INVALID_PARAMETER"
+
+
+def test_screen_calendar_not_confirmed_returns_424(monkeypatch):
+    repo = FakeScreenRepository(published_trade_date=_TRADING_DAY, result=ScreenQueryResult([], 0))
+    _setup_screen_overrides(monkeypatch, repository=repo, calendar_rows={})
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/screen")
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 424
+    assert resp.json()["error"]["code"] == "CALENDAR_NOT_CONFIRMED"
+
+
+def test_screen_no_published_data_returns_503_data_pipeline_stale(monkeypatch):
+    repo = FakeScreenRepository(published_trade_date=None, result=ScreenQueryResult([], 0))
+    _setup_screen_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/screen")
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 503
+    assert resp.json()["error"]["code"] == "DATA_PIPELINE_STALE"
+
+
+def test_screen_pagination_params_passed_through(monkeypatch):
+    repo = FakeScreenRepository(
+        published_trade_date=_TRADING_DAY,
+        result=ScreenQueryResult(items=[_SCREEN_ROW], total_count=120),
+    )
+    _setup_screen_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/screen", params={"page": 3, "page_size": 20})
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["data"]["page"] == 3
+    assert body["data"]["total_count"] == 120
+    assert repo.captured_filters.page == 3
+    assert repo.captured_filters.page_size == 20
