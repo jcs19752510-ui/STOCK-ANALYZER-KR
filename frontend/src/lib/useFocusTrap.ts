@@ -19,6 +19,14 @@ export function useFocusTrap(
 ): void {
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
+  // 부모가 매 렌더마다 새 인라인 함수를 넘겨도(`ScreenerClient.tsx`처럼)
+  // 트랩 effect 자체가 재실행되지 않도록, 최신 콜백은 ref로만 추적하고
+  // effect 의존성 배열에는 넣지 않는다(DEF-U07-01 원인(b)).
+  const onEscapeRef = useRef(onEscape);
+  useEffect(() => {
+    onEscapeRef.current = onEscape;
+  }, [onEscape]);
+
   useEffect(() => {
     if (!isActive) return;
 
@@ -30,13 +38,26 @@ export function useFocusTrap(
     const getFocusable = (): HTMLElement[] =>
       Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
 
-    const focusable = getFocusable();
-    (focusable[0] ?? container).focus();
+    // 패널 표시는 `visibility: hidden -> visible` CSS 전환으로 구현되어
+    // 있어(globals.css), 이 effect가 실행되는 시점에는 브라우저가 아직
+    // 전환 후 스타일을 반영하지 않아 `visibility: hidden`인 채로 남아있다
+    // (DEF-U07-01 원인(a), 헤드리스 Chromium 실측: class 변경 직후는 물론
+    // 애니메이션 프레임 1회 뒤에도 `getComputedStyle().visibility`가 여전히
+    // `hidden`이고, 2회째 프레임에서야 `visible`로 반영됨을 별도 최소 재현
+    // 페이지로 확인함) — 이 상태에서 `.focus()`를 호출하면 조용히 무시된다.
+    // 프레임을 두 번 넘겨(더블 rAF) 전환이 실제로 반영된 뒤 포커스를 이동시킨다.
+    let rafId2 = 0;
+    const rafId1 = requestAnimationFrame(() => {
+      rafId2 = requestAnimationFrame(() => {
+        const items = getFocusable();
+        (items[0] ?? container).focus();
+      });
+    });
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
-        onEscape();
+        onEscapeRef.current();
         return;
       }
       if (event.key !== "Tab") return;
@@ -57,8 +78,10 @@ export function useFocusTrap(
 
     document.addEventListener("keydown", handleKeyDown);
     return () => {
+      cancelAnimationFrame(rafId1);
+      cancelAnimationFrame(rafId2);
       document.removeEventListener("keydown", handleKeyDown);
       previouslyFocused.current?.focus();
     };
-  }, [isActive, containerRef, onEscape]);
+  }, [isActive, containerRef]);
 }

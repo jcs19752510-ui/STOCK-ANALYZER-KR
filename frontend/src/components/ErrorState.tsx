@@ -16,7 +16,8 @@ export type ErrorStateVariant = "network" | "calendar-not-confirmed" | "rate-lim
 interface ErrorStateProps {
   variant: ErrorStateVariant;
   /** "다시 시도" 링크가 이동할 경로. 서버 컴포넌트 재요청을 위해 현재 경로를 그대로 쓴다. */
-  retryHref: string;
+  retryHref?: string;
+  onRetry?: () => void;
 }
 
 const VARIANT_MESSAGE: Record<ErrorStateVariant, string> = {
@@ -25,13 +26,19 @@ const VARIANT_MESSAGE: Record<ErrorStateVariant, string> = {
   "rate-limited": copy.errorState.rateLimitedTitle,
 };
 
-export function ErrorState({ variant, retryHref }: ErrorStateProps) {
+export function ErrorState({ variant, retryHref, onRetry }: ErrorStateProps) {
   return (
     <div className="error-state" role="alert">
       <p className="error-state__message">{VARIANT_MESSAGE[variant]}</p>
-      <Link href={retryHref} className="error-state__retry">
-        {copy.errorState.retryButtonLabel}
-      </Link>
+      {retryHref ? (
+        <Link href={retryHref} className="error-state__retry">
+          {copy.errorState.retryButtonLabel}
+        </Link>
+      ) : (
+        <button type="button" className="error-state__retry" onClick={onRetry}>
+          {copy.errorState.retryButtonLabel}
+        </button>
+      )}
     </div>
   );
 }
