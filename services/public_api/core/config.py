@@ -28,3 +28,20 @@ def get_settings() -> Settings:
             "예: postgresql+psycopg://api_service:***@localhost:5432/stock_screener"
         )
     return Settings(database_url=database_url)
+
+
+# 03-system-design.md §6-3: "CORS는 자사 프론트엔드 오리진으로만 제한". DB 자격증명과
+# 달리 이 값은 시크릿이 아니고, 로컬 개발이 별도 설정 없이 바로 동작해야 하므로(과제
+# 요구사항) `get_settings()`처럼 미설정 시 예외를 던지지 않고 안전한 로컬 기본값으로
+# 대체한다. 프로덕션 도메인은 미확정이므로 환경변수로 재정의 가능하게 둔다.
+DEFAULT_CORS_ALLOWED_ORIGINS: tuple[str, ...] = ("http://localhost:3000",)
+
+
+def get_cors_allowed_origins() -> list[str]:
+    raw = os.environ.get("PUBLIC_API_CORS_ALLOWED_ORIGINS")
+    if not raw:
+        return list(DEFAULT_CORS_ALLOWED_ORIGINS)
+    origins = [origin.strip() for origin in raw.split(",") if origin.strip()]
+    if not origins:
+        return list(DEFAULT_CORS_ALLOWED_ORIGINS)
+    return origins

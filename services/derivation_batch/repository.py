@@ -18,7 +18,12 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from services.derivation_batch.raw_models import raw_fundamentals_table, raw_ohlcv_table
-from shared.db_models.public_serving import CurrentPublishedBatch, DerivedMetricsDaily, StockMaster
+from shared.db_models.public_serving import (
+    CurrentPublishedBatch,
+    DerivedMetricsDaily,
+    MarketSummaryDaily,
+    StockMaster,
+)
 
 # MA20(당일 포함 20일) + 거래량 이상치 기준선(당일 제외 직전 20일) 양쪽을
 # 한 번의 쿼리로 충족하려면 최대 1(당일) + 20(MA20 나머지) + 20(기준선) = 41행이
@@ -159,6 +164,86 @@ def upsert_derived_metrics(
     return affected
 
 
+def fetch_trading_values(
+    session: Session, *, market: str, trade_date: date
+) -> dict[str, int]:
+    """REQ-004용 종목별 거래대금(원본, `raw_internal.raw_ohlcv.trading_value`) 조회.
+
+    `market`은 거래소 세션 구분(KRX/NXT, §3-1-1) — `fetch_ohlcv_window()`와
+    동일한 축. 이 값은 `market_summary_daily.total_trading_value_krw`/
+    `top_sectors_by_value` 집계에만 쓰이고 API 응답에 원문 그대로 노출되지
+    않는다(§4-3 데이터 가공 원칙 — 요약 통계로만 가공되어 나간다).
+    """
+    stmt = select(raw_ohlcv_table.c.stock_code, raw_ohlcv_table.c.trading_value).where(
+        raw_ohlcv_table.c.market == market,
+        raw_ohlcv_table.c.trade_date == trade_date,
+    )
+    rows = session.execute(stmt).all()
+    return {row.stock_code: row.trading_value for row in rows}
+
+
+def fetch_sector_map(session: Session) -> dict[str, str | None]:
+    """REQ-004 업종별 거래대금 상위 집계용 `stock_master.sector` 조회.
+
+    `sector` 출처가 아직 확정되지 않아(03-system-design.md §8-2 항목8)
+    현재는 대부분/전부 `None`일 수 있다 — 값을 지어내지 않고 그대로 반환한다.
+    """
+    stmt = select(StockMaster.stock_code, StockMaster.sector)
+    rows = session.execute(stmt).all()
+    return {row.stock_code: row.sector for row in rows}
+
+
+@dataclass(frozen=True)
+class MarketSummaryUpsertInput:
+    trade_date: date
+    market: str
+    advancers_count: int
+    decliners_count: int
+    unchanged_count: int
+    top_sectors_by_value: list[dict[str, object]]
+    total_trading_value_krw: int
+
+
+def upsert_market_summary(
+    session: Session, rows: list[MarketSummaryUpsertInput], *, batch_run_id: uuid.UUID
+) -> int:
+    """`market_summary_daily`(REQ-004)에 KOSPI/KOSDAQ/ALL 3개 행을 upsert한다.
+
+    `derived_metrics_daily`와 동일하게, `validation_passed` 여부와 무관하게
+    항상 기록한다 — 실제 서빙 여부는 `current_published_batch` 포인터가
+    별도로 결정한다(§3-2/§5-3).
+    """
+    affected = 0
+    computed_at = datetime.now()
+    for row in rows:
+        stmt = pg_insert(MarketSummaryDaily).values(
+            trade_date=row.trade_date,
+            market=row.market,
+            advancers_count=row.advancers_count,
+            decliners_count=row.decliners_count,
+            unchanged_count=row.unchanged_count,
+            top_sectors_by_value=row.top_sectors_by_value,
+            total_trading_value_krw=row.total_trading_value_krw,
+            computed_at=computed_at,
+            batch_run_id=batch_run_id,
+        )
+        stmt = stmt.on_conflict_do_update(
+            index_elements=[MarketSummaryDaily.trade_date, MarketSummaryDaily.market],
+            set_={
+                "advancers_count": stmt.excluded.advancers_count,
+                "decliners_count": stmt.excluded.decliners_count,
+                "unchanged_count": stmt.excluded.unchanged_count,
+                "top_sectors_by_value": stmt.excluded.top_sectors_by_value,
+                "total_trading_value_krw": stmt.excluded.total_trading_value_krw,
+                "computed_at": stmt.excluded.computed_at,
+                "batch_run_id": stmt.excluded.batch_run_id,
+            },
+        )
+        session.execute(stmt)
+        affected += 1
+    return affected
+
+
 def publish_current_batch(
     session: Session, *, market: str, trade_date: date, batch_run_id: uuid.UUID
 ) -> None:
@@ -185,10 +270,14 @@ __all__ = [
     "ActiveStock",
     "DerivedMetricsInput",
     "FundamentalsRow",
+    "MarketSummaryUpsertInput",
     "OhlcvPoint",
     "fetch_active_stocks",
     "fetch_fundamentals_map",
     "fetch_ohlcv_window",
+    "fetch_sector_map",
+    "fetch_trading_values",
     "publish_current_batch",
     "upsert_derived_metrics",
+    "upsert_market_summary",
 ]

@@ -8,9 +8,8 @@
 
 UNIT-02에서는 이 테이블 중 Ingestion Batch가 사용하는 부분만 채웠다.
 UNIT-03이 `StockMaster`(REQ-001)를 추가했다. UNIT-06이 `DerivedMetricsDaily`/
-`CurrentPublishedBatch`(REQ-002, Derivation Batch 산출물)를 추가한다.
-`market_summary_daily`(REQ-004)는 여전히 UNIT-08 소관이라 이번에도 만들지
-않는다(범위 외 확장 금지).
+`CurrentPublishedBatch`(REQ-002, Derivation Batch 산출물)를 추가했다.
+UNIT-08이 `MarketSummaryDaily`(REQ-004)를 추가한다.
 """
 
 from __future__ import annotations
@@ -19,15 +18,26 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Boolean, Date, DateTime, Enum, ForeignKey, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Date,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+)
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
 from shared.calendar_service.types import Market
 from shared.db_models.base import Base
 from shared.db_models.reference import market_session_enum
-from shared.market_types import ListedMarket
+from shared.market_types import ListedMarket, ListedMarketFilter
 
 batch_run_type_enum = Enum(
     "ingest",
@@ -177,4 +187,57 @@ class CurrentPublishedBatch(Base):
     )
     published_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+market_summary_market_enum = Enum(
+    "KOSPI",
+    "KOSDAQ",
+    "ALL",
+    name="market_summary_market",
+    schema="public_serving",
+    create_constraint=True,
+    validate_strings=True,
+)
+
+
+class MarketSummaryDaily(Base):
+    """시장 동향 리포트 요약 통계(REQ-004). 03-system-design.md §3-2 `market_summary_daily`.
+
+    `market`은 상장시장 구분(KOSPI/KOSDAQ, §3-1-1) + `ALL`(전체 통합) 3값이다.
+    기존 `listed_market` ENUM(KOSPI/KOSDAQ 2값, 0005)을 재사용하지 않고 별도
+    ENUM(`market_summary_market`)으로 분리한다 — 재사용하면 `stock_master`/
+    `derived_metrics_daily`가 절대 가질 수 없는 `ALL` 값이 그 ENUM에 섞여
+    들어가, §3-1-1이 확립한 "같은 이름의 ENUM을 재사용할 때는 반드시 표에
+    추가하고 어느 축인지 명시" 원칙과 상충한다.
+
+    `ALL` 행은 KOSPI/KOSDAQ 두 행을 사후 합산한 값이 아니라 Derivation
+    Batch가 원본 전체 종목에서 직접 재집계한 값이다(DEC-016 — 업종별
+    거래대금 상위 리스트처럼 "부분 상위 N의 합으로 전체 상위 N을 복원할 수
+    없는 값"이 있기 때문). 원본 시세 컬럼은 이 테이블에도 존재하지 않는다
+    (§4-3 데이터 가공 원칙).
+    """
+
+    __tablename__ = "market_summary_daily"
+    __table_args__ = {"schema": "public_serving"}
+
+    trade_date: Mapped[date] = mapped_column(Date, primary_key=True)
+    market: Mapped[ListedMarketFilter] = mapped_column(
+        market_summary_market_enum, primary_key=True
+    )
+    advancers_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    decliners_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    unchanged_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    # `[{"sector": str, "trading_value_krw": int}]`, 최대 5개(§3-2). `sector`
+    # 출처가 아직 확정되지 않아(§8-2 항목8) 현재는 빈 리스트일 수 있다 —
+    # 존재하지 않는 업종 분류를 지어내지 않는다.
+    top_sectors_by_value: Mapped[list] = mapped_column(
+        JSONB, nullable=False, server_default="[]"
+    )
+    total_trading_value_krw: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    computed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    batch_run_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("public_serving.batch_run.batch_run_id"), nullable=False
     )

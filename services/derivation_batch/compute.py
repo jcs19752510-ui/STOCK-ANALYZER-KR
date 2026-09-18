@@ -15,6 +15,7 @@ DB/외부 의존성이 전혀 없는 순수 함수만 담는다 — 6단계가 �
 from __future__ import annotations
 
 import statistics
+from dataclasses import dataclass
 from decimal import Decimal
 
 _QUANT = Decimal("0.0001")
@@ -100,8 +101,85 @@ def rank_percentile[KeyT](
     return result
 
 
+@dataclass(frozen=True)
+class SectorTradingValue:
+    sector: str
+    trading_value_krw: int
+
+
+@dataclass(frozen=True)
+class MarketSummaryInput:
+    """시장 동향 요약(REQ-004) 집계 대상 종목 1건. `sector`는 `stock_master.sector`
+    출처가 아직 확정되지 않아(03-system-design.md §8-2 항목8) `None`일 수 있다."""
+
+    return_pct: Decimal | None
+    trading_value_krw: int
+    sector: str | None
+
+
+@dataclass(frozen=True)
+class MarketSummaryResult:
+    advancers_count: int
+    decliners_count: int
+    unchanged_count: int
+    top_sectors_by_value: list[SectorTradingValue]
+    total_trading_value_krw: int
+
+
+def compute_market_summary(
+    rows: list[MarketSummaryInput], *, top_n: int = 5
+) -> MarketSummaryResult:
+    """REQ-004 시장 동향 요약 통계(03-system-design.md §3-2 `market_summary_daily`).
+
+    상승/하락/보합은 `return_pct`가 있는 종목만 집계 대상이다 — 결측(신규
+    상장 첫날 등, §3-2 결측치 처리 원칙)은 상승도 하락도 보합도 아니므로
+    셋 중 어디에도 포함하지 않는다(0이나 보합으로 임의 대체하지 않음).
+
+    업종별 거래대금은 `sector`가 있는 종목만 합산한다. `sector` 출처가
+    아직 확정되지 않아(§8-2 항목8) 현재는 전 종목이 `sector=None`일 수
+    있으며, 그 경우 빈 리스트를 반환한다(04-ux-design.md §2-1 "업종 정보를
+    준비 중입니다" 부분 실패 표시로 이어짐 — 존재하지 않는 업종을 지어내지
+    않는다). 총 거래대금은 `sector` 유무와 무관하게 전달된 모든 종목을
+    합산한다(업종 미분류와 무관하게 실제로 거래된 금액이므로).
+
+    이 함수는 DB 접근이 없는 순수 함수라, 호출자가 KOSPI/KOSDAQ/ALL 어느
+    범위의 `rows`를 넘기든 그대로 그 범위만 집계한다 — `ALL` 집계는
+    KOSPI/KOSDAQ 결과를 사후 합산하는 방식이 아니라, 호출자가 전체 종목
+    목록을 직접 넘겨 이 함수가 한 번에 재집계하는 방식으로 이뤄져야 한다
+    (DEC-016 — 업종 상위 리스트처럼 부분 상위 N의 합으로 전체 상위 N을
+    복원할 수 없는 값이 있기 때문).
+    """
+    advancers_count = sum(1 for r in rows if r.return_pct is not None and r.return_pct > 0)
+    decliners_count = sum(1 for r in rows if r.return_pct is not None and r.return_pct < 0)
+    unchanged_count = sum(1 for r in rows if r.return_pct is not None and r.return_pct == 0)
+    total_trading_value_krw = sum(r.trading_value_krw for r in rows)
+
+    sector_totals: dict[str, int] = {}
+    for row in rows:
+        if row.sector is None:
+            continue
+        sector_totals[row.sector] = sector_totals.get(row.sector, 0) + row.trading_value_krw
+
+    top_sectors = sorted(sector_totals.items(), key=lambda item: item[1], reverse=True)[:top_n]
+
+    return MarketSummaryResult(
+        advancers_count=advancers_count,
+        decliners_count=decliners_count,
+        unchanged_count=unchanged_count,
+        top_sectors_by_value=[
+            SectorTradingValue(sector=sector, trading_value_krw=value)
+            for sector, value in top_sectors
+        ],
+        total_trading_value_krw=total_trading_value_krw,
+    )
+
+
 __all__ = [
+    "MarketSummaryInput",
+    "MarketSummaryResult",
+    "SectorTradingValue",
     "compute_ma_gap_pct",
+    "compute_market_summary",
     "compute_return_pct",
     "compute_volume_anomaly_score",
     "rank_percentile",

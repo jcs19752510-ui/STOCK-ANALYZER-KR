@@ -49,7 +49,14 @@
   "emptyState": {
     "noDataYetTitle": "표시할 데이터가 아직 없습니다. 서비스 데이터 준비 중입니다.",
     "noScreenConditionsTitle": "조건을 설정하고 [조건 적용]을 눌러주세요",
-    "noScreenResultTitle": "조건을 충족하는 종목이 없습니다. 조건 범위를 넓혀 다시 시도해 보세요."
+    "noScreenResultTitle": "조건을 충족하는 종목이 없습니다. 조건 범위를 넓혀 다시 시도해 보세요.",
+    "noQueryTitle": "종목명 또는 코드를 입력해 검색하세요",
+    "noSearchResultTemplate": "'{query}'에 대한 검색 결과가 없습니다. 종목명 또는 코드를 다시 확인해 주세요."
+  },
+  "stockSearch": {
+    "pageTitle": "종목 검색",
+    "inputLabel": "종목명 또는 코드 검색",
+    "inputPlaceholder": "예: 삼성전자 또는 005930"
   },
   "screener": {
     "marketLabel": "시장 구분",
@@ -90,6 +97,21 @@
       "pbr": "PBR",
       "volumeAnomalyScore": "거래량 변동성"
     }
+  },
+  "home": {
+    "pageTitle": "전일 시장 동향 리포트",
+    "marketLabelAll": "전체(코스피+코스닥)",
+    "marketLabelKospi": "코스피",
+    "marketLabelKosdaq": "코스닥",
+    "advancersLabel": "상승 종목 수",
+    "declinersLabel": "하락 종목 수",
+    "unchangedLabel": "보합 종목 수",
+    "totalTradingValueLabel": "총 거래대금",
+    "sectorSectionTitle": "업종별 거래대금 상위",
+    "sectorPreparingText": "업종 정보를 준비 중입니다",
+    "entryCardsAriaLabel": "바로가기",
+    "screenerEntryLabel": "조건 스크리닝 하러 가기",
+    "stocksEntryLabel": "종목 검색"
   },
   "about": {
     "title": "서비스 안내",

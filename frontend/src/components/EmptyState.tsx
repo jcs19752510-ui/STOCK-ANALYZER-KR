@@ -2,36 +2,48 @@ import copy from "@/content/copy.ko.json";
 
 /**
  * 04-ux-design.md §4 `EmptyState` 공통 컴포넌트. UNIT-06은 `no-data-yet`
- * (503 DATA_PIPELINE_STALE) 하나만 구현했다. 이번 유닛(REQ-003)은 §1-2
- * Flow B가 명시한 두 빈 상태를 추가한다: 조건 미적용 초기 상태와 조건
- * 결과 0건 상태. `no-search-result`(종목 검색, UNIT-06 검색 UI 확장)는
- * 여전히 이번 유닛 범위가 아니므로 추가하지 않는다(쓰지 않는 변형을
- * 미리 만들지 않는다는 unit-05/06 원칙을 그대로 승계).
+ * (503 DATA_PIPELINE_STALE) 하나만 구현했고, UNIT-07이 `no-screen-conditions`
+ * (설계 문서 명명 누락 보완, §2 참조)/`no-screen-result`를 추가했다. 이번
+ * 유닛(UNIT-09, REQ-001)은 §1-3 Flow C가 서술한 두 빈 상태를 추가한다:
+ * `no-query`(질의 전 초기 상태)와 `no-search-result`(검색 결과 없음).
  *
- * **04-ux-design.md §4의 변형 이름 표기 보완**: §4 표는 스크리닝 화면의
- * 빈 상태를 `no-screen-result`(조건 결과 0건) 하나만 명명했고, §1-2 Flow B가
- * 별도로 서술한 "초기(조건 미적용)" 상태에는 전용 변형 이름이 없었다(설계
- * 문서의 명명 누락 — 텍스트 자체는 §1-2/§2-2에 이미 확정되어 있다). 이
- * 유닛은 그 누락을 `no-screen-conditions`라는 이름으로 채워 넣었다 — 새
- * 기능이 아니라 이미 확정된 문구에 이름을 붙인 것뿐이다(`unit-07-note.md`
- * §2 참조).
+ * `no-search-result`는 다른 변형과 달리 문구에 사용자가 입력한 검색어를
+ * 그대로 삽입해야 한다("'{검색어}'에 대한 검색 결과가 없습니다...", §1-3).
+ * 그래서 이 변형만 정적 `VARIANT_MESSAGE` 맵이 아니라 `query` prop을 받아
+ * 템플릿 문자열의 `{query}` 자리를 치환한다.
  */
-export type EmptyStateVariant = "no-data-yet" | "no-screen-conditions" | "no-screen-result";
+export type EmptyStateVariant =
+  | "no-data-yet"
+  | "no-screen-conditions"
+  | "no-screen-result"
+  | "no-query"
+  | "no-search-result";
 
 interface EmptyStateProps {
   variant: EmptyStateVariant;
+  /** `no-search-result` 전용 — 생략 시 빈 문자열로 치환된다. */
+  query?: string;
 }
 
-const VARIANT_MESSAGE: Record<EmptyStateVariant, string> = {
+const STATIC_VARIANT_MESSAGE: Record<
+  Exclude<EmptyStateVariant, "no-search-result">,
+  string
+> = {
   "no-data-yet": copy.emptyState.noDataYetTitle,
   "no-screen-conditions": copy.emptyState.noScreenConditionsTitle,
   "no-screen-result": copy.emptyState.noScreenResultTitle,
+  "no-query": copy.emptyState.noQueryTitle,
 };
 
-export function EmptyState({ variant }: EmptyStateProps) {
+export function EmptyState({ variant, query }: EmptyStateProps) {
+  const message =
+    variant === "no-search-result"
+      ? copy.emptyState.noSearchResultTemplate.replace("{query}", query ?? "")
+      : STATIC_VARIANT_MESSAGE[variant];
+
   return (
     <div className="empty-state">
-      <p>{VARIANT_MESSAGE[variant]}</p>
+      <p>{message}</p>
     </div>
   );
 }

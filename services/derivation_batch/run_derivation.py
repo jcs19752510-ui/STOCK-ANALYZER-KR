@@ -39,7 +39,9 @@ from sqlalchemy.orm import Session  # noqa: E402
 
 from services.derivation_batch.batch_run_repository import finish_run, start_run  # noqa: E402
 from services.derivation_batch.compute import (  # noqa: E402
+    MarketSummaryInput,
     compute_ma_gap_pct,
+    compute_market_summary,
     compute_return_pct,
     compute_volume_anomaly_score,
     rank_percentile,
@@ -50,12 +52,16 @@ from services.derivation_batch.repository import (  # noqa: E402
     ActiveStock,
     DerivedMetricsInput,
     FundamentalsRow,
+    MarketSummaryUpsertInput,
     OhlcvPoint,
     fetch_active_stocks,
     fetch_fundamentals_map,
     fetch_ohlcv_window,
+    fetch_sector_map,
+    fetch_trading_values,
     publish_current_batch,
     upsert_derived_metrics,
+    upsert_market_summary,
 )
 from shared.calendar_service import (  # noqa: E402
     CalendarIntegrityError,
@@ -194,6 +200,66 @@ def build_derivation_inputs(
     ]
 
 
+def build_market_summary_inputs(
+    rows: list[StockDayMetrics],
+    *,
+    trading_value_by_code: dict[str, int],
+    sector_by_code: dict[str, str | None],
+    target_date: date,
+) -> list[MarketSummaryUpsertInput]:
+    """REQ-004 `market_summary_daily` KOSPI/KOSDAQ/ALL 3행을 만든다(§3-2, DEC-016).
+
+    `ALL`은 KOSPI/KOSDAQ 결과를 사후 합산하지 않고, `rows`(그날 거래된 전
+    종목) 전체를 `compute_market_summary()`에 직접 넘겨 재집계한다 —
+    업종 상위 리스트처럼 부분 상위 N의 합으로 전체 상위 N을 복원할 수 없는
+    값이 있기 때문이다.
+    """
+
+    def to_summary_inputs(subset: list[StockDayMetrics]) -> list[MarketSummaryInput]:
+        result: list[MarketSummaryInput] = []
+        for r in subset:
+            trading_value = trading_value_by_code.get(r.stock_code)
+            if trading_value is None:
+                # day_metrics에 포함된 종목(그날 원본 시세 존재)인데 같은
+                # 날짜의 거래대금 레코드가 없는 것은 데이터 정합성 이상이다
+                # — 0으로 조용히 대체하지 않고 이 종목을 시장 요약 집계에서
+                # 제외한다(§3-2 결측치 처리의 명시적 실패 원칙과 동일한 정신).
+                continue
+            result.append(
+                MarketSummaryInput(
+                    return_pct=r.return_pct,
+                    trading_value_krw=trading_value,
+                    sector=sector_by_code.get(r.stock_code),
+                )
+            )
+        return result
+
+    market_subsets: list[tuple[str, list[StockDayMetrics]]] = [
+        ("KOSPI", [r for r in rows if r.market == "KOSPI"]),
+        ("KOSDAQ", [r for r in rows if r.market == "KOSDAQ"]),
+        ("ALL", rows),
+    ]
+
+    inputs: list[MarketSummaryUpsertInput] = []
+    for market_label, subset in market_subsets:
+        result = compute_market_summary(to_summary_inputs(subset))
+        inputs.append(
+            MarketSummaryUpsertInput(
+                trade_date=target_date,
+                market=market_label,
+                advancers_count=result.advancers_count,
+                decliners_count=result.decliners_count,
+                unchanged_count=result.unchanged_count,
+                top_sectors_by_value=[
+                    {"sector": s.sector, "trading_value_krw": s.trading_value_krw}
+                    for s in result.top_sectors_by_value
+                ],
+                total_trading_value_krw=result.total_trading_value_krw,
+            )
+        )
+    return inputs
+
+
 def _validation_passed(rows: list[StockDayMetrics]) -> tuple[bool, int]:
     missing = sum(1 for r in rows if r.return_pct is None)
     if not rows:
@@ -275,6 +341,22 @@ def run_once(
 
     derivation_inputs = build_derivation_inputs(day_metrics, target_date=target_date)
     upsert_derived_metrics(session, derivation_inputs, batch_run_id=batch_run_id)
+
+    # REQ-004 — derived_metrics_daily와 같은 배치 실행 안에서 시장 동향 요약도
+    # 함께 산출한다(03-system-design.md §1-2 "Derivation Batch... 시장 요약
+    # 통계(REQ-004)를 계산해 public_serving에 쓴다"). day_metrics는 이미
+    # "그날 실제로 거래된 종목"만 담고 있으므로 별도 필터링이 불필요하다.
+    trading_value_by_code = fetch_trading_values(
+        session, market=DERIVATION_MARKET, trade_date=target_date
+    )
+    sector_by_code = fetch_sector_map(session)
+    market_summary_inputs = build_market_summary_inputs(
+        day_metrics,
+        trading_value_by_code=trading_value_by_code,
+        sector_by_code=sector_by_code,
+        target_date=target_date,
+    )
+    upsert_market_summary(session, market_summary_inputs, batch_run_id=batch_run_id)
 
     validation_passed, missing_count = _validation_passed(day_metrics)
     status = "SUCCESS" if validation_passed else "PARTIAL"

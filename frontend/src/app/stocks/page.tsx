@@ -1,23 +1,17 @@
 import type { Metadata } from "next";
+import { StockSearchClient } from "@/components/StockSearchClient";
 
 export const metadata: Metadata = {
   title: "종목 검색 | 국내주식 조건 스크리닝 정보 서비스",
 };
 
 /**
- * 임시 자리표시자. 실제 검색 입력/결과 리스트(REQ-001, 04-ux-design.md
- * §2-3)는 UNIT-06 범위다. 이 유닛(UNIT-05)은 전역 내비게이션이 가리키는
- * 라우트가 404 없이 존재하도록만 만든다.
+ * 종목 검색(`/stocks`, REQ-001, 04-ux-design.md §2-3). UNIT-05가 만든 임시
+ * 플레이스홀더를 실제 화면으로 교체한다(UNIT-09). "use client" 컴포넌트는
+ * `metadata`를 export할 수 없어 `/screener`(UNIT-07)와 동일하게 메타데이터
+ * 전용 서버 컴포넌트 셸과 실제 상호작용을 담당하는 클라이언트 컴포넌트를
+ * 분리했다.
  */
 export default function StocksPage() {
-  return (
-    <section>
-      <h1>종목 검색</h1>
-      <p>
-        종목 검색 화면은 후속 작업 단위(UNIT-06)에서 구현됩니다. 이 페이지는
-        전역 내비게이션 라우트가 정상 동작하는지 확인하기 위한 임시
-        자리표시자입니다.
-      </p>
-    </section>
-  );
+  return <StockSearchClient />;
 }

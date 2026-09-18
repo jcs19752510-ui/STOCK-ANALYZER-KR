@@ -1,11 +1,12 @@
 # UNIT-01 구현 노트 — 휴장일/영업일 캘린더 서비스
 
 - 작성 에이전트: 05-unit-developer
-- 작성일: 2026-09-14 (최초), 2026-09-14 재작업(v2 — DEF-001 대응), 2026-09-15 재작업(v3 — DEF-003/DEF-004 대응)
-- 포함 REQ: REQ-005(직전 거래일 산정), REQ-012(휴장일/특수개장일 캘린더 관리, 하드코딩 금지)
+- 작성일: 2026-09-14 (최초), 2026-09-14 재작업(v2 — DEF-001 대응), 2026-09-15 재작업(v3 — DEF-003/DEF-004 대응), 2026-09-18 재작업(v4 — DEF-U09-01 대응, CORS 미들웨어 부재)
+- 포함 REQ: REQ-005(직전 거래일 산정), REQ-012(휴장일/특수개장일 캘린더 관리, 하드코딩 금지), **(v4 추가) 03-system-design.md §6-3(CORS 제한) — 공용 Public API 기반(`main.py`) 소관**
 - 입력(최초): `docs/harness/03-system-design.md`(v3, PASS) §3-3/§3-4/§1-3, `docs/harness/04-ux-design.md`(v3, PASS), `docs/harness/02-planning.md`(v3) §9 UNIT-01
 - 입력(v2 재작업): `docs/harness/03-system-design.md`(**v4**, PASS, §3-3 재작성) — 6단계(`unit-01-test.md`)가 발견한 DEF-001(High) 대응, `decisions.md` DEC-018
 - 입력(v3 재작업): `docs/harness/units/unit-01-test.md`(**v3**) — 6단계가 실제 PostgreSQL(Docker `stock-screener-db`)로 검증하며 발견한 **DEF-003(Medium)**/**DEF-004(Low)** 대응. 설계 결함이 아니라 구현 누락(코드화 누락)이므로 3단계 재작업 없이 5단계가 직접 수정.
+- 입력(v4 재작업): `docs/harness/units/unit-09-test.md`(TC-031, DEF-U09-01) — 6단계가 UNIT-09 검증 중 발견한 **CORS 미들웨어 부재(Critical)**. `03-system-design.md` §6-3 "CORS는 자사 프론트엔드 오리진으로만 제한"을 UNIT-01~08 어느 유닛도 구현하지 않아, 프론트엔드/백엔드가 다른 오리진일 때 브라우저 fetch가 100% 차단됨. 근본 원인이 설계 결함이 아니라 UNIT-01이 만든 공용 기반의 구현 누락이므로(설계서는 이미 요구사항을 명시했음), 3단계 재작업 없이 5단계가 직접 수정. `decisions.md` DEC-022 참조.
 - 의존성: 없음(선행 유닛) — 그린필드 프로젝트라 이번 유닛에서 최소 스캐폴딩도 함께 구성
 
 ---
@@ -56,6 +57,25 @@
 
 ---
 
+## 0-c. 재작업 이력 (v4 — DEF-U09-01 대응, 규칙 F 피드백 루프)
+
+6단계가 UNIT-09(종목 검색 화면)를 검증하는 과정에서, UNIT-09 자신의 코드가 아니라 UNIT-01이 최초 작성한 공용 Public API 기반(`services/public_api/main.py`)에서 **DEF-U09-01(Critical)**을 발견했다(`docs/harness/units/unit-09-test.md` TC-031, §8). 요지: `03-system-design.md` §6-3이 "CORS는 자사 프론트엔드 오리진으로만 제한"을 명시적으로 요구하는데, `main.py`에 CORS 미들웨어가 전혀 구성되어 있지 않아, 프론트엔드와 백엔드가 다른 오리진(로컬 개발 기본값도 포트가 다름 — `frontend/.env.example`은 백엔드 기본 포트 8000, Next.js 프런트 기본 개발 포트는 3000)일 때 브라우저의 모든 크로스오리진 `fetch`가 `Access-Control-Allow-Origin` 헤더 부재로 100% 차단된다. 이는 설계서 자체의 결함이 아니라(§6-3이 이미 요구사항을 명시했음) UNIT-01~08 어느 유닛도 이를 구현하지 않은 **구현 누락**이므로, 3단계 재작업 없이 5단계(UNIT-01 담당)가 직접 수정한다(`decisions.md` DEC-022).
+
+**변경 요약**:
+1. `services/public_api/core/config.py`: `get_cors_allowed_origins()` 신설. 환경변수 `PUBLIC_API_CORS_ALLOWED_ORIGINS`(쉼표 구분 오리진 목록)를 읽되, 미설정/공백이면 로컬 개발 기본값 `["http://localhost:3000"]`(Next.js 기본 개발 포트)로 폴백한다. 기존 `get_settings()`(DB URL)와 달리 미설정 시 예외를 던지지 않는다 — CORS 허용 오리진은 DB 자격증명과 달리 시크릿이 아니고, 로컬 개발이 별도 설정 없이 바로 동작해야 한다는 요구사항(오케스트레이터 지시, `decisions.md` DEC-022)에 따른 의도적 설계 판단이다.
+2. `services/public_api/main.py`: `app.add_middleware(CORSMiddleware, allow_origins=get_cors_allowed_origins(), allow_credentials=False, allow_methods=["GET"], allow_headers=["*"])` 추가. `allow_credentials=False`는 §6-1(인증/쿠키 없음, REQ-016 Out-of-Scope)과 일관되고, `allow_methods=["GET"]`은 이 API가 §1-2에서 "무상태, 읽기전용"으로 설계되어 모든 엔드포인트가 GET만 제공하는 것과 일관된다(코드 리뷰로 실제 라우터 전수 확인 — POST/PUT/DELETE 라우트 없음).
+3. `.env.example`: `PUBLIC_API_CORS_ALLOWED_ORIGINS` 사용법 주석 추가(기존 `GOV_DATA_PORTAL_BASE_URL`의 "기본값 존재 + 필요 시 재정의" 관례를 그대로 따름 — 값 자체는 주석 처리해 코드 기본값이 적용되게 둠).
+4. `tests/unit/test_public_api.py`: CORS 회귀 테스트 4건 신규 — (a) 허용 오리진(`http://localhost:3000`)에서 `Access-Control-Allow-Origin` 헤더가 실제로 반환됨, (b) 허용되지 않은 오리진에서는 그 헤더가 응답에 없음, (c) `get_cors_allowed_origins()`가 쉼표로 구분된 환경변수를 올바르게 파싱(공백 트림 포함)함, (d) 환경변수 미설정 시 기본값으로 폴백함.
+5. 결과: `pytest tests/unit` **151건 → 155건**으로 확장, 전부 pass. `ruff check .` 전체 통과 유지.
+
+**회귀 재검증 범위 확인(코드 리딩 + 실제 서버 기동으로 최소 확인, §6-1 참조)**:
+- `frontend/src/lib/screenApi.ts`(UNIT-07)·`frontend/src/lib/stockSearchApi.ts`(UNIT-09) 둘 다 이 fetch 함수를 호출하는 페이지 컴포넌트(`frontend/src/app/screener/page.tsx`, `frontend/src/app/stocks/page.tsx`)에 `"use client"` 지시어가 있어 **브라우저에서 직접 fetch**한다 — 이 결함에 실제로 노출되어 있었고, 이번 수정 이후 두 유닛 모두 6단계 회귀 재검증이 필요하다(오케스트레이터가 트리거).
+- `frontend/src/lib/stockMetrics.ts`(UNIT-06, `/stocks/[code]`)·`frontend/src/lib/marketSummary.ts`(UNIT-08, `/` 홈)는 호출부(`frontend/src/app/stocks/[code]/page.tsx`, `frontend/src/app/page.tsx`)에 `"use client"`가 없는 **서버 컴포넌트**다 — Next.js 서버가 서버 사이드에서 Public API를 호출하는 서버-서버 요청이라 브라우저 CORS 정책의 적용 대상이 아니다. 이 판단은 코드 리뷰(파일 전체에서 `"use client"` grep)로 확인했다 — 이번 수정으로 인한 회귀 재검증 불필요(§6-1 근거 로그 참조).
+
+아래 §1~§6은 v4까지 누적 반영된 최신 내용이다. v4로 신규 추가/변경된 부분은 위 목록과 아래 각 항목에 "(v4)"로 표시했다(이력 추적을 위해 기존 서술은 삭제하지 않음).
+
+---
+
 ## 1. 구현 범위
 
 ### 1-1. 핵심 로직 (`shared/calendar_service/`)
@@ -85,7 +105,8 @@
 - `data/calendar/2026.example.yaml`: YAML 형식 예시. **휴장일 목록 자체는 플레이스홀더이며 KRX 공식 발표로 검증되지 않았다**(02-planning.md §8-A6 승계, 실사용 전 재확인 필요).
 
 ### 1-4. Public API (REQ-005 관련 엔드포인트)
-- `services/public_api/main.py`: FastAPI 앱, 공통 에러 핸들러(`ApiError`, `RequestValidationError` → envelope 형태로 통일).
+- `services/public_api/main.py`: FastAPI 앱, 공통 에러 핸들러(`ApiError`, `RequestValidationError` → envelope 형태로 통일). **(v4 신규 — DEF-U09-01 대응)** `CORSMiddleware` 등록(§0-c 참조) — `03-system-design.md` §6-3 "CORS는 자사 프론트엔드 오리진으로만 제한"을 구현. 이 미들웨어는 이 파일에 등록된 전 라우터(`health`/`calendar`/`stocks`/`metrics`/`screen`/`market_summary`)에 공통 적용되므로, REQ-001~005 전체에 걸치는 cross-cutting 수정이다.
+- `services/public_api/core/config.py`: **(v4 신규)** `get_cors_allowed_origins()` — CORS 허용 오리진 목록을 환경변수(`PUBLIC_API_CORS_ALLOWED_ORIGINS`)에서 읽고, 미설정 시 로컬 기본값(`http://localhost:3000`)으로 폴백(§0-c 참조).
 - `GET /api/v1/health`: §4-2 명세대로 `{status, db}` 반환(DB 연결 실패 시 예외를 삼키지 않고 로깅 후 `db: "degraded"`로 응답).
 - `GET /api/v1/calendar/last-trading-day?market=&as_of=`: §4-2 명세 구현.
   - `market`이 `KRX`/`NXT`가 아니면 400 `INVALID_PARAMETER`.
@@ -114,6 +135,7 @@
 5. **`GET /calendar/last-trading-day`의 `meta.data_freshness` 자체 완결적 구성**: §3-4의 `data_freshness` 구조는 원래 `current_published_batch.trade_date`(실제 서빙 데이터 기준일)와 `get_last_trading_day()` 계산 결과를 비교해 `is_latest_trading_day`/`staleness_note`를 채우도록 설계되어 있다. 그러나 `current_published_batch`는 UNIT-02(Derivation Batch) 이후에 생기는 테이블이라 UNIT-01 시점에는 존재하지 않는다. 이 엔드포인트는 "캘린더 계산 자체"가 목적인 디버깅 겸용 공개 API(§4-2)이므로, `data_freshness`를 계산 결과만으로 자체 완결적으로 채웠다(`is_latest_trading_day=true` 고정, `expected_last_trading_day=trade_date`와 동일, `staleness_note=null`). 실제 데이터 서빙 엔드포인트(REQ-002/003/004, UNIT-06~08)는 이 방식이 아니라 `current_published_batch`를 참조하는 정식 로직이 필요하며, 이는 이번 유닛 범위 밖이다. **(참고: 6단계 `unit-01-test.md`는 이 하드코딩 덕분에 DEF-001이 실제 사용자 응답에는 아직 노출되지 않았다고 확인했다 — 그렇다고 DEF-001 자체를 방치해도 된다는 뜻은 아니었고, 이번 v2 재작업으로 원인 자체를 해소했다.)**
 6. **CLI YAML 형식은 "휴장일/특수개장일 목록 + 시장별 기본 마감시각"만 기술하고, 전체 365일×시장 데이터는 스크립트가 생성**: 설계서는 YAML 파일의 구체적 스키마를 규정하지 않는다("scripts/load_calendar.py <year>.yaml" 형태로만 서술). 운영자가 매년 730행(365일×2시장)을 전부 나열하는 것은 비현실적이라 판단해, 평일/주말이라는 보편적 규칙은 스크립트 로직에 두고 **연도마다 바뀌는 실제 도메인 데이터(공휴일 목록, 특수개장일)만 YAML에 기술**하도록 설계했다. REQ-012 "하드코딩 금지"의 취지(휴장일 목록을 코드가 아니라 데이터로 관리)는 그대로 유지된다.
 7. **DB 역할(batch_worker/api_service) 생성 및 GRANT/REVOKE 스크립트는 이번 유닛에 포함하지 않음**: §1-1 2차 방어(DB 권한 분리)의 핵심은 "`api_service`에 `raw_internal` GRANT 없음"인데, `raw_internal` 스키마 자체가 아직 없다(UNIT-02 이후). `reference` 스키마는 애초에 `batch_worker`/`api_service` 둘 다 읽기 가능하도록 설계되어 있어(§3-1), 이번 유닛만으로는 권한 분리 이슈가 발생하지 않는다. 대신 `.env.example`에 3개 역할의 접속 문자열을 이미 분리해 두어, 이후 실제 역할 생성/권한 부여가 이뤄지면 코드 변경 없이 연결 문자열만 채우면 되도록 준비했다. 실제 `CREATE ROLE`/`GRANT` SQL은 UNIT-02(raw_internal 도입 시점)에서 통합적으로 다루는 것을 권고한다.
+8. **[v4 신규] CORS 허용 오리진 설정 방식 — 환경변수 폴백 vs `get_settings()`식 강제 예외 중 폴백을 선택**: `03-system-design.md` §6-3은 "CORS는 자사 프론트엔드 오리진으로만 제한"이라고만 서술하고, 허용 오리진을 하드코딩할지 환경변수로 뺄지, 미설정 시 예외를 던질지 기본값을 둘지는 명시하지 않는다. 기존 `get_settings()`(DB URL)는 미설정 시 `ConfigError`를 던지는 엄격한 패턴이지만, 이번에는 (a) CORS 허용 오리진은 DB 자격증명과 달리 시크릿이 아니고, (b) 오케스트레이터 지시가 "로컬 개발 기본값이 안전하게 동작해야 한다"를 명시적으로 요구했으므로, `get_cors_allowed_origins()`는 미설정 시 예외 대신 로컬 기본값(`http://localhost:3000`)으로 폴백하도록 만들었다(`decisions.md` DEC-022). 이는 기존 `.env.example`의 `GOV_DATA_PORTAL_BASE_URL` 항목("기본값은 코드에 이미 있으며, 필요 시에만 재정의한다")과 동일한 관례를 따른 것이라 설계서와 상충하지 않는다고 판단했다. 프로덕션 배포 시에는 반드시 `PUBLIC_API_CORS_ALLOWED_ORIGINS`를 실제 도메인으로 재정의해야 하며, 이 확인은 12단계 배포 전 체크리스트에 포함되어야 한다(§3 신규 항목 참조).
 
 ---
 
@@ -123,8 +145,10 @@
 - **[v3에서 해소됨] `scripts/load_calendar.py`의 실제 DB upsert 경로**: v3 재작업에서 실제 `BATCH_DATABASE_URL`(batch_worker)로 신규 삽입(730건) + 오염 후 재실행 갱신(TC-069 재현, `updated_at` 포함) 양쪽 다 실제 DB로 확인 완료(§0-b 참조).
 - **[v3 신규] `batch_worker`/`api_service` 역할(role) 자체의 프로비저닝은 여전히 코드화되어 있지 않음**: 이번 DEF-003 수정은 "역할이 이미 존재한다"는 전제 하의 GRANT만 코드화했다(§0-b "범위 결정" 참조). 이번에 검증에 사용한 로컬 Docker 컨테이너는 6단계가 이미 두 역할과 비밀번호(`devpass`)를 만들어 둔 상태였다 — **이 역할 생성 자체를 누가/어떻게 프로비저닝하는지(수동 psql, 별도 스크립트, IaC 등)는 아직 어떤 산출물에도 문서화되어 있지 않다.** CI/스테이징/운영 환경을 새로 구축할 때 이 절차가 없으면 `alembic upgrade head` 자체가 "role does not exist"로 실패한다(설계상 의도된 명시적 실패이긴 하지만, 사전에 "무엇을 준비해야 하는지" 안내가 없다는 점은 운영 문서화 공백). UNIT-02 이후 `raw_internal`에 대한 역할 분리까지 다룰 때 이 프로비저닝 절차를 정식으로 문서화/스크립트화할 것을 권고한다.
 - **[v3 신규] 실 DB 통합 테스트 자동화 부재**: DEF-003/DEF-004는 로컬 Docker 컨테이너에 대해 수동으로(bash 명령을 직접 실행해) 검증했다. `pytest tests/unit` 스위트는 Fake 기반이라 이런 실제 GRANT/upsert 회귀를 자동으로 잡아내지 못한다(이번에도 6단계의 실제 인프라 검증이 아니었다면 발견되지 못했을 결함이다). 향후 유닛(예: UNIT-02 데이터 파이프라인)에서 `testcontainers` 등으로 실제 Postgres를 띄우는 통합 테스트 계층 도입을 검토 권고 — 이번 유닛 범위에서 즉시 도입하지는 않았다(과설계 방지, 범위 외 변경 최소화 원칙).
-- **Public API 실제 기동(uvicorn) 미검증**: `services/public_api/main:app`을 FastAPI `TestClient`로 인프로세스 호출해서만 검증했다(§4 테스트 결과 참조). 실제 `uvicorn services.public_api.main:app` 구동 + `PUBLIC_API_DATABASE_URL`을 통한 실 DB 조회는 여전히 미검증(이번 DEF-003/004 수정 범위 밖).
+- **Public API 실제 기동(uvicorn) 미검증**: `services/public_api/main:app`을 FastAPI `TestClient`로 인프로세스 호출해서만 검증했다(§4 테스트 결과 참조). 실제 `uvicorn services.public_api.main:app` 구동 + `PUBLIC_API_DATABASE_URL`을 통한 실 DB 조회는 여전히 미검증(이번 DEF-003/004 수정 범위 밖). **(v4 부분 해소)** CORS 동작만은 이번에 실제 `uvicorn`으로 서버를 기동해 `curl`로 OPTIONS 프리플라이트 요청(허용 오리진/비허용 오리진 각각)을 보내 실제 HTTP 응답 헤더를 확인했다(§6-1 참조) — 단, 이는 CORS 헤더 자체의 검증이며 DB 조회 경로까지 실 uvicorn으로 검증한 것은 아니다.
 - **`data/calendar/2026.example.yaml`의 휴장일 목록**: 예시/플레이스홀더이며 KRX 공식 발표와 대조 검증되지 않았다.
+- **[v4 신규] 실제 브라우저(Chrome 등)로 두 오리진 간 fetch를 재현한 것은 아님**: 이번 수정은 (1) `TestClient`(ASGI 인프로세스) 기반 pytest 4건, (2) 실제 `uvicorn` 서버에 대한 `curl` OPTIONS 프리플라이트 수동 확인으로 검증했다. 6단계(`unit-09-test.md`)가 사용했던 것과 같은 헤드리스 Chrome/Puppeteer 기반의 실제 브라우저 크로스오리진 `fetch` 재현은 이번 5단계 범위에서 수행하지 않았다 — 이는 6단계가 UNIT-07/UNIT-09 재검증 시 다시 수행해야 할 항목이다(오케스트레이터가 재호출 예정).
+- **[v4 신규] 프로덕션 배포 도메인 확정 전까지 `PUBLIC_API_CORS_ALLOWED_ORIGINS` 미설정 상태로 유지됨**: 호스팅 벤더가 아직 미확정(`03-system-design.md` §2-1)이므로, 실제 배포 시에는 반드시 이 환경변수에 실제 프론트엔드 도메인을 설정해야 한다. 로컬 기본값(`http://localhost:3000`)을 프로덕션에 그대로 방치하면 프로덕션 프론트엔드가 차단된다 — 12단계 배포 체크리스트에 반영 필요.
 - **[v2에서 해소됨] `market_open_time` 상수 정확성 / 개장·마감 경계 조건 해석**: v4 재작업으로 `market_open_time` 개념 자체가 제거되고 마감 시각(`session_close_at`, §3-2에 이미 존재하는 데이터) 기준으로 통일되어, 더 이상 "확인 필요" 대상이 아니다. 남은 것은 `session_close_at` 값 자체(KRX 15:30/NXT 20:00)가 실제 KRX 공식 자료와 일치하는지이며, 이는 `scripts/load_calendar.py`로 적재하는 YAML 데이터(`default_close_time`)의 정확성 문제로 위 `2026.example.yaml` 항목과 동일한 성격이다(운영자가 실제 캘린더 데이터를 적재할 때 KRX 공식 발표 기준 마감 시각을 정확히 채워야 함 — §3-3 v4 "캘린더 갱신 절차" 문단 참조).
 - **[v2 신규] `CalendarDataError` 경로는 정상 운영에서 발생하지 않아야 함**: `scripts/load_calendar.py`로 적재된 캘린더가 "거래일인데 마감 시각 없음" 상태가 되지 않도록, 운영자가 YAML의 `default_close_time`/`special_trading_days[].close_time`을 빠짐없이 채우는 것이 전제다. 이 경로가 실제로 트리거되면 503 응답과 함께 로그를 남기므로 운영 모니터링(§7-2) 관점에서 5xx 알림에 포함되는지 배포 전 확인 필요.
 
@@ -170,7 +194,14 @@
 
 **AC-6 (정적 분석)**
   - `python -m ruff check .` 오류 0건
-  - `python -m pytest tests/unit -q` **36건**(v2 재작업으로 21건 → 36건 확장) 전부 pass
+  - `python -m pytest tests/unit -q` **36건**(v2 재작업으로 21건 → 36건 확장) 전부 pass (**참고**: 이후 UNIT-03/06/07/08/09가 각자 테스트를 누적 추가해 v4 시점 기준 총계는 151건이었다 — 아래 AC-7/§6-1 참조. 이 36건은 v2 재작업 시점 스냅샷으로 이력 보존 목적으로 남겨둔다.)
+
+**AC-7 (v4 신규 — DEF-U09-01/CORS 대응)** `pytest tests/unit/test_public_api.py`가 아래를 포함해 전부 pass:
+  - 허용 오리진(`http://localhost:3000`)에서 요청 시 응답에 `Access-Control-Allow-Origin: http://localhost:3000` 헤더가 존재
+  - 허용되지 않은 오리진(예: `http://evil.example.com`)에서 요청 시 응답에 `Access-Control-Allow-Origin` 헤더가 존재하지 않음
+  - `get_cors_allowed_origins()`가 `PUBLIC_API_CORS_ALLOWED_ORIGINS`(쉼표 구분, 공백 트림)를 올바르게 파싱
+  - `PUBLIC_API_CORS_ALLOWED_ORIGINS` 미설정 시 기본값 `["http://localhost:3000"]`으로 폴백
+  - (수동 확인, §6-1 참조) 실제 `uvicorn` 기동 후 `curl -X OPTIONS`로 허용/비허용 오리진 각각의 실제 HTTP 프리플라이트 응답 헤더 확인
 
 ---
 
@@ -180,15 +211,18 @@
 - `python -m ruff check .` 최초 실행 시 10건 발견(B008 FastAPI 관용구 오탐, UP035/UP007/UP046 문법 스타일, E501 라인 길이 1건) → 전부 수정 또는 (FastAPI 관용구인 B008, pydantic 제네릭 안정성 문제인 UP046) 근거를 명시하고 `pyproject.toml`에서 명시적으로 ignore 처리. 최종 `All checks passed!` 확인.
 - v2 재작업(DEF-001 대응) 후 재실행 시 `last_trading_day.py`의 라인 길이 초과 1건(E501) 신규 발견 → 즉시 수정, 최종 `All checks passed!` 재확인.
 - v3 재작업(DEF-003/DEF-004 대응, `db/alembic/versions/0002_grant_reference_privileges.py` 신규·`scripts/load_calendar.py` 수정) 후 재실행 → `All checks passed!`(신규 결함 없음).
+- **v4 재작업(DEF-U09-01 대응, `services/public_api/main.py`/`core/config.py` 수정, `tests/unit/test_public_api.py` 확장) 후 재실행 → `python -m ruff check .` `All checks passed!`(신규 결함 없음), `python -m pytest tests/unit -q` **155 passed**(v4 재작업 직전 151건 + CORS 회귀 테스트 4건 신규 = 155건).**
+- 이 저장소에는 프론트엔드(Next.js/TypeScript, `npm run lint`/`tsc`/`next build`)에도 별도 lint/type-check 설정이 있으나, 이번 v4 수정은 프론트엔드 파일을 전혀 변경하지 않았으므로(범위: `main.py`/`core/config.py`/`.env.example`/`tests/unit/test_public_api.py`만) 프론트엔드 게이트는 재실행 대상이 아니다.
 - mypy 등 타입체커, black 등 포매터는 아직 도입하지 않았다(범위 외 — 필요 시 후속 유닛에서 검토).
 
 ## 6. 게이트 2 — 자체 코드 리뷰 체크리스트
 
-- [x] **설계서/디자인서 명세와 실제 구현이 일치하는가** — §3-3(v4) 알고리즘(마감 시각 기준, `_already_closed`, 단락 평가 순서, 13행 진리표), §3-2 데이터 모델, §4-2 API 명세, §4-1 공통 envelope/에러 코드 체계, §1-1/§3-1(v3 재작업으로 GRANT 코드화)을 그대로 구현. 남은 편차 5건은 위 §2 "설계서 대비 편차"에 사유와 함께 전부 명시(2건은 v2에서 해소됨으로 종결, 1건은 v2 신규 추가). DEF-003/004는 설계 위반이 아니라 구현 누락이었으므로 §2 편차 목록에 추가하지 않고 §0-b에 결함 수정 이력으로 기록.
-- [x] **에러 처리가 누락된 경로가 없는가(예외를 삼키고 무시하는 코드 없음)** — CLI(YAML/DB 예외를 종료 코드+메시지로 전파), API(`ApiError`/`RequestValidationError`를 공통 핸들러로 처리), `health`(DB 예외를 캐치하되 `logger.exception`으로 남기고 `degraded` 응답 — 무시하지 않음), `get_last_trading_day`(스캔 상한 초과·데이터 무결성 위반을 `CalendarIntegrityError` 계열 예외로 노출, `None`과 시각을 비교하는 암묵적 크래시 없음). **(v3 추가)** 마이그레이션 0002는 역할이 없으면 `role does not exist`로 명시적으로 실패(조용한 스킵 없음).
-- [x] **입력값 검증이 시스템 경계(사용자 입력, 외부 API 응답)에서 이루어지는가** — API: `market` 화이트리스트 검증(400), `as_of` 파싱 실패는 FastAPI/Pydantic이 1차 검증 후 커스텀 핸들러가 공통 에러 포맷으로 변환. CLI: YAML 필수 필드/날짜 형식/시장 값/연도 일치/날짜 중복·충돌을 `calendar_file.py`에서 전부 검증. `get_last_trading_day`: 알 수 없는 `market`은 `ValueError`, 거래일인데 마감 시각이 없는 비정상 데이터는 `CalendarDataError`로 검증. (v3 변경 없음 — DEF-003/004는 시스템 경계 검증과 무관한 권한/타임스탬프 이슈)
-- [x] **하드코딩된 시크릿/자격증명이 없는가** — DB 접속 정보는 전부 환경변수(`PUBLIC_API_DATABASE_URL`/`ALEMBIC_DATABASE_URL`/`BATCH_DATABASE_URL`)로만 주입. `.env.example`에는 `CHANGE_ME` 플레이스홀더만 존재. **(v3 확인)** 신규 마이그레이션 0002의 GRANT 대상 역할명(`batch_worker`/`api_service`)은 이미 §3-1에 문서화된 역할명을 그대로 참조할 뿐, 비밀번호 등 자격증명을 코드에 넣지 않았다. 로컬 검증 시 사용한 비밀번호(`devpass`)는 6단계가 미리 세팅해 둔 로컬 1회성 Docker 컨테이너의 값이며 코드/설정 파일 어디에도 커밋하지 않았다.
-- [x] **범위를 벗어난 변경(곁다리 리팩터링 등)이 섞여 있지 않은가** — v2 재작업은 DEF-001이 지목한 `last_trading_day.py`/`market_hours.py`와 그 직접 연관 코드만 수정했다. **v3 재작업은 DEF-003(신규 마이그레이션 0002 추가)·DEF-004(`scripts/load_calendar.py`의 `set_` 딕셔너리 한 줄 추가)로 한정**했다. 기존 0001 마이그레이션 파일, `last_trading_day.py`, Public API, 테스트 스위트는 손대지 않았다(6단계가 AC-1~AC-2, AC-4, AC-6은 이미 PASS로 확인했으므로 재작업 대상에서 제외).
+- [x] **설계서/디자인서 명세와 실제 구현이 일치하는가** — §3-3(v4) 알고리즘(마감 시각 기준, `_already_closed`, 단락 평가 순서, 13행 진리표), §3-2 데이터 모델, §4-2 API 명세, §4-1 공통 envelope/에러 코드 체계, §1-1/§3-1(v3 재작업으로 GRANT 코드화)을 그대로 구현. 남은 편차 6건은 위 §2 "설계서 대비 편차"에 사유와 함께 전부 명시(2건은 v2에서 해소됨으로 종결, 1건은 v2 신규 추가, 1건은 v4 신규 추가). DEF-003/004는 설계 위반이 아니라 구현 누락이었으므로 §2 편차 목록에 추가하지 않고 §0-b에 결함 수정 이력으로 기록. **(v4 추가)** §6-3 "CORS는 자사 프론트엔드 오리진으로만 제한"을 `CORSMiddleware`로 그대로 구현. 오리진을 하드코딩할지 환경변수로 뺄지는 설계서가 명시하지 않아 §2 편차 항목8에 판단 근거 기록.
+- [x] **에러 처리가 누락된 경로가 없는가(예외를 삼키고 무시하는 코드 없음)** — CLI(YAML/DB 예외를 종료 코드+메시지로 전파), API(`ApiError`/`RequestValidationError`를 공통 핸들러로 처리), `health`(DB 예외를 캐치하되 `logger.exception`으로 남기고 `degraded` 응답 — 무시하지 않음), `get_last_trading_day`(스캔 상한 초과·데이터 무결성 위반을 `CalendarIntegrityError` 계열 예외로 노출, `None`과 시각을 비교하는 암묵적 크래시 없음). **(v3 추가)** 마이그레이션 0002는 역할이 없으면 `role does not exist`로 명시적으로 실패(조용한 스킵 없음). **(v4 추가)** `get_cors_allowed_origins()`는 예외를 삼키는 코드가 아니다 — 애초에 예외를 던질 필요가 없는 값(시크릿이 아닌 CORS 설정)이라 안전한 기본값으로 폴백하는 것이 의도된 동작이며(§2 편차8), DB URL처럼 "없으면 반드시 실패해야 하는" 값과는 성격이 다름.
+- [x] **입력값 검증이 시스템 경계(사용자 입력, 외부 API 응답)에서 이루어지는가** — API: `market` 화이트리스트 검증(400), `as_of` 파싱 실패는 FastAPI/Pydantic이 1차 검증 후 커스텀 핸들러가 공통 에러 포맷으로 변환. CLI: YAML 필수 필드/날짜 형식/시장 값/연도 일치/날짜 중복·충돌을 `calendar_file.py`에서 전부 검증. `get_last_trading_day`: 알 수 없는 `market`은 `ValueError`, 거래일인데 마감 시각이 없는 비정상 데이터는 `CalendarDataError`로 검증. (v3 변경 없음 — DEF-003/004는 시스템 경계 검증과 무관한 권한/타임스탬프 이슈) **(v4 추가)** CORS는 브라우저가 강제하는 클라이언트측 정책이라 서버가 "검증"할 사용자 입력값이 아니다 — `CORSMiddleware`가 요청의 `Origin` 헤더를 허용 목록과 대조하는 것 자체가 이 경계의 방어 로직이며, 허용 목록 자체(`PUBLIC_API_CORS_ALLOWED_ORIGINS`)는 운영자가 설정하는 배포 구성값이라 사용자 입력 검증 대상이 아니다.
+- [x] **하드코딩된 시크릿/자격증명이 없는가** — DB 접속 정보는 전부 환경변수(`PUBLIC_API_DATABASE_URL`/`ALEMBIC_DATABASE_URL`/`BATCH_DATABASE_URL`)로만 주입. `.env.example`에는 `CHANGE_ME` 플레이스홀더만 존재. **(v3 확인)** 신규 마이그레이션 0002의 GRANT 대상 역할명(`batch_worker`/`api_service`)은 이미 §3-1에 문서화된 역할명을 그대로 참조할 뿐, 비밀번호 등 자격증명을 코드에 넣지 않았다. 로컬 검증 시 사용한 비밀번호(`devpass`)는 6단계가 미리 세팅해 둔 로컬 1회성 Docker 컨테이너의 값이며 코드/설정 파일 어디에도 커밋하지 않았다. **(v4 확인)** `PUBLIC_API_CORS_ALLOWED_ORIGINS` 기본값(`http://localhost:3000`)은 시크릿이 아니라 공개적으로 알려져도 무방한 로컬 개발용 URL이며, `.env.example`에도 값 자체는 주석 처리해 실제 값을 커밋하지 않았다.
+- [x] **신규 외부 의존성이 실제로 존재하는 패키지인가** — **(v4)** 이번 수정은 신규 패키지를 추가하지 않았다. `fastapi.middleware.cors.CORSMiddleware`는 이미 설치된 FastAPI(Starlette 내장)에 포함된 기존 모듈이며, `python -c "from fastapi.middleware.cors import CORSMiddleware"`로 임포트 가능함을 직접 확인했다(§6-1 로그 참조). `requirements.txt` 변경 없음.
+- [x] **범위를 벗어난 변경(곁다리 리팩터링 등)이 섞여 있지 않은가** — v2 재작업은 DEF-001이 지목한 `last_trading_day.py`/`market_hours.py`와 그 직접 연관 코드만 수정했다. **v3 재작업은 DEF-003(신규 마이그레이션 0002 추가)·DEF-004(`scripts/load_calendar.py`의 `set_` 딕셔너리 한 줄 추가)로 한정**했다. 기존 0001 마이그레이션 파일, `last_trading_day.py`, Public API, 테스트 스위트는 손대지 않았다(6단계가 AC-1~AC-2, AC-4, AC-6은 이미 PASS로 확인했으므로 재작업 대상에서 제외). **v4 재작업은 `services/public_api/main.py`(CORS 미들웨어 추가)·`services/public_api/core/config.py`(`get_cors_allowed_origins()` 추가)·`.env.example`(주석 추가)·`tests/unit/test_public_api.py`(CORS 테스트 4건 추가)로 한정**했다. `raw_models.py`/`compute.py`/`repository.py`/`run_derivation.py`/`public_serving.py` 등 git status에 나타나는 다른 수정분은 이번 v4 작업 이전(UNIT-08 등 선행 작업)에 이미 존재하던 변경이며, 이번 v4 작업에서 손대지 않았음을 `git diff`로 확인했다.
 
 ---
 
@@ -211,8 +245,20 @@
 - `alembic downgrade 0001`(0002만 롤백) → `has_schema_privilege` 재조회로 GRANT가 정확히 REVOKE됨을 확인 → `alembic upgrade head` + 데이터 재적재로 원복(다음 세션을 위해 정상 상태로 유지)
 - `python -m pytest tests/unit -q`(36건)·`python -m ruff check .` 재실행 → 기존과 동일하게 전부 통과(회귀 없음)
 
+**v4 추가 — DEF-U09-01(CORS) 대응 검증(이번 재작업)**:
+- `python -m pytest tests/unit -q` → **155 passed**(v4 착수 전 151건 + CORS 회귀 테스트 4건 신규: `test_cors_allows_default_localhost_frontend_origin`, `test_cors_blocks_unlisted_origin`, `test_get_cors_allowed_origins_reads_comma_separated_env_var`, `test_get_cors_allowed_origins_falls_back_to_default_when_unset`)
+- `python -m ruff check .` → **All checks passed!**
+- `python -c "from fastapi.middleware.cors import CORSMiddleware; print(CORSMiddleware)"` → `<class 'starlette.middleware.cors.CORSMiddleware'>` (신규 패키지 불필요, 기존 설치된 FastAPI/Starlette 내장 모듈임을 확인)
+- **실제 `uvicorn` 서버 기동 + `curl` OPTIONS 프리플라이트 수동 확인**(TestClient 인프로세스 호출이 아니라 실제 소켓 기반 HTTP): `PUBLIC_API_DATABASE_URL`에 더미 값(CORS 프리플라이트는 미들웨어 레벨에서 라우트 핸들러 진입 전에 처리되어 DB 접근 없음)을 주고 `uvicorn services.public_api.main:app --port 8099`로 기동한 뒤:
+  - `curl -X OPTIONS "http://127.0.0.1:8099/api/v1/stocks?query=samsung&market=ALL" -H "Origin: http://localhost:3000" -H "Access-Control-Request-Method: GET"` → `200 OK`, `access-control-allow-origin: http://localhost:3000` 확인(UNIT-09 `stockSearchApi.ts`가 호출하는 실제 엔드포인트로 확인)
+  - `curl -X OPTIONS "http://127.0.0.1:8099/api/v1/screen?market=ALL" -H "Origin: http://evil.example.com" -H "Access-Control-Request-Method: GET"` → `400 Bad Request`, `Disallowed CORS origin`, `access-control-allow-origin` 헤더 없음(UNIT-07 `screenApi.ts`가 호출하는 실제 엔드포인트로 확인)
+  - 검증 후 서버 프로세스 종료, 임시로 생성된 더미 DB 파일·로그 삭제, `git status`로 잔여물 없음 재확인(규칙 K 준수)
+- 프론트엔드 파일은 이번 v4에서 변경하지 않았으므로 `npm run lint`/`tsc`/`next build` 재실행은 게이트1 대상이 아니다(§5 참조). 다만 UNIT-06/UNIT-08의 서버 컴포넌트 여부는 `git grep '"use client"' frontend/src/app`으로 확인해, `frontend/src/app/stocks/[code]/page.tsx`(UNIT-06)·`frontend/src/app/page.tsx`(UNIT-08)에는 `"use client"`가 없고(서버 컴포넌트, 영향 없음), `frontend/src/app/stocks/page.tsx`(UNIT-09)·`frontend/src/app/screener/page.tsx`(UNIT-07)에는 있음(클라이언트 컴포넌트, 이번 결함에 실제로 노출)을 코드로 직접 확인했다(§0-c 참조).
+
 ---
 
 ## 7. 다음 단계
 
 이 노트 작성 및 traceability.md 갱신 완료 후, 6단계(단위테스트, `06-unit-tester`)를 UNIT-01 대상으로 **재호출**해야 한다. v2(DEF-001)에 이어 이번 v3(DEF-003/DEF-004)도 6단계가 실제 PostgreSQL로 독립 재검증해야 하며, 특히: (1) 신선한(fresh) DB에서 `alembic upgrade head` 한 번만으로 GRANT가 자동 반영되는지, (2) 역할이 존재하지 않는 상태에서 0002 실행 시 명시적 에러로 실패하는지(조용한 스킵이 아닌지), (3) `updated_at`이 실제 내용 변경 시 매번 갱신되는지를 6단계 스스로 재현해 확인할 것을 권고한다. §3에 새로 추가한 "역할 프로비저닝 문서화 공백"과 "실 DB 통합 테스트 자동화 부재" 항목도 6단계/후속 유닛이 참고해야 한다.
+
+**v4 추가 — 다음 단계**: 이번 v4 재작업은 UNIT-01(`main.py`/`core/config.py`) 자체에 대한 6단계 재검증뿐 아니라, 근본 원인이 여기 있었기 때문에 영향을 받은 **UNIT-07**(`frontend/src/lib/screenApi.ts`, REQ-003)과 **UNIT-09**(`frontend/src/lib/stockSearchApi.ts`, REQ-001)에 대한 6단계의 **실제 두 오리진 브라우저 fetch 회귀 재검증**이 오케스트레이터에 의해 트리거되어야 한다(`unit-09-test.md` §11이 명시적으로 요청한 사항). UNIT-06/UNIT-08은 서버 컴포넌트 렌더링이라 이번 결함의 영향을 받지 않았음을 위 검증으로 확인했으므로 재검증 불필요. 프로덕션 배포 도메인이 확정되면 `PUBLIC_API_CORS_ALLOWED_ORIGINS` 환경변수 설정이 12단계 배포 체크리스트에 반영되어야 한다.

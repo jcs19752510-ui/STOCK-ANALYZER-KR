@@ -798,6 +798,212 @@ main {
   color: var(--color-text-secondary);
 }
 
+/* REQ-004 — 홈 화면(시장 동향 리포트, 04-ux-design.md §2-1) */
+.home-page__title {
+  margin: 0 0 var(--space-6);
+  font-size: 24px;
+}
+
+.home-page__section {
+  margin-top: var(--space-8);
+}
+
+.home-page__section-title {
+  margin: 0 0 var(--space-4);
+  font-size: 20px;
+}
+
+.stat-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .stat-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .stat-summary-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.stat-summary-card {
+  padding: var(--space-4);
+  border: 1px solid var(--color-surface-subtle);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.stat-summary-card__title {
+  margin: 0 0 var(--space-3);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.stat-summary-card__list {
+  margin: 0;
+}
+
+.stat-summary-card__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-surface-subtle);
+  font-size: 14px;
+}
+
+.stat-summary-card__row:last-child {
+  border-bottom: none;
+}
+
+.stat-summary-card__row dt {
+  color: var(--color-text-secondary);
+}
+
+.stat-summary-card__row dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+/* `SectorSummaryList` — 업종별 거래대금 상위(04-ux-design.md §2-1/§4) */
+.sector-summary-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sector-summary-list__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font-size: 14px;
+}
+
+.sector-summary-list__name {
+  font-weight: 500;
+}
+
+.sector-summary-list__value {
+  color: var(--color-text-secondary);
+}
+
+.sector-summary-list__bar-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-surface-subtle);
+  overflow: hidden;
+}
+
+.sector-summary-list__bar {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-brand-primary);
+}
+
+.home-page__entry-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-8);
+}
+
+@media (min-width: 640px) {
+  .home-page__entry-cards {
+    flex-direction: row;
+  }
+}
+
+.home-page__entry-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border-default);
+  border-radius: 4px;
+  color: var(--color-text-primary);
+  font-weight: 500;
+  text-decoration: none;
+  text-align: center;
+}
+
+/* REQ-001 — 종목 검색 화면(04-ux-design.md §2-3) */
+.stock-search-page__controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: var(--space-4) 0 var(--space-6);
+}
+
+.search-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.search-input__label {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.search-input__field {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-default);
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.stock-search-page__loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.stock-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.stock-list__item {
+  border: 1px solid var(--color-surface-subtle);
+  border-radius: 8px;
+}
+
+.stock-list__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: var(--space-4);
+  color: inherit;
+  text-decoration: none;
+}
+
+.stock-list__name {
+  font-weight: 700;
+}
+
+.stock-list__code {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
 /* 04-ux-design.md §1-4 Flow D — ErrorState/EmptyState 공통 */
 .error-state,
 .empty-state {

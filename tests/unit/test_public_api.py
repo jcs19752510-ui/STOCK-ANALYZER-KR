@@ -11,6 +11,7 @@ from services.public_api.api.metrics import (
 )
 from services.public_api.api.metrics import get_stock_metrics_repository
 from services.public_api.api.stocks import get_stock_search_repository
+from services.public_api.core.config import get_cors_allowed_origins
 from services.public_api.db.metrics_repository import DerivedMetricsRow, StockRow
 from services.public_api.db.session import get_db
 from services.public_api.db.stock_repository import StockSearchResultRow
@@ -812,3 +813,372 @@ def test_screen_pagination_params_passed_through(monkeypatch):
     assert body["data"]["total_count"] == 120
     assert repo.captured_filters.page == 3
     assert repo.captured_filters.page_size == 20
+
+
+# --- GET /api/v1/market-summary (UNIT-08, REQ-004) ---
+
+import services.public_api.api.market_summary as market_summary_module  # noqa: E402
+from services.public_api.api.market_summary import (  # noqa: E402
+    get_calendar_repository as get_market_summary_calendar_repository,
+)
+from services.public_api.api.market_summary import (  # noqa: E402
+    get_market_summary_repository,
+)
+from services.public_api.db.market_summary_repository import (  # noqa: E402
+    MarketSummaryRow,
+    SectorSummaryRow,
+)
+
+
+def _patch_market_summary_now(monkeypatch, fixed: datetime) -> None:
+    class _FixedDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return fixed
+
+    monkeypatch.setattr(market_summary_module, "datetime", _FixedDatetime)
+
+
+_MS_TRADING_DAY = date(2026, 9, 14)
+_MS_CALENDAR_ROWS = {
+    (_MS_TRADING_DAY, "KRX"): CalendarRow(
+        trade_date=_MS_TRADING_DAY,
+        market="KRX",
+        is_trading_day=True,
+        session_close_at=time(15, 30),
+        holiday_name=None,
+        source="test",
+    )
+}
+
+
+def _ms_row(
+    market: str, *, advancers: int = 1, decliners: int = 1, unchanged: int = 0
+) -> MarketSummaryRow:
+    return MarketSummaryRow(
+        market=market,
+        advancers_count=advancers,
+        decliners_count=decliners,
+        unchanged_count=unchanged,
+        top_sectors_by_value=[SectorSummaryRow(sector="반도체", trading_value_krw=1_000_000)],
+        total_trading_value_krw=5_418_400_000_000,
+    )
+
+
+class FakeMarketSummaryRepository:
+    """AC-2 검증용 Fake — `get_summary`는 (trade_date, market) 키가 없으면
+    `None`을 반환해 `_require_summary()`의 503 SERVICE_UNAVAILABLE 경로를
+    재현할 수 있게 한다(unit-08-note.md §2 편차3)."""
+
+    def __init__(
+        self,
+        *,
+        published_trade_date: date | None,
+        rows: dict[tuple[date, str], MarketSummaryRow],
+    ):
+        self._published_trade_date = published_trade_date
+        self._rows = rows
+        self.requested_markets: list[str] = []
+
+    def get_current_published_trade_date(self, market: str) -> date | None:
+        return self._published_trade_date
+
+    def get_summary(self, trade_date: date, market: str) -> MarketSummaryRow | None:
+        self.requested_markets.append(market)
+        return self._rows.get((trade_date, market))
+
+
+def _override_market_summary_repository(repository: FakeMarketSummaryRepository):
+    def _factory():
+        return repository
+
+    return _factory
+
+
+def _setup_market_summary_overrides(
+    monkeypatch, *, repository: FakeMarketSummaryRepository, calendar_rows=None
+) -> None:
+    _patch_market_summary_now(monkeypatch, datetime(2026, 9, 14, 20, 0, tzinfo=KST))
+    app.dependency_overrides[get_market_summary_repository] = (
+        _override_market_summary_repository(repository)
+    )
+    app.dependency_overrides[get_market_summary_calendar_repository] = _override_repository(
+        _MS_CALENDAR_ROWS if calendar_rows is None else calendar_rows
+    )
+
+
+_FULL_MS_ROWS = {
+    (_MS_TRADING_DAY, "ALL"): _ms_row("ALL", advancers=2, decliners=2),
+    (_MS_TRADING_DAY, "KOSPI"): _ms_row("KOSPI"),
+    (_MS_TRADING_DAY, "KOSDAQ"): _ms_row("KOSDAQ", advancers=1, decliners=1),
+}
+
+
+def test_market_summary_default_returns_all_with_by_market(monkeypatch):
+    repo = FakeMarketSummaryRepository(published_trade_date=_MS_TRADING_DAY, rows=_FULL_MS_ROWS)
+    _setup_market_summary_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/market-summary")
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    body = resp.json()
+    data = body["data"]
+    assert data["market"] == "ALL"
+    assert data["advancers_count"] == 2
+    assert data["decliners_count"] == 2
+    assert data["by_market"] is not None
+    assert {item["market"] for item in data["by_market"]} == {"KOSPI", "KOSDAQ"}
+    assert body["meta"]["data_freshness"]["is_latest_trading_day"] is True
+    # market 파라미터 생략 시 fetch되는 대상은 ALL + by_market 세부 2건(KOSPI/KOSDAQ) 총 3회.
+    assert repo.requested_markets == ["ALL", "KOSPI", "KOSDAQ"]
+
+
+def test_market_summary_explicit_kospi_by_market_is_null(monkeypatch):
+    repo = FakeMarketSummaryRepository(published_trade_date=_MS_TRADING_DAY, rows=_FULL_MS_ROWS)
+    _setup_market_summary_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/market-summary", params={"market": "KOSPI"})
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["market"] == "KOSPI"
+    # 필드 자체는 존재하되 값이 null (§2 편차2 — 필드 생략이 아니라 null 표현).
+    assert "by_market" in data
+    assert data["by_market"] is None
+    assert repo.requested_markets == ["KOSPI"]  # KOSDAQ/ALL 조회 안 함(불필요한 조회 없음)
+
+
+def test_market_summary_explicit_kosdaq_success(monkeypatch):
+    repo = FakeMarketSummaryRepository(published_trade_date=_MS_TRADING_DAY, rows=_FULL_MS_ROWS)
+    _setup_market_summary_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/market-summary", params={"market": "KOSDAQ"})
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["market"] == "KOSDAQ"
+    assert data["by_market"] is None
+
+
+def test_market_summary_invalid_market_returns_400(monkeypatch):
+    repo = FakeMarketSummaryRepository(published_trade_date=None, rows={})
+    _setup_market_summary_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/market-summary", params={"market": "NASDAQ"})
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "INVALID_PARAMETER"
+    assert repo.requested_markets == []  # 리포지토리까지 도달하지 않음
+
+
+def test_market_summary_calendar_not_confirmed_returns_424(monkeypatch):
+    repo = FakeMarketSummaryRepository(published_trade_date=_MS_TRADING_DAY, rows=_FULL_MS_ROWS)
+    _setup_market_summary_overrides(monkeypatch, repository=repo, calendar_rows={})
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/market-summary")
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 424
+    assert resp.json()["error"]["code"] == "CALENDAR_NOT_CONFIRMED"
+
+
+def test_market_summary_no_published_data_returns_503_data_pipeline_stale(monkeypatch):
+    repo = FakeMarketSummaryRepository(published_trade_date=None, rows={})
+    _setup_market_summary_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/market-summary")
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 503
+    assert resp.json()["error"]["code"] == "DATA_PIPELINE_STALE"
+
+
+def test_market_summary_published_pointer_but_missing_row_returns_503_service_unavailable(
+    monkeypatch,
+):
+    """AC-2 5번째 불릿 — 발행 포인터는 있는데 (trade_date, market) 요약 행이
+    없으면 0으로 채우지 않고 503 SERVICE_UNAVAILABLE을 반환해야 한다
+    (unit-08-note.md §2 편차3)."""
+    repo = FakeMarketSummaryRepository(
+        published_trade_date=_MS_TRADING_DAY, rows={}
+    )  # 포인터는 있으나 summary 행이 전혀 없음
+    _setup_market_summary_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/market-summary")
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 503
+    assert resp.json()["error"]["code"] == "SERVICE_UNAVAILABLE"
+
+
+def test_market_summary_by_market_partial_missing_also_returns_503(monkeypatch):
+    """ALL 행은 있으나 by_market 세부(KOSPI/KOSDAQ) 중 하나가 없는 배치
+    정합성 이상 케이스도 0으로 채우지 않고 503이어야 한다."""
+    rows = {(_MS_TRADING_DAY, "ALL"): _ms_row("ALL")}  # KOSPI/KOSDAQ 행 누락
+    repo = FakeMarketSummaryRepository(published_trade_date=_MS_TRADING_DAY, rows=rows)
+    _setup_market_summary_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/market-summary")
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 503
+    assert resp.json()["error"]["code"] == "SERVICE_UNAVAILABLE"
+
+
+def test_market_summary_no_raw_price_fields_in_response(monkeypatch):
+    """§4-3 — 원본 시세(open/high/low/close/volume)나 원본 거래대금
+    (trading_value)이 응답 어디에도 존재하지 않는다."""
+    repo = FakeMarketSummaryRepository(published_trade_date=_MS_TRADING_DAY, rows=_FULL_MS_ROWS)
+    _setup_market_summary_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/market-summary")
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    body_text = resp.text
+    forbidden_fields = (
+        '"open"', '"high"', '"low"', '"close"', '"volume"', '"trading_value"'
+    )
+    for forbidden_field in forbidden_fields:
+        assert forbidden_field not in body_text
+    # 노출되는 금액 필드는 KRW 단위임을 필드명으로 자기서술(DEC-015)해야 한다.
+    assert "total_trading_value_krw" in body_text
+    assert "trading_value_krw" in body_text
+
+
+def test_market_summary_explicit_date_param(monkeypatch):
+    other_day = date(2026, 9, 11)
+    rows = {
+        (other_day, "ALL"): _ms_row("ALL"),
+        (other_day, "KOSPI"): _ms_row("KOSPI"),
+        (other_day, "KOSDAQ"): _ms_row("KOSDAQ"),
+    }
+    calendar_rows = dict(_MS_CALENDAR_ROWS)
+    calendar_rows[(other_day, "KRX")] = CalendarRow(
+        trade_date=other_day,
+        market="KRX",
+        is_trading_day=True,
+        session_close_at=time(15, 30),
+        holiday_name=None,
+        source="test",
+    )
+    repo = FakeMarketSummaryRepository(published_trade_date=_MS_TRADING_DAY, rows=rows)
+    _setup_market_summary_overrides(monkeypatch, repository=repo, calendar_rows=calendar_rows)
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/market-summary", params={"date": "2026-09-11"})
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["meta"]["data_freshness"]["trade_date"] == "2026-09-11"
+    assert body["meta"]["data_freshness"]["is_latest_trading_day"] is False
+
+
+def test_market_summary_invalid_date_format_returns_400(monkeypatch):
+    repo = FakeMarketSummaryRepository(published_trade_date=None, rows={})
+    _setup_market_summary_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/market-summary", params={"date": "not-a-date"})
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "INVALID_PARAMETER"
+
+
+def test_market_summary_req009_blackbox_headers_and_cookies_do_not_change_response(monkeypatch):
+    """REQ-009 — 사용자 식별 파라미터가 없고, 동일 쿼리에 다른 Authorization/
+    쿠키를 붙여도 응답이 완전히 동일해야 한다(UNIT-04가 확립한 블랙박스
+    패턴, unit-08-note.md §1-2)."""
+    repo = FakeMarketSummaryRepository(published_trade_date=_MS_TRADING_DAY, rows=_FULL_MS_ROWS)
+    _setup_market_summary_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp_plain = client.get("/api/v1/market-summary")
+    resp_with_auth = client.get(
+        "/api/v1/market-summary",
+        headers={"Authorization": "Bearer some-fake-token"},
+        cookies={"session_id": "abc123", "user_id": "999"},
+    )
+    resp_with_unknown_param = client.get(
+        "/api/v1/market-summary", params={"user_id": "999"}
+    )
+
+    app.dependency_overrides.clear()
+    assert resp_plain.status_code == resp_with_auth.status_code == 200
+    assert resp_plain.json()["data"] == resp_with_auth.json()["data"]
+    assert resp_plain.json()["data"] == resp_with_unknown_param.json()["data"]
+
+
+# --- 회귀 수정: DEF-U09-01(Critical) — CORS 미들웨어 부재 -------------------------
+# 03-system-design.md §6-3 "CORS는 자사 프론트엔드 오리진으로만 제한". 6단계
+# (unit-09-test.md TC-031)가 프론트엔드/백엔드 두 오리진 브라우저 fetch가
+# 100% 차단됨을 발견해 규칙 F 피드백 루프로 main.py에 CORSMiddleware를 추가했다.
+
+
+def test_cors_allows_default_localhost_frontend_origin():
+    def _override_db():
+        yield FakeDbSession()
+
+    app.dependency_overrides[get_db] = _override_db
+    client = TestClient(app)
+
+    resp = client.get(
+        "/api/v1/health", headers={"Origin": "http://localhost:3000"}
+    )
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    assert resp.headers["access-control-allow-origin"] == "http://localhost:3000"
+
+
+def test_cors_blocks_unlisted_origin():
+    def _override_db():
+        yield FakeDbSession()
+
+    app.dependency_overrides[get_db] = _override_db
+    client = TestClient(app)
+
+    resp = client.get(
+        "/api/v1/health", headers={"Origin": "http://evil.example.com"}
+    )
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    assert "access-control-allow-origin" not in resp.headers
+
+
+def test_get_cors_allowed_origins_reads_comma_separated_env_var(monkeypatch):
+    monkeypatch.setenv(
+        "PUBLIC_API_CORS_ALLOWED_ORIGINS",
+        " https://stock-screener.example.com , https://www.stock-screener.example.com ",
+    )
+
+    origins = get_cors_allowed_origins()
+
+    assert origins == [
+        "https://stock-screener.example.com",
+        "https://www.stock-screener.example.com",
+    ]
+
+
+def test_get_cors_allowed_origins_falls_back_to_default_when_unset(monkeypatch):
+    monkeypatch.delenv("PUBLIC_API_CORS_ALLOWED_ORIGINS", raising=False)
+
+    origins = get_cors_allowed_origins()
+
+    assert origins == ["http://localhost:3000"]

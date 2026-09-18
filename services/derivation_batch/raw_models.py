@@ -7,7 +7,11 @@ public_serving에 쓴다. 이 컴포넌트가 유일하게 raw→public 경계�
 models.py`와 동일한 원칙, 그 파일 docstring 참조).
 
 **전체 ORM 모델을 다시 선언하지 않고, 이 배치가 실제로 읽는 컬럼만 담은
-최소 `sqlalchemy.Table` 프로젝션만 정의한다.** 이 모듈은 SELECT 전용이라
+최소 `sqlalchemy.Table` 프로젝션만 정의한다.** UNIT-08(REQ-004)이
+`trading_value`(원본 거래대금) 컬럼을 이 프로젝션에 추가했다 — 시장 동향
+요약(§3-2 `market_summary_daily`)의 총 거래대금/업종별 거래대금 집계에
+필요하지만, 이 값 자체는 요약 통계로만 가공되어 나가고 API 응답에 원문
+그대로 노출되지 않는다(§4-3). 이 모듈은 SELECT 전용이라
 (INSERT/UPDATE 없음) 원본 ENUM 타입을 생성(`CREATE TYPE`)할 필요는 없지만,
 **타입 자체는 반드시 실제 컬럼과 일치시켜야 한다** — 로컬 실 PostgreSQL로
 검증하는 과정에서 `market`을 평범한 `String`으로 선언했더니 psycopg가
@@ -34,6 +38,7 @@ raw_ohlcv_table = sa.Table(
     sa.Column("market", market_session_enum, primary_key=True),
     sa.Column("close", sa.Numeric),
     sa.Column("volume", sa.BigInteger),
+    sa.Column("trading_value", sa.BigInteger),
 )
 
 raw_fundamentals_table = sa.Table(
