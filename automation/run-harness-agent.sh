@@ -46,7 +46,7 @@ TS="$(date -u +%Y%m%dT%H%M%SZ)"
 RESULT_JSON="${OUT_DIR}/${STAGE}-${TS}.json"
 
 PROMPT=$(cat <<EOF
-ORCHESTRATOR.md에 정의된 전역 규칙(A~H)을 반드시 지킨다. 특히 지금은 CI(무인 환경)에서 실행 중이라
+ORCHESTRATOR.md에 정의된 전역 규칙(A~K)을 반드시 지킨다. 특히 지금은 CI(무인 환경)에서 실행 중이라
 사람이 실시간으로 질문에 답할 수 없다는 점을 명심한다.
 
 - 규칙 A에 해당하는 상황(모르면 물어봐야 하는 상황)을 만나면, 절대로 추측해서 진행하지 말고
@@ -54,6 +54,10 @@ ORCHESTRATOR.md에 정의된 전역 규칙(A~H)을 반드시 지킨다. 특히 �
   이 경우 어떤 산출물도 PASS로 표시하지 않는다.
 - 정상적으로 끝까지 완료했다면, 표준출력 첫 줄에 정확히 "HARNESS_DONE: PASS" 또는 "HARNESS_DONE: FAIL" 을
   출력한다 (해당 단계의 최종 판정과 반드시 일치해야 한다).
+- 규칙 K(중단-안전 정리): 검증용 venv/임시 DB/설정 파일은 반드시 .harness-tmp/ 하위에만 만들고,
+  완료 직전 정리 후 git status가 깨끗함을 결과서 7절(Teardown)에 남겨야 PASS로 표시할 수 있다.
+  헤드리스 실행이 중간에 죽으면(CLI 프로세스 강제 종료 등) 다음 실행 시작 시 automation/harness-janitor.sh로
+  잔여물부터 확인한다.
 
 지금 수행할 단계: ${STAGE}
 ${EXTRA_INSTRUCTION}

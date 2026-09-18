@@ -9,7 +9,11 @@
   },
   "nav": {
     "skipLink": "본문 바로가기",
-    "homeLinkLabel": "국내주식 조건 스크리닝 정보 서비스 홈"
+    "homeLinkLabel": "국내주식 조건 스크리닝 정보 서비스 홈",
+    "ariaLabel": "주요 메뉴",
+    "home": "홈",
+    "screener": "조건 스크리닝",
+    "stocks": "종목 검색"
   },
   "dataFreshness": {
     "sessionLabelPrefix": "국내증권시장",
@@ -17,6 +21,97 @@
     "updatedSuffix": "갱신",
     "unavailableText": "데이터 기준시각을 확인하는 중입니다",
     "staleFallbackWarning": "예상보다 지연된 데이터입니다"
+  },
+  "stockDetail": {
+    "returnRankLabel": "등락률 순위",
+    "percentileUpPrefix": "상위",
+    "ma5Label": "5일 이평 대비",
+    "ma20Label": "20일 이평 대비",
+    "volumeAnomalyLabel": "거래량 이상치 스코어",
+    "volumeAnomalySuffix": "(20일 평균 대비 표준편차 배수)",
+    "volumeAnomalyHelper": "값이 클수록 최근 거래량이 평소 패턴에서 크게 벗어났다는 의미입니다",
+    "valuationLabel": "밸류에이션(PER/PBR/시가총액)",
+    "perLabel": "PER 백분위",
+    "pbrLabel": "PBR 백분위",
+    "marketCapLabel": "시가총액 백분위",
+    "valuationHelper": "PER·PBR은 낮을수록, 시가총액은 클수록 상위 %가 낮게 표시됩니다",
+    "valuationUnavailableText": "PER 산정 불가(적자기업 등)",
+    "missingDataText": "데이터 부족 (상장 20영업일 미만)",
+    "notFoundHeading": "요청하신 종목 정보를 찾을 수 없습니다",
+    "backToSearchCta": "종목 검색으로 돌아가기"
+  },
+  "errorState": {
+    "networkTitle": "일시적인 오류가 발생했습니다.",
+    "calendarNotConfirmedTitle": "기준 거래일 계산에 필요한 휴장일 정보가 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.",
+    "rateLimitedTitle": "요청이 많아 잠시 지연되고 있습니다. 잠시 후 다시 시도해주세요.",
+    "retryButtonLabel": "다시 시도"
+  },
+  "emptyState": {
+    "noDataYetTitle": "표시할 데이터가 아직 없습니다. 서비스 데이터 준비 중입니다.",
+    "noScreenConditionsTitle": "조건을 설정하고 [조건 적용]을 눌러주세요",
+    "noScreenResultTitle": "조건을 충족하는 종목이 없습니다. 조건 범위를 넓혀 다시 시도해 보세요.",
+    "noQueryTitle": "종목명 또는 코드를 입력해 검색하세요",
+    "noSearchResultTemplate": "'{query}'에 대한 검색 결과가 없습니다. 종목명 또는 코드를 다시 확인해 주세요."
+  },
+  "stockSearch": {
+    "pageTitle": "종목 검색",
+    "inputLabel": "종목명 또는 코드 검색",
+    "inputPlaceholder": "예: 삼성전자 또는 005930"
+  },
+  "screener": {
+    "marketLabel": "시장 구분",
+    "marketOptionAll": "전체",
+    "marketOptionKospi": "코스피",
+    "marketOptionKosdaq": "코스닥",
+    "marketCapLabel": "시가총액(억원)",
+    "marketCapMinPlaceholder": "최소",
+    "marketCapMaxPlaceholder": "최대",
+    "volumeLabel": "거래량(주)",
+    "volumeMinSuffix": "이상",
+    "returnPctLabel": "등락률(%)",
+    "perLabel": "PER(배)",
+    "perSuffix": "이하",
+    "pbrLabel": "PBR(배)",
+    "pbrSuffix": "이하",
+    "sortByLabel": "정렬 기준",
+    "sortByReturnPct": "등락률순",
+    "sortByMarketCap": "시가총액순",
+    "sortByPer": "PER순",
+    "sortByPbr": "PBR순",
+    "sortByVolumeAnomalyScore": "거래량 변동성순",
+    "sortDirLabel": "정렬 방향",
+    "sortDirDesc": "값이 큰 순",
+    "sortDirAsc": "값이 작은 순",
+    "submitButtonLabel": "조건 적용",
+    "mobileOpenFilterLabel": "조건 필터 열기",
+    "mobileCloseFilterLabel": "필터 닫기",
+    "resultsHeadingPrefix": "조건 충족 종목 목록 (총",
+    "resultsHeadingSuffix": "건)",
+    "percentileScopeNotice": "PER·PBR·시가총액 백분위는 코스피+코스닥 전체 종목 기준입니다.",
+    "paginationPrev": "이전",
+    "paginationNext": "다음",
+    "metricLabels": {
+      "returnPct": "등락률",
+      "marketCap": "시가총액",
+      "per": "PER",
+      "pbr": "PBR",
+      "volumeAnomalyScore": "거래량 변동성"
+    }
+  },
+  "home": {
+    "pageTitle": "전일 시장 동향 리포트",
+    "marketLabelAll": "전체(코스피+코스닥)",
+    "marketLabelKospi": "코스피",
+    "marketLabelKosdaq": "코스닥",
+    "advancersLabel": "상승 종목 수",
+    "declinersLabel": "하락 종목 수",
+    "unchangedLabel": "보합 종목 수",
+    "totalTradingValueLabel": "총 거래대금",
+    "sectorSectionTitle": "업종별 거래대금 상위",
+    "sectorPreparingText": "업종 정보를 준비 중입니다",
+    "entryCardsAriaLabel": "바로가기",
+    "screenerEntryLabel": "조건 스크리닝 하러 가기",
+    "stocksEntryLabel": "종목 검색"
   },
   "about": {
     "title": "서비스 안내",

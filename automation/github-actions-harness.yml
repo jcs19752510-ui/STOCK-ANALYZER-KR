@@ -64,8 +64,19 @@ jobs:
           chmod +x automation/run-harness-agent.sh
           ./automation/run-harness-agent.sh 10-deploy-tester ""
 
-  deploy:
+  documentation-handoff:
     needs: [deploy-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install -g @anthropic-ai/claude-code
+      - name: "11단계 - 운영 Runbook/사용자·관리자 매뉴얼/API 문서"
+        run: |
+          chmod +x automation/run-harness-agent.sh
+          ./automation/run-harness-agent.sh 11-documentation-writer ""
+
+  deploy:
+    needs: [documentation-handoff]
     runs-on: ubuntu-latest
     # 핵심: 이 environment에 GitHub 저장소 Settings > Environments 에서
     # "Required reviewers"를 반드시 등록해야 한다. 그래야 사람이 승인 버튼을 누르기 전까지
@@ -75,10 +86,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: npm install -g @anthropic-ai/claude-code
-      - name: "11단계 - 실제 배포 (승인된 경우에만 이 줄에 도달)"
+      - name: "12단계 - 실제 배포 (승인된 경우에만 이 줄에 도달)"
         run: |
           chmod +x automation/run-harness-agent.sh
-          ./automation/run-harness-agent.sh 11-deployer \
+          ./automation/run-harness-agent.sh 12-deployer \
             "이 CI 실행이 여기까지 온 것 자체가 environment 승인 게이트를 통과했다는 뜻이다. 승인 사실을 배포 로그에 기록하라."
 
   post-deploy-verify:
@@ -87,10 +98,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: npm install -g @anthropic-ai/claude-code
-      - name: "12단계 - 배포후 검증"
+      - name: "13단계 - 배포후 검증"
         run: |
           chmod +x automation/run-harness-agent.sh
-          ./automation/run-harness-agent.sh 12-post-deploy-verifier ""
+          ./automation/run-harness-agent.sh 13-post-deploy-verifier ""
 
 # 참고: run-harness-agent.sh는 사람의 판단이 필요한 상황(규칙 A)을 만나면 exit code 75로 끝난다.
 # GitHub Actions는 네이티브 "neutral" 상태가 없으므로 이 예시는 75도 job 실패로 처리한다

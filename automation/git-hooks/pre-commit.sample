@@ -1,0 +1,27 @@
+#!/bin/sh
+# 설치: 이 파일을 프로젝트 루트의 .git/hooks/pre-commit 으로 복사하고 실행권한을 준다.
+#   cp automation/git-hooks/pre-commit.sample .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
+#
+# 규칙 K(중단-안전 정리) 점검: 커밋 직전에 검증용 임시 아티팩트(.harness-tmp/, 레거시 .venv_* 등)가
+# 남아있는지 확인해 실수로 같이 커밋되는 것을 막는다.
+# 이 훅은 커밋 자체를 막지 않는다 — 경고만 하고 항상 exit 0으로 끝난다. 실제로 지울지는 사람이 판단한다
+# (규칙 A/K5: 애매한 파일을 훅이 임의로 지우거나 커밋을 강제로 막지 않는다).
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+if [ ! -x "automation/harness-janitor.sh" ]; then
+  echo "[harness] automation/harness-janitor.sh 를 찾을 수 없어 훅을 건너뜁니다."
+  exit 0
+fi
+
+./automation/harness-janitor.sh --check
+JANITOR_EXIT=$?
+
+if [ "$JANITOR_EXIT" -ne 0 ]; then
+  echo "[harness] 경고: 검증용 임시 아티팩트가 남아있습니다 (위 목록 참고). 커밋에 포함되지 않도록 확인하세요."
+  echo "[harness] .harness-tmp/ 안의 내용이라면 './automation/harness-janitor.sh --clean'으로 정리할 수 있습니다."
+fi
+
+exit 0

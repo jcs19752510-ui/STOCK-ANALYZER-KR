@@ -1,100 +1,178 @@
 # UNIT-04 테스트 결과서 — 규제 대응 공통 컴포넌트 (면책 배너 / 금지표현 가이드라인 / 기준시각 표기)
 
+> **버전: v2**(규칙 F 피드백 루프 — DEF-001/DEF-002 수정에 대한 독립 재검증, 최종 판정). v1(CONDITIONAL PASS)의 전체 내용은 이력 보존을 위해 그대로 남기고, v2에서 변경/추가된 부분은 각 섹션에 "v2" 표시와 함께 구분해 서술한다. 문서를 새로 작성하지 않고 개정하는 형태를 취한다.
+
+## 0. 재작업 이력 (v2 — DEF-001/DEF-002 재검증, 규칙 F 피드백 루프)
+
+- v1(2026-09-15)에서 6단계가 CONDITIONAL PASS와 함께 발견한 결함 2건(둘 다 Medium): **DEF-001**(`formatKstDateTime()`이 빈 문자열/깨진 ISO 문자열에 `RangeError`를 던짐), **DEF-002**(`lint-forbidden-copy.mjs`가 물리적 줄 단위로 스캔해 금지어가 실제 줄바꿈으로 분리되면 탐지 실패).
+- 5단계가 같은 날(2026-09-15) `unit-04-note.md`에 "재작업 이력" 절을 추가하고 두 결함을 조치했다고 보고했다: `formatKst.ts`에 `Number.isNaN(date.getTime())` 가드 + `INVALID_DATE_FALLBACK_TEXT`("기준시각 확인 불가") 도입, `lint-forbidden-copy.mjs`를 파일 전체를 공백류 문자 제거 후 정규화한 문자열로 검사하도록 변경(`normalizeWithIndexMap()`, 원본 줄번호 역추적 `indexMap` 포함).
+- **이번 v2 문서는 그 재작업 결과를 6단계 관점에서 독립적으로 재검증한 기록이다.** 코디네이터 지시에 따라 5단계의 자체 재현 결과를 신뢰하지 않고, (1) DEF-002를 v1이 발견했던 것과 동일한 방식(실제 줄바꿈으로 쪼갠 금지어)으로 재현해 이번엔 실제로 잡히는지, 정규화 로직이 과도하게 민감해 정상 카피까지 오탐하지 않는지, (2) DEF-001을 빈 문자열/null/malformed 문자열/undefined 등 다양한 잘못된 입력으로 재확인하고 정상 입력 회귀가 없는지, (3) v1의 나머지 PASS 항목(REQ-006/007/009/010, REQ-008 AC 부분)에 회귀가 없는지(`npm run build`/`lint`/`tsc --noEmit`, 백엔드 `pytest`/`ruff` 전체 재실행)를 직접 재현했다.
+- 신규 섹션: §4-2(v2 재검증 테스트 케이스, TC-034~TC-053), §6(DEF-001/DEF-002 상태를 Fixed로 갱신 + 신규 결함 2건 DEF-008/DEF-009 등록), §7(v2 리스크 갱신), §8(판정 갱신 — CONDITIONAL PASS → **PASS**), §9(v2 내부검증 로그 요약).
+- v1의 §1~§4(TC-001~033)는 재작업 대상 코드(`formatKst.ts`, `lint-forbidden-copy.mjs`)와 직접 관련 없는 부분(REQ-007/009/010, REQ-006의 AC-2 렌더링, REQ-008의 AC-3 정상 경로)이므로 원문 그대로 두되, 이번 v2 세션에서 회귀가 없는지 별도로 재실행해 §4-2 말미(TC-046~053)에 재확인 기록으로 남겼다.
+
 ## 1. 개요
-- 테스트 대상: 단위(Unit) — UNIT-04 `frontend/` 신규 스캐폴딩 + REQ-006/007/008/009/010 구현
-- 테스트 유형: 단위(06-unit-tester)
-- 테스트 목적: 5단계(`docs/harness/units/unit-04-note.md`)의 자체 보고를 신뢰하지 않고, REQ-006~010(규칙 I 대상, 9단계 미반영 시 Critical 취급) 각각의 인수 조건(AC-1~AC-5)이 실제 코드/렌더링 결과로 재현되는지 독립적으로 검증한다. 코디네이터가 지정한 5개 중점 확인 사항(면책 배너 실렌더링, 금지어 다른 케이스 재현, 기준시각 배지 서버값 그대로 표시 여부 및 목업 검증 방식, REQ-009 grep 검증의 충분성 판단·보강, 백엔드 회귀)을 전부 다룬다.
-- 관련 산출물: `docs/harness/units/unit-04-note.md`(입력 계약, AC-1~AC-5), `docs/harness/02-planning.md` §4-1(REQ-006~010), `docs/harness/03-system-design.md` §3-4/§4-1/§6-1/§6-4, `docs/harness/04-ux-design.md` §2-0/§2-5/§2-6/§4, `services/public_api/schemas/envelope.py`(`DISCLAIMER_TEXT`/`DataFreshness`), `frontend/` 전체
+- 테스트 대상: 단위(Unit) — UNIT-04 `frontend/` 신규 스캐폴딩 + REQ-006/007/008/009/010 구현. **v2: 5단계의 DEF-001/DEF-002 재작업 산출물(`frontend/src/lib/formatKst.ts`, `frontend/scripts/lint-forbidden-copy.mjs`)**
+- 테스트 유형: 단위(06-unit-tester). **v2: 규칙 F 피드백 루프에 따른 결함 수정 재검증**
+- 테스트 목적: v1과 동일(REQ-006~010 AC-1~AC-5 독립 검증) + **v2 추가 목적**: (1) DEF-002가 v1이 발견한 것과 동일한 방식(멀티라인으로 쪼갠 금지어)으로 재현해도 이번엔 실제로 잡히는지, 정규화 로직의 과민 반응(정상 카피 오탐)이 없는지 확인, (2) DEF-001을 빈 문자열/null/malformed 문자열/undefined 등으로 재확인하고 정상 입력 회귀가 없는지 확인, (3) v1의 나머지 PASS 항목(REQ-006/007/009/010 PASS, REQ-008 AC 부분)에 이번 수정이 회귀를 일으키지 않았는지(`npm run build`/`lint`/`tsc --noEmit`, 백엔드 `pytest`/`ruff` 전체 재실행) 확인, (4) 5단계가 note에 기록한 정적 분석/린트 게이트 통과 및 자체 코드 리뷰 체크리스트가 실제로 유효한지 재확인.
+- 관련 산출물: `docs/harness/units/unit-04-note.md`("재작업 이력" 절, 입력 계약·AC-2/AC-3 신규 불릿), `docs/harness/units/unit-04-test.md` v1(CONDITIONAL PASS, DEF-001/DEF-002 원본), `frontend/src/lib/formatKst.ts`(수정본), `frontend/scripts/lint-forbidden-copy.mjs`(수정본), `frontend/src/components/DataFreshnessBadge.tsx`(호출부, 변경 없음), `services/public_api/schemas/envelope.py`(`DISCLAIMER_TEXT`/`DataFreshness`, 변경 없음)
 - 테스트 수행자(에이전트): 06-unit-tester
-- 테스트 일시: 2026-09-15
+- 테스트 일시: 2026-09-15(v1 최초), **2026-09-16(v2 재검증, 최종)**
 
 ## 2. 테스트 범위 및 제외 범위
-- 범위(In-Scope):
-  - REQ-007(면책 배너 상시 노출) — 실제 `npm run build`/`npm run start` 렌더링 HTML 기준 재현
-  - REQ-008(금지표현 CI 강제) — 5단계가 확인한 "추천 종목입니다" 외에 4개의 다른 금지어 + 임의 구간화 패턴을 독립적으로 각각 주입해 재현, 금지어 목록과 04-ux-design.md §2-6 대조표 전수 대조
-  - REQ-006(데이터 기준시각 표기 컴포넌트) — 코드 레벨 자체계산 여부 확인 + 실제 렌더링(임시 QA 라우트)으로 4개 prop 조합 검증
-  - REQ-009(사용자 식별 파라미터 부재) — 5단계의 grep 검증 방식의 한계를 판단하고, 실제 HTTP 요청(Authorization 헤더/쿠키/추가 쿼리파라미터)으로 응답 불변성을 블랙박스로 재검증
-  - REQ-010(결제/광고 SDK 부재) — `frontend/package.json`/`requirements*.txt` 재검색
-  - 백엔드 회귀 — `ruff check .`, `pytest tests/unit`
-  - 프론트엔드 정적 분석 회귀 — `npm run lint`, `npx tsc --noEmit`
-- 제외 범위(Out-of-Scope) 및 사유:
-  - 실제 브라우저(Chrome/Safari 등)·Lighthouse/axe 기반 시각적 접근성 검증(배너 스크롤 고정 체감, 200% 확대 시 줄바꿈 체감, 포커스 링 육안 확인) — 이 환경은 headless curl/HTML 정적 분석만 가능하다. 대신 CSS 소스(`position: sticky`, `overflow-wrap: break-word`, `white-space: normal`, `text-overflow` 부재)와 컴파일된 CSS 청크를 직접 대조해 근거를 확보했다(§4 TC-009). 실제 브라우저/axe 검증은 note §3-1이 이미 명시한 잔존 리스크이며 §7에 재기재한다.
-  - `DataFreshnessBadge`의 실 API 연결 검증 — 아직 어떤 화면도 이 컴포넌트를 사용하지 않는다(코드 전체에서 `DataFreshnessBadge`를 import하는 곳이 `DataFreshnessBadge.tsx` 자신 외에 없음, `Grep` 확인). UNIT-06~08이 실제로 연결한 뒤 재검증이 필요하다(note §3-2와 동일 결론).
-  - CI 파이프라인(`automation/github-actions-harness.yml`)에 프론트엔드 빌드 잡 추가 — 이번 유닛 범위 아님(note §3-3과 동일 결론, §7에 리스크로 재기재).
-  - REQ-001~004 실제 화면 콘텐츠, `GlobalNav` — UNIT-05~08 범위(note §0 명시).
+- 범위(In-Scope): v1과 동일(§2 원문 유지) + **범위(In-Scope, v2 추가)**:
+  - DEF-002 재현: v1(TC-027)과 동일한 방식(실제 줄바꿈으로 분리된 금지어)을 3가지 변형(단순 2줄 분리, 들여쓰기 포함 3줄 분리, 정규식 패턴이 탭/개행/공백에 걸쳐 분리)으로 독립 재현
+  - DEF-002 오탐(false positive) 검증: 정규화 로직이 파일 전체의 공백류 문자(스페이스 포함)를 제거하기 때문에, 자연스러운 문단 줄바꿈이 있는 정상 한국어 카피(About 페이지 실제 문구를 재구성한 장문 2블록)와 "인접 단어 경계 근접" 케이스에서 오탐이 없는지 확인
+  - DEF-002 회귀: 기존 단일 라인 금지어("매수신호")를 실제 `copy.ko.json`에 주입해 여전히 exit 1로 탐지되는지 재확인
+  - DEF-002 잔존 리스크 조사(AC 범위 밖, 위험 기반): JS 문자열 이스케이프 시퀀스(소스 텍스트상 실제 줄바꿈이 아니라 백슬래시+`n` 두 글자로 표현된 개행)로 금지어를 분리한 경우의 탐지 여부
+  - DEF-001 재현: `formatKstDateTime`에 빈 문자열, 공백 문자열, 형식이 깨진 문자열(`"not-a-date"`, 범위를 벗어난 날짜값)을 직접 호출(Node 타입 스트리핑 실행)로 재확인 + 실제 렌더링(임시 QA 라우트, `npm run build`/`start`)으로 `DataFreshnessBadge`가 이 값들을 받았을 때 예외 없이 폴백 문구를 렌더하는지 확인
+  - DEF-001 잔존 리스크 조사(AC 범위 밖, 위험 기반): TypeScript 타입 시스템을 우회하는 런타임 값(`null`, `undefined`, `0`)을 `formatKstDateTime`에 전달했을 때의 동작
+  - 회귀 확인: REQ-007(배너 마크업/문구/CSS), REQ-007 문자 단위 일치(`DISCLAIMER_TEXT`), 프론트엔드 정적 분석(`npm run lint`, `npx tsc --noEmit`, `npm run build`), 백엔드 정적 분석/단위테스트 전체(`ruff check .`, `pytest tests/unit -q`)
+  - 5단계 note §5/§6(게이트1 정적분석/린트, 게이트2 자체 코드 리뷰 체크리스트)의 통과 주장이 실제로 유효한지 교차 확인
+- 제외 범위(Out-of-Scope) 및 사유: v1과 동일(§2 원문 유지). **v2 추가**: REQ-009 블랙박스 동일성 재검증(TC-030/031)은 이번 재작업이 백엔드 코드를 전혀 건드리지 않았음을 `git status`/`git diff`로 직접 확인했으므로 범위에서 제외하고, 대신 `pytest tests/unit -q` 전체 재실행(REQ-009 관련 로직 포함 여부와 무관하게 백엔드 전 영역 회귀 확인)으로 갈음했다.
 
 ## 3. 테스트 환경
-- 실행 환경: Windows 10, Node.js v24.18.0, npm 11.16.0, Next.js 16.3.5(Turbopack), React 19.3.0, TypeScript 6.0.3(strict), Python(백엔드 회귀용, 버전은 리포지토리 anaconda 환경), `pytest`/`ruff`는 리포지토리 `requirements-dev.txt` 고정.
-- 테스트 데이터: `frontend/src/content/copy.ko.json`(운영 데이터 그대로), AC-2 검증용 `DataFreshness` mock 객체 4종(정상/지연/`freshness=null`/`session_close_at=null`, unit-04-note.md §7 AC-2 원문과 동일한 값), REQ-008 검증용 임의 주입 문자열 5종("매수신호", "손실보전", "수익보장", "PER 상위 20% 구간", "확실한" — 5단계가 이미 확인한 "추천 종목입니다"와 겹치지 않게 의도적으로 선정).
-- 전제 조건: `frontend/node_modules` 설치 완료(5단계 산출물 그대로 재사용, 재설치 없음), 로컬 PostgreSQL 불필요(이 유닛의 백엔드 회귀 대상 3개 엔드포인트는 FastAPI `TestClient` + DI 오버라이드로 DB 없이 테스트 가능).
+- 실행 환경: v1과 동일 — Windows 10, Node.js v24.18.0, npm 11.16.0, Next.js 16.3.5(Turbopack), React 19.3.0, TypeScript 6.0.3(strict). 백엔드: Python 3.13.9(anaconda), `pytest`/`ruff`는 리포지토리 고정 버전. **v2에서 버전 변동 없음(동일 로컬 환경, 날짜만 2026-09-16으로 진행)**.
+- 테스트 데이터: v1과 동일 + **v2 신규**: DEF-002 재현용 임시 파일(`frontend/src/lib/__verify004__/*.ts`, 검증 직후 전부 삭제), DEF-001 재현용 임시 QA 라우트(`frontend/src/app/qa-verify004-temp/page.tsx`, 검증 직후 삭제), Node `--experimental-strip-types` 직접 호출용 인라인 스크립트.
+- 전제 조건: `frontend/node_modules` 설치 완료(v1과 동일 재사용, 재설치 없음). **v2 원칙**: 모든 임시 파일/라우트는 검증 직후 즉시 삭제하고 `git status --short`로 작업 트리가 클린한지 매번 확인한 뒤 다음 케이스로 진행했다(코드를 직접 고치지 않고 재현만 한다는 6단계 원칙 준수).
 
-## 4. 테스트 케이스 및 결과
+## 4. 테스트 케이스 및 결과 (v1, 이력 보존)
+
+> 아래 표는 v1(CONDITIONAL PASS) 당시의 원문이다. DEF-001/DEF-002 관련 행(TC-018, TC-027)의 판정은 **당시 코드 기준**이며, v2 재작업 이후에는 §4-2의 새 테스트로 대체·재검증됐다. 나머지(TC-001~017, 019~026, 028~033)는 재작업 대상이 아니었으므로 원문 그대로 두되, §4-2 말미(TC-046~053)에서 회귀 여부만 다시 확인했다.
 
 | ID | 시나리오 | 사전조건 | 실행 절차 | 예상 결과 | 실제 결과 | Pass/Fail | 비고 |
 |----|----------|----------|-----------|-----------|-----------|-----------|------|
-| TC-001 | 백엔드 정적 분석 회귀 | 변경 없음(UNIT-04는 백엔드 미변경) | `python -m ruff check .` | 전부 통과 | `All checks passed!` | Pass | AC 외 회귀 확인 목적(코디네이터 지시 5) |
-| TC-002 | 백엔드 단위테스트 회귀 | 동일 | `python -m pytest tests/unit -q` | 전부 통과, 신규 실패 없음 | `79 passed, 1 warning`(경고는 `httpx` deprecation, 기존부터 존재) | Pass | UNIT-01~03의 79건 전부 회귀 없음 |
-| TC-003 | 프론트엔드 ESLint | `frontend/` 의존성 설치됨 | `npm run lint` | 0 error / 0 warning | 출력에 오류/경고 없음(빈 결과) | Pass | |
-| TC-004 | TypeScript strict 컴파일 | 동일 | `npx tsc --noEmit` | 오류 없음 | 오류 없음(출력 없음) | Pass | |
-| TC-005 | 프로덕션 빌드(정상 상태) | copy.ko.json 원본 상태 | `npm run build` | `prebuild`(금지어 린트) 통과 → `next build` 성공 → 라우트 3개(`/`,`/_not-found`,`/about`) 정적 생성 | 로그와 동일하게 재현됨(`금지표현 검사 통과 (검사 파일 11개)` → `Compiled successfully` → 3개 라우트) | Pass | note §4 재현 확인(자체 보고 신뢰 안 하고 독립 실행) |
-| TC-006 | REQ-007 — `/` 실제 렌더 HTML에 배너 존재 | `npm run build && npm run start -p 4321` | `curl -s http://localhost:4321/` 후 HTML에서 `class="disclaimer-banner"` 및 정확한 문장 검색 | `<div class="disclaimer-banner" role="note" ...>` 존재, 내부에 "이 서비스는 투자자문업 등록 사업자가 아니며, 제공되는 정보는 투자 조언이 아닙니다. 투자 판단과 책임은 이용자 본인에게 있습니다." 정확히 포함 | 정확히 일치하는 마크업/문구 확인(§4 원문 HTML 캡처) | Pass | AC-1 불릿1 |
-| TC-007 | REQ-007 — `/about` 실제 렌더 HTML에도 배너 존재 | 동일 서버 기동 상태 | `curl -s http://localhost:4321/about` 후 동일 검사 | `/`와 동일한 배너 마크업이 `/about`에도 존재(RootLayout 공통 적용 증거) | 동일 마크업 확인 | Pass | "모든 페이지"가 실제로 최소 2개 라우트에서 증명됨(3번째 라우트 `/_not-found`는 페이지 콘텐츠가 없어 검사 대상에서 제외) |
-| TC-008 | REQ-007 — 닫기 버튼 부재 | TC-006/007 HTML 확보 | `grep -o "닫기\|close\|Close\|CLOSE"` 실행 | 매칭 0건 | 매칭 0건(빈 출력) | Pass | `button` 태그 자체가 배너 안에 없음도 HTML 구조로 확인(단순 텍스트에 `<button`이 없음) |
-| TC-009 | REQ-007 — 말줄임 미사용 | TC-006/007 HTML + 컴파일된 CSS 청크 확보 | (1) HTML에서 리터럴 `"..."` 검색 (2) `.next/static/chunks/*.css`에서 `.disclaimer-banner__text` 규칙 확인 | HTML에 `...` 없음, CSS에 `text-overflow`/`nowrap` 없이 `white-space: normal; overflow-wrap: break-word`만 존재 | HTML 매칭 0건, CSS 규칙 `overflow-wrap:break-word;white-space:normal;margin:0;font-size:13px;line-height:1.5` 확인(`text-overflow` 없음) | Pass | 컴파일된(사용자가 실제 받는) CSS로 확인 — 소스 CSS만 본 것이 아님 |
-| TC-010 | REQ-007 — 배너/푸터 문구와 백엔드 `DISCLAIMER_TEXT` 문자 단위 일치 | 없음 | Python 스크립트로 `envelope.py`의 `DISCLAIMER_TEXT`와 `copy.ko.json`의 `disclaimer.banner`/`disclaimer.footerFull`을 각각 문자열 등가 비교 | 3개 문자열이 완전히 동일 | `banner == backend`: True, `footer == backend`: True | Pass | 5단계 note의 "MATCH" 주장을 스크립트로 재실행해 독립 재현(터미널 인코딩상 한글이 깨져 보이지만 in-memory UTF-8 비교 결과는 True로 확정) |
-| TC-011 | REQ-007 — 푸터 이중 노출 | TC-006 HTML | HTML에서 `class="site-footer"` 내부 텍스트 확인 | 면책 전문 + 데이터 출처 고지 + "원본 시세를 그대로 제공하지 않는다" 문구 존재 | 3개 문구 전부 `<footer class="site-footer">` 안에 존재 확인 | Pass | |
-| TC-012 | REQ-007 — `/about` 6개 섹션 제목 | TC-007 HTML | HTML에서 `<h2>` 6개 텍스트 추출 | "이 서비스는 무엇인가요", "투자자문업 등록 여부", "데이터 지연 및 기준시각", "데이터 가공 원칙", "데이터 출처", "문의" 순서대로 존재 | 6개 전부 정확한 문구·순서로 확인 | Pass | |
-| TC-013 | REQ-006 — 정상 케이스 텍스트 정확도 | 임시 QA 라우트(`frontend/src/app/qa-freshness-temp/page.tsx`, 검증 후 즉시 삭제) + `npm run build && npm run start -p 4322` | `freshness={market:"KRX", trade_date:"2026-09-11", session_close_at:"2026-09-11T15:30:00+09:00", generated_at:"2026-09-12T07:10:00+09:00", is_latest_trading_day:true, expected_last_trading_day:"2026-09-11", staleness_note:null}`로 렌더 후 `curl`로 텍스트 조합 확인 | "국내증권시장(KRX) 기준 2026-09-11 15:30 마감 데이터 · 2026-09-12 07:10 갱신" 정확히 일치(공백/구두점 포함) | HTML 텍스트 노드 결합 결과 정확히 일치 | Pass | AC-2 불릿1 — 5단계는 이 렌더링을 직접 수행한 로그가 note §4에 없었음(TS 컴파일만 확인). 6단계가 최초로 실제 렌더 검증 수행 |
-| TC-014 | REQ-006 — 지연 케이스, 색상 비의존 경고 | 동일 | `is_latest_trading_day:false, staleness_note:"예상보다 1영업일 지연된 데이터입니다"`로 렌더 | `staleness_note` 텍스트가 `role="status"`인 `<p>`에 그대로 노출(색상 전용 아님, 스크린리더가 읽을 수 있는 텍스트 노드) | `<p class="data-freshness-badge__warning" role="status"><span aria-hidden="true">⚠</span> 예상보다 1영업일 지연된 데이터입니다</p>` 확인 | Pass | AC-2 불릿2. `aria-hidden` 아이콘과 별개로 텍스트가 실제 DOM 텍스트 노드임을 확인(스크린리더 접근성 요건 충족) |
-| TC-015 | REQ-006 — `freshness=null` 예외 없음 | 동일 | `freshness={null}`로 렌더, HTTP 상태코드 확인 | 크래시 없음(200), "데이터 기준시각을 확인하는 중입니다" 표시 | HTTP 200, 해당 문구 정확히 렌더 | Pass | AC-2 불릿3 |
-| TC-016 | REQ-006 — `session_close_at=null` 대체 표시 | 동일 | `session_close_at: null`(나머지 정상 케이스와 동일)로 렌더 | 예외 없이 `trade_date`("2026-09-11")로 대체 표시 | "국내증권시장(KRX) 기준 2026-09-11 마감 데이터 · 2026-09-12 07:10 갱신" — `trade_date`로 정상 대체됨, 크래시 없음 | Pass | AC-2 불릿4 |
-| TC-017 | REQ-006 — 자체 계산 금지 코드 리뷰 | `DataFreshnessBadge.tsx`, `formatKst.ts` 소스 | `formatKstDateTime` 호출부 전수 확인, `Date.now()`/인자 없는 `new Date()` 사용 여부 검색 | 모든 시각 포맷 호출이 서버가 내려준 ISO 문자열(`freshness.session_close_at`/`freshness.generated_at`)만 인자로 사용, 클라이언트 현재시각을 참조하는 코드 없음 | 확인됨 — `formatKstDateTime(freshness.session_close_at)`, `formatKstDateTime(freshness.generated_at)` 2곳뿐이며 둘 다 props 값만 사용 | Pass | AC-2 마지막 불릿. `formatKst.ts`도 `new Date(iso)`로 인자를 항상 요구(인자 생략 불가한 함수 시그니처) |
-| TC-018 | REQ-006 — (AC 범위 밖, 위험도 기반 추가) 잘못된 ISO 문자열 입력 시 예외 처리 | `formatKstDateTime` 단독 실행(Node REPL) | `formatKstDateTime("")`, `formatKstDateTime("not-a-date")` 호출 | AC에 명시는 없으나, 최소한 페이지 전체를 크래시시키지 않아야 함(방어적 처리 기대) | 둘 다 `RangeError: Invalid time value`로 즉시 throw됨. 이 함수는 try/catch 없이 컴포넌트 렌더 본문에서 직접 호출되므로, 백엔드가 어떤 이유로든(버그/스키마 드리프트) 빈 문자열이나 형식이 깨진 ISO 값을 `generated_at`/`session_close_at`에 담아 보내면 `DataFreshnessBadge`를 사용하는 페이지 전체가 렌더링 중 예외로 죽는다 | **Fail(결함)** | DEF-001로 등록(§6). 현재는 dead code(어디서도 import되지 않음)라 배포된 화면에 영향 없음 — UNIT-06~08 연결 전 반드시 해결 필요 |
-| TC-019 | REQ-008 — 정상 상태 린트 통과 | `copy.ko.json` 원본 | `npm run lint:copy` | exit 0, "금지표현 검사 통과" 출력 | `금지표현 검사 통과 (검사 파일 11개).`, exit 0 | Pass | AC-3 불릿1. `npm run lint:copy`라는 명명된 스크립트로 직접 실행(단순 `node scripts/...` 직접 호출이 아님) |
-| TC-020 | REQ-008 — 금지어 "매수신호" 독립 재현 | 없음 | `copy.ko.json`에 "매수신호" 임시 주입 → `node scripts/lint-forbidden-copy.mjs` → 원복 → 재실행 | exit 1, 파일 경로/줄번호/금지어 출력 → 원복 후 exit 0 | `...:34 — 금지어 "매수신호"`, exit 1 → 원복 후 `금지표현 검사 통과`, exit 0 | Pass | 5단계가 확인한 "추천 종목입니다"와 다른 용어로 독립 재현(코디네이터 지시 2) |
-| TC-021 | REQ-008 — 금지어 "손실보전" 독립 재현 | 없음 | 동일 절차 | exit 1 + 정확한 위치·용어 출력 → 원복 후 exit 0 | `...:34 — 금지어 "손실보전"`, exit 1 → 원복 후 통과 | Pass | |
-| TC-022 | REQ-008 — 금지어 "수익보장" 독립 재현 | 없음 | 동일 절차 | 동일 | `...:34 — 금지어 "수익보장"`, exit 1 → 원복 후 통과 | Pass | |
-| TC-023 | REQ-008 — 임의 구간화 패턴 "PER 상위 20% 구간" 독립 재현 | 없음 | 동일 절차 | 리터럴 문자열이 아니라 정규식 패턴(`FORBIDDEN_PATTERNS`)으로 잡혀야 함 | `...:34 — 금지어 "PER/PBR 임의 구간화 표현(백분위 방식과 불일치)"`, exit 1 → 원복 후 통과 | Pass | 04-ux-design.md §2-6 마지막 행(percentile 불일치) 매핑 확인 |
-| TC-024 | REQ-008 — 금지어 "확실한" 독립 재현 | 없음 | 동일 절차 | 동일 | `...:34 — 금지어 "확실한"`, exit 1 → 원복 후 통과 | Pass | |
-| TC-025 | REQ-008 — `npm run build`가 금지어 발견 시 완전 중단 | 없음 | `copy.ko.json`에 "매수신호" 주입 후 `npm run build` 전체 실행(단축 스크립트가 아니라 실제 build 명령) | `prebuild` 단계에서 실패해 `next build`(Compiled/Route 생성 로그)가 전혀 출력되지 않아야 함 | `prebuild` 실패 메시지만 출력되고 "Compiled successfully"/"Route (app)" 등 `next build`의 어떤 로그도 나타나지 않음, `npm run build` 전체 exit 1 → 원복 후 재실행 시 정상적으로 `next build`까지 완주 | Pass | AC-3 불릿3 |
-| TC-026 | REQ-008 — 금지어 목록 대조표 전수 대조 | `04-ux-design.md` §2-6, `lint-forbidden-copy.mjs` | 표의 좌측 컬럼 7개 행을 `FORBIDDEN_TERMS`/`FORBIDDEN_PATTERNS`와 1:1 대조 | 7개 행 전부 리터럴 또는 정규식으로 커버되어야 함 | 7행 전부 커버 확인: ①"추천 종목/목록"→"추천"(부분일치로 포괄, "TOP 추천주"도 "추천" 포함이라 함께 커버), ②"매수/매도 신호"→4개 리터럴("매수 신호"/"매수신호"/"매도 신호"/"매도신호") 정확 매핑, ③"수익보장/손실보전/원금보장"→3개 리터럴 정확 매핑, ④"지금 사세요/매수 타이밍"→2개 리터럴 정확 매핑, ⑤"베스트 종목"→리터럴 정확 매핑, ⑥"PER 상위 20% 구간"→정규식 `(PER\|PBR)\s*상위\s*\d+\s*%\s*구간` 매핑, ⑦"확실한/안전한 조건"→2개 리터럴 정확 매핑 | Pass | AC-3 불릿4. 갭 없음 확인 |
-| TC-027 | REQ-008 — (AC 범위 밖, 위험도 기반 추가) 물리적 줄바꿈으로 금지어 우회 가능성 | 없음 | `frontend/src/lib/`에 백틱 멀티라인 문자열로 "손실보\n전"(중간에 실제 줄바꿈)을 담은 임시 `.ts` 파일 생성 → 린트 실행 → 파일 삭제 → 재실행 | 스캐너가 파일 전체 내용이 아니라 물리적 줄 단위로 검사하므로, 용어가 줄바꿈으로 분리되면 탐지에 실패할 위험이 있음 | 실제로 탐지 실패: "금지표현 검사 통과 (검사 파일 12개)"로 **위반을 통과시킴**(exit 0) → 파일 삭제 후 재실행하면 원래대로 11개 파일로 통과 | **Fail(결함)** | DEF-002로 등록(§6). 현재 실제 카피 리소스(`copy.ko.json`)는 전부 단일 라인 JSON 문자열이라 이 경로로 실제 위반이 발생한 사례는 없음(즉각적 REQ-008 미반영은 아님). 다만 "CI가 반드시 잡는다"는 설계 의도(03-system-design §6-4)에 구조적 공백이 있어, 향후 `.tsx` 안에 여러 줄 JSX 텍스트/템플릿 리터럴로 카피를 작성하면 우회될 수 있음 |
-| TC-028 | REQ-009 — 정적 코드 검토, 사용자 식별 파라미터 부재 | `services/public_api/api/*.py` | `stocks.py`/`calendar.py`/`health.py`의 모든 `Query(...)` 선언 목록화 | `user_id`/`holding_price`/`quantity`/`account`/`token` 등 없어야 함 | `stocks.py`: `query`, `market`만 존재. `calendar.py`: `market`, `as_of`만 존재. `health.py`: 파라미터 없음. 개인식별/개인화 파라미터 0건 | Pass | AC-4 불릿1. 5단계와 동일한 결론이나, 6단계가 직접 3개 파일을 다시 읽어 재확인(재인용 아님) |
-| TC-029 | REQ-009 — 정적 코드 검토, 헤더/쿠키 분기 부재 | `services/public_api/main.py` | 미들웨어/`Request` 객체 사용처 전수 확인 | 헤더/쿠키를 읽어 응답을 분기하는 코드가 없어야 함 | `main.py`에 등록된 미들웨어 없음, `Request` 매개변수는 FastAPI 예외 핸들러 시그니처 요구사항으로만 존재하며 실제로 헤더/쿠키를 읽는 코드는 없음 | Pass | AC-4 불릿2 |
-| TC-030 | REQ-009 — **(보강, 코디네이터 지시 4)** 블랙박스 동일성 검증 | FastAPI `TestClient`, DI로 `get_stock_search_repository` 오버라이드 | 동일한 `query=삼성`에 대해 (a) 헤더/쿠키 없음, (b) `Authorization: Bearer fake-token-123` + 쿠키 `session_id`/`user_id` 포함 두 가지 요청을 보내 응답 바디를 비교 | 두 응답이 완전히 동일해야 함(요청자 식별 정보가 응답에 영향을 주지 않음을 실제 HTTP 계층에서 증명) | `r1.json()['data'] == r2.json()['data']` → `True`, 둘 다 200 | Pass | 5단계의 grep 기반 정적 검증은 "코드에 그런 코드가 없다"만 증명하고 "실제로 요청자를 구분하지 않는다"는 런타임 사실을 증명하지 못한다(코드가 grep 대상 밖의 방식—예: FastAPI 미들웨어 스택 최상위, ASGI 레벨—으로 개인화할 가능성을 배제 못함). 이번 TC-030으로 런타임 동일성을 직접 증명해 grep 검증의 한계를 보강함 |
-| TC-031 | REQ-009 — (경계값) 알 수 없는 쿼리파라미터(`user_id`) 첨부 시 무시 여부 | 동일 | `GET /api/v1/stocks?query=삼성&user_id=999` 요청 | FastAPI가 정의되지 않은 파라미터를 무시하고 정상 응답해야 함(개인화 시도가 있어도 응답에 반영되지 않음) | 200, 응답 데이터가 파라미터 없는 요청과 동일 | Pass | REQ-009의 "불특정 다수 대상 동일 정보 제공" 원칙이 악의적/실수로 개인 식별 파라미터를 보내도 깨지지 않음을 확인 |
-| TC-032 | REQ-010 — 프론트엔드 결제/광고 SDK 부재 | `frontend/package.json` | `dependencies`/`devDependencies`를 `stripe`/`iamport`/`toss`/`kakaopay`/`adsense`/`admob`/`paypal`/`coupang` 키워드로 검색 | 매칭 없음 | 매칭 없음(No files found) | Pass | AC-5 |
-| TC-033 | REQ-010 — 백엔드 결제/광고 SDK 부재 | `requirements.txt`/`requirements-dev.txt` | 동일 키워드 검색 | 매칭 없음 | 매칭 없음 | Pass | AC-5 |
+| TC-001 | 백엔드 정적 분석 회귀 | 변경 없음(UNIT-04는 백엔드 미변경) | `python -m ruff check .` | 전부 통과 | `All checks passed!` | Pass | AC 외 회귀 확인 목적(코디네이터 지시 5). v2: TC-052에서 재확인 |
+| TC-002 | 백엔드 단위테스트 회귀 | 동일 | `python -m pytest tests/unit -q` | 전부 통과, 신규 실패 없음 | `79 passed, 1 warning`(경고는 `httpx` deprecation, 기존부터 존재) | Pass | UNIT-01~03의 79건 전부 회귀 없음. v2: TC-053에서 재확인 |
+| TC-003 | 프론트엔드 ESLint | `frontend/` 의존성 설치됨 | `npm run lint` | 0 error / 0 warning | 출력에 오류/경고 없음(빈 결과) | Pass | v2: TC-049에서 재확인 |
+| TC-004 | TypeScript strict 컴파일 | 동일 | `npx tsc --noEmit` | 오류 없음 | 오류 없음(출력 없음) | Pass | v2: TC-050에서 재확인 |
+| TC-005 | 프로덕션 빌드(정상 상태) | copy.ko.json 원본 상태 | `npm run build` | `prebuild`(금지어 린트) 통과 → `next build` 성공 → 라우트 3개(`/`,`/_not-found`,`/about`) 정적 생성 | 로그와 동일하게 재현됨(`금지표현 검사 통과 (검사 파일 11개)` → `Compiled successfully` → 3개 라우트) | Pass | note §4 재현 확인. v2: TC-051에서 재확인 |
+| TC-006 | REQ-007 — `/` 실제 렌더 HTML에 배너 존재 | `npm run build && npm run start -p 4321` | `curl -s http://localhost:4321/` 후 HTML에서 `class="disclaimer-banner"` 및 정확한 문장 검색 | `<div class="disclaimer-banner" role="note" ...>` 존재, 내부에 정확한 면책 문구 포함 | 정확히 일치하는 마크업/문구 확인 | Pass | AC-1 불릿1. v2: TC-046에서 재확인 |
+| TC-007 | REQ-007 — `/about` 실제 렌더 HTML에도 배너 존재 | 동일 서버 기동 상태 | `curl -s http://localhost:4321/about` 후 동일 검사 | `/`와 동일한 배너 마크업이 `/about`에도 존재 | 동일 마크업 확인 | Pass | v2: TC-046에서 재확인 |
+| TC-008 | REQ-007 — 닫기 버튼 부재 | TC-006/007 HTML 확보 | `grep -o "닫기\|close\|Close\|CLOSE"` 실행 | 매칭 0건 | 매칭 0건(빈 출력) | Pass | v2: TC-046에서 재확인 |
+| TC-009 | REQ-007 — 말줄임 미사용 | TC-006/007 HTML + 컴파일된 CSS 청크 확보 | HTML/CSS 검사 | HTML에 `...` 없음, CSS에 `text-overflow`/`nowrap` 없이 `white-space: normal; overflow-wrap: break-word`만 존재 | 확인됨 | Pass | v2: TC-048에서 재확인 |
+| TC-010 | REQ-007 — 배너/푸터 문구와 백엔드 `DISCLAIMER_TEXT` 문자 단위 일치 | 없음 | Python 스크립트 비교 | 3개 문자열이 완전히 동일 | `True`/`True` | Pass | v2: TC-047에서 재확인 |
+| TC-011 | REQ-007 — 푸터 이중 노출 | TC-006 HTML | HTML 확인 | 면책 전문 + 데이터 출처 고지 + 원본 미제공 문구 존재 | 3개 문구 전부 확인 | Pass | v2: TC-046에서 재확인 |
+| TC-012 | REQ-007 — `/about` 6개 섹션 제목 | TC-007 HTML | `<h2>` 6개 텍스트 추출 | 6개 제목 순서대로 존재 | 6개 전부 확인 | Pass | v2: TC-046에서 재확인 |
+| TC-013 | REQ-006 — 정상 케이스 텍스트 정확도 | 임시 QA 라우트 | 렌더 후 텍스트 조합 확인 | 정확히 일치 | 일치 확인 | Pass | AC-2 불릿1. v2: TC-043에서 정상 케이스 회귀 재확인 |
+| TC-014 | REQ-006 — 지연 케이스, 색상 비의존 경고 | 동일 | 렌더 확인 | `staleness_note` 텍스트 노출 | 확인 | Pass | AC-2 불릿2. 재작업 대상 아님(회귀 위험 낮음, v2 별도 재실행 생략) |
+| TC-015 | REQ-006 — `freshness=null` 예외 없음 | 동일 | 렌더, HTTP 상태코드 확인 | 크래시 없음(200), 대체 문구 | HTTP 200, 문구 확인 | Pass | AC-2 불릿3. v2: TC-043에서 재확인 |
+| TC-016 | REQ-006 — `session_close_at=null` 대체 표시 | 동일 | 렌더 | `trade_date`로 대체 | 확인 | Pass | AC-2 불릿4. 재작업 대상 아님 |
+| TC-017 | REQ-006 — 자체 계산 금지 코드 리뷰 | 소스 | 호출부 전수 확인 | 서버 값만 사용 | 확인됨 | Pass | v2: `DataFreshnessBadge.tsx` 재확인 결과 변경 없음(§4-2 서문 참조) |
+| TC-018 | REQ-006 — (AC 범위 밖) 잘못된 ISO 문자열 입력 시 예외 처리 | `formatKstDateTime` 단독 실행 | `formatKstDateTime("")`, `formatKstDateTime("not-a-date")` 호출 | 크래시 없어야 함 | 둘 다 `RangeError: Invalid time value`로 즉시 throw됨 | **Fail(결함)** | DEF-001로 등록. **v2: §4-2 TC-042/043/044에서 Fixed 확인** |
+| TC-019 | REQ-008 — 정상 상태 린트 통과 | `copy.ko.json` 원본 | `npm run lint:copy` | exit 0 | exit 0 | Pass | v2: TC-051(prebuild)에서 재확인 |
+| TC-020 | REQ-008 — 금지어 "매수신호" 독립 재현 | 없음 | 주입/원복 | exit 1 → exit 0 | 확인 | Pass | v2: TC-040에서 재확인 |
+| TC-021 | REQ-008 — 금지어 "손실보전" 독립 재현 | 없음 | 동일 절차 | 동일 | 확인 | Pass | 재작업 대상 아님(단일 라인 경로는 변경 없음) |
+| TC-022 | REQ-008 — 금지어 "수익보장" 독립 재현 | 없음 | 동일 절차 | 동일 | 확인 | Pass | 동일 |
+| TC-023 | REQ-008 — 임의 구간화 패턴 "PER 상위 20% 구간" 독립 재현 | 없음 | 동일 절차 | 동일 | 확인 | Pass | 동일 |
+| TC-024 | REQ-008 — 금지어 "확실한" 독립 재현 | 없음 | 동일 절차 | 동일 | 확인 | Pass | 동일 |
+| TC-025 | REQ-008 — `npm run build`가 금지어 발견 시 완전 중단 | 없음 | 전체 build 실행 | prebuild 실패, next build 미실행 | 확인 | Pass | 동일 |
+| TC-026 | REQ-008 — 금지어 목록 대조표 전수 대조 | 04-ux-design.md §2-6 | 대조 | 7개 행 전부 커버 | 확인 | Pass | v2: 목록 자체가 일부 정리됨(공백 변형 중복 제거) — §4-2 서문에서 재대조 |
+| TC-027 | REQ-008 — (AC 범위 밖) 물리적 줄바꿈으로 금지어 우회 가능성 | 없음 | 멀티라인 임시 파일 생성/삭제 | 탐지 실패 위험 | 실제로 탐지 실패(exit 0으로 통과) | **Fail(결함)** | DEF-002로 등록. **v2: §4-2 TC-034~037에서 Fixed 확인** |
+| TC-028 | REQ-009 — 정적 코드 검토, 사용자 식별 파라미터 부재 | 소스 | 목록화 | 없어야 함 | 0건 | Pass | 백엔드 미변경, v2 재실행 생략(§2 제외범위 근거) |
+| TC-029 | REQ-009 — 정적 코드 검토, 헤더/쿠키 분기 부재 | `main.py` | 확인 | 없어야 함 | 없음 | Pass | 동일 |
+| TC-030 | REQ-009 — 블랙박스 동일성 검증 | TestClient | 헤더/쿠키 유무 비교 | 응답 동일 | 동일 확인(`True`) | Pass | 동일 |
+| TC-031 | REQ-009 — 알 수 없는 쿼리파라미터 무시 | 동일 | `user_id=999` | 무시됨 | 확인 | Pass | 동일 |
+| TC-032 | REQ-010 — 프론트엔드 결제/광고 SDK 부재 | `package.json` | 키워드 검색 | 매칭 없음 | 매칭 없음 | Pass | 동일 |
+| TC-033 | REQ-010 — 백엔드 결제/광고 SDK 부재 | `requirements*.txt` | 동일 | 매칭 없음 | 매칭 없음 | Pass | 동일 |
 
-> 정상 경로(TC-005~007, TC-013, TC-019, TC-028~029, TC-032~033), 경계값(TC-009, TC-016, TC-026, TC-031), 예외 입력(TC-015, TC-018, TC-027, TC-020~025 금지어 주입)을 모두 포함했다. 동시성/부하, 권한 경계(로그인·역할 기반 접근제어)는 이 서비스에 인증 자체가 없으므로(REQ-009/REQ-016 Out-of-Scope) 해당 없음.
+## 4-2. v2 재검증 테스트 케이스 (DEF-001/DEF-002 재작업 대응)
+
+### 사전 코드 리뷰 (TC-017 갱신)
+
+수정된 `formatKst.ts`/`lint-forbidden-copy.mjs`를 전문 읽었다. `DataFreshnessBadge.tsx`의 `formatKstDateTime` 호출부는 v1과 동일하게 `freshness.session_close_at`/`freshness.generated_at`(서버 제공 값)만 인자로 사용하며 변경되지 않았다(AC-2 자체 계산 금지 원칙 유지, TC-017 회귀 없음).
+
+### DEF-002 재현 — 실제 줄바꿈으로 분리된 금지어 (AC-3 신규 불릿)
+
+| ID | 시나리오 | 사전조건 | 실행 절차 | 예상 결과 | 실제 결과 | Pass/Fail | 비고 |
+|----|----------|----------|-----------|-----------|-----------|-----------|------|
+| TC-034 | 단순 2줄 분리("손실보\n전", 실제 줄바꿈 포함 백틱 템플릿 리터럴) | `frontend/src/lib/__verify004__/multiline-1.ts` 임시 생성 | `node scripts/lint-forbidden-copy.mjs` 실행 | exit 1, 원본 위치(1행) 기준 "손실보전" 리포트 | `...multiline-1.ts:1 — 금지어 "손실보전"`, exit 1 | **Pass** | v1 TC-027과 동일한 시나리오. 수정 전(v1)에는 exit 0(오탐 없이 통과)이었던 것이 exit 1로 정확히 반전됨 |
+| TC-035 | 들여쓰기 포함 3줄 분리("이 종목은\n   확\n실한\n수익을 드립니다") | 동일 디렉터리에 `multiline-2.ts` 임시 생성 | 동일 명령 | exit 1, "확실한" 리포트 | `...multiline-2.ts:2 — 금지어 "확실한"`, exit 1 | **Pass** | 중간에 공백(들여쓰기)이 섞여 있어도(정규화가 스페이스도 제거) 탐지됨을 확인 — 단순 개행 제거보다 넓은 케이스 |
+| TC-036 | 정규식 패턴이 탭/개행/공백에 걸쳐 분리("PER 상위\n\t20\n%\n 구간", 백틱 리터럴에 실제 탭/개행 삽입) | 동일 디렉터리에 `multiline-3.ts` 임시 생성 | 동일 명령 | exit 1, "PER/PBR 임의 구간화 표현" 리포트 | `...multiline-3.ts:1 — 금지어 "PER/PBR 임의 구간화 표현(백분위 방식과 불일치)"`, exit 1 | **Pass** | `FORBIDDEN_PATTERNS`(정규식)도 리터럴과 동일하게 정규화 이후 매칭됨을 확인. 최초 시도 시 JS 문자열 이스케이프(`\n`을 텍스트로 오기입)로 잘못 구성해 미탐지됐던 실수를 발견해 실제 물리적 줄바꿈으로 재구성 후 재확인(테스트 자체의 오류를 자체 교정한 기록, TC-041 참조) |
+| TC-037 | 임시 파일 삭제 후 원상복구 | TC-034~036 파일 존재 | 3개 파일 삭제 후 재실행 | exit 0, 원래 11개 파일로 복귀 | `금지표현 검사 통과 (검사 파일 11개).`, exit 0 | **Pass** | `git status --short` 결과 변경 없음(작업 트리 클린) 확인 |
+
+### DEF-002 오탐(false positive) 방지 검증 — AC 범위 밖, 코디네이터 지시 사항
+
+| ID | 시나리오 | 사전조건 | 실행 절차 | 예상 결과 | 실제 결과 | Pass/Fail | 비고 |
+|----|----------|----------|-----------|-----------|-----------|-----------|------|
+| TC-038 | 자연스러운 문단 줄바꿈이 있는 정상 카피(About 실제 문구를 소스 가독성을 위해 6~7줄로 재구성, 2블록 11줄) | `natural-wrap.ts` 임시 생성 | `node scripts/lint-forbidden-copy.mjs` | 오탐 없이 exit 0 | `금지표현 검사 통과 (검사 파일 12개).`, exit 0 | **Pass** | 정규화 로직이 공백을 전부 제거해도, 실제 금지어가 없는 정상 문장은 오탐되지 않음을 확인 |
+| TC-039 | 인접 단어 경계 근접 케이스("...주가 추\n이가 상승했습니다. 천천히...", "...신뢰할 수 있는 방식으로 계산되며 안전\n성을 우선 고려한 조건만...") | `near-miss.ts` 임시 생성 | 동일 | 오탐 없이 exit 0(중간에 다른 글자가 끼어 있어 "추천"/"안전한 조건"으로 직접 이어지지 않음) | `금지표현 검사 통과 (검사 파일 13개).`, exit 0 | **Pass** | 정규화가 공백을 제거해도 사이에 다른 문자가 있으면 매칭되지 않음을 확인. 다만 한국어 문법상 서술어 어간(예: "확실"/"안전")은 항상 어미가 붙어 한 단어로 존재하므로 이런 경계 근접 사례를 인위적으로 구성하기 어려웠다는 한계도 함께 기록(§7 리스크 참조) |
+| TC-039-cleanup | 임시 파일 삭제 후 원상복구 | TC-038/039 파일 존재 | 삭제 후 재실행 | exit 0, 11개 파일 복귀 | `금지표현 검사 통과 (검사 파일 11개).`, exit 0 | **Pass** | `git status --short` 클린 확인 |
+
+### DEF-002 회귀 — 기존 단일 라인 경로
+
+| ID | 시나리오 | 사전조건 | 실행 절차 | 예상 결과 | 실제 결과 | Pass/Fail | 비고 |
+|----|----------|----------|-----------|-----------|-----------|-----------|------|
+| TC-040 | 실제 `copy.ko.json`에 단일 라인 금지어("매수신호") 주입 | `copy.ko.json` 백업 후 `about.contactBody`에 문자열 추가(Python 스크립트) | `node scripts/lint-forbidden-copy.mjs` → 원복 → 재실행 | exit 1(정확한 파일:줄번호) → 원복 후 exit 0 | `...copy.ko.json:34 — 금지어 "매수신호"`, exit 1 → 원복 후 `금지표현 검사 통과 (검사 파일 11개).`, exit 0 | **Pass** | v1 TC-020과 동일한 시나리오로 회귀 없음 확인. 공백 변형("매수 신호"/"매수신호") 통합 이후에도 정확히 탐지됨 |
+
+### DEF-002 잔존 리스크 조사 — AC 범위 밖, 위험 기반 신규 발견
+
+| ID | 시나리오 | 사전조건 | 실행 절차 | 예상 결과 | 실제 결과 | Pass/Fail | 비고 |
+|----|----------|----------|-----------|-----------|-----------|-----------|------|
+| TC-041 | JS 문자열 이스케이프 시퀀스로 분리된 금지어(소스 텍스트에 실제 줄바꿈 바이트가 아니라 백슬래시+`n` 두 글자로 `"손실보\n전"`이 존재 — `cat -A`로 실제 개행이 아님을 직접 확인) | `escape-seq.ts` 임시 생성(Write 도구로 정확히 2글자 이스케이프 텍스트 생성, bash printf의 이중 이스케이프 오류를 `cat -A`로 먼저 검증) | `node scripts/lint-forbidden-copy.mjs` | AC-3 신규 불릿의 대상은 아니나, 위험 기반으로 탐지 여부 확인 | **탐지 실패** — `금지표현 검사 통과 (검사 파일 12개).`, exit 0 (실제로는 "손실보전"이 이스케이프 형태로 존재) | **Fail(신규 결함, AC 범위 밖)** | **DEF-009로 등록(§6).** 이 우회는 DEF-002 수정으로 새로 생긴 회귀가 아니다 — 스캐너가 파일을 텍스트 그대로 읽고(JS 런타임처럼 이스케이프 시퀀스를 해석하지 않고) 물리적 개행만 제거하기 때문에, "실제 개행으로 분리"(수정됨)와 "이스케이프 문자로 분리"(여전히 우회 가능)는 서로 다른 경로다. 구버전(줄 단위 스캔)에서도 동일하게 우회됐을 것이므로 이번 수정의 퇴행은 아니다. 임시 파일 삭제 후 재실행해 11개 파일로 복귀 확인(`git status --short` 클린) |
+
+### DEF-001 재현 — 잘못된 입력에 대한 폴백 반환 (AC-2 신규 불릿)
+
+| ID | 시나리오 | 사전조건 | 실행 절차 | 예상 결과 | 실제 결과 | Pass/Fail | 비고 |
+|----|----------|----------|-----------|-----------|-----------|-----------|------|
+| TC-042 | 직접 함수 호출 — 빈 문자열/공백/형식이 깨진 문자열/범위를 벗어난 날짜값/정상 ISO 5종 | `formatKst.ts`를 Node `--experimental-strip-types`로 직접 import(트랜스파일러 의존 없이 소스 그대로 실행) | `formatKstDateTime('')`, `formatKstDateTime('not-a-date')`, `formatKstDateTime('2026-13-45T99:99:99+09:00')`, `formatKstDateTime('   ')`, `formatKstDateTime('2026-09-11T15:30:00+09:00')` 호출 | 앞의 4개는 예외 없이 `INVALID_DATE_FALLBACK_TEXT`("기준시각 확인 불가") 반환, 마지막은 `"2026-09-11 15:30"` 정상 반환(회귀 없음) | `''` → `"기준시각 확인 불가"`, `'not-a-date'` → `"기준시각 확인 불가"`, `'2026-13-45T99:99:99+09:00'` → `"기준시각 확인 불가"`, `'   '` → `"기준시각 확인 불가"`, 정상 ISO → `"2026-09-11 15:30"` | **Pass** | 4개 예외 케이스 전부 예외 없이 폴백 반환, 정상 케이스는 v1 TC-013과 완전히 동일한 출력으로 회귀 없음 확인. v1 TC-018이 지목했던 정확히 그 두 입력(`''`, `'not-a-date'`)이 더 이상 `RangeError`를 던지지 않음을 직접 재현 |
+| TC-043 | 실제 렌더링 — `DataFreshnessBadge`에 malformed/empty 값을 실제로 흘려보낸 4개 조합 + 정상 + `freshness=null` | 임시 QA 라우트(`frontend/src/app/qa-verify004-temp/page.tsx`, 검증 후 즉시 삭제) + `npm run build && npm run start -p 4400` | (1) `generated_at=""`, (2) `generated_at="not-a-date"`, (3) `session_close_at=""`, (4) `session_close_at="not-a-date"`, (5) 정상 값, (6) `freshness=null` 6개 섹션을 한 페이지에 렌더 → `npm run build`로 정적 프리렌더(빌드 타임 예외 여부 1차 확인) → `curl`로 HTTP 상태코드/텍스트 확인 | 6개 전부 크래시 없이(빌드 성공, HTTP 200) 렌더되어야 하며, malformed/empty 케이스는 텍스트에 "기준시각 확인 불가"가, `freshness=null`은 "데이터 기준시각을 확인하는 중입니다"가, 정상 케이스는 AC-2 원문과 정확히 일치하는 텍스트가 나타나야 함 | `npm run build` 정적 프리렌더 성공(예외 시 빌드 자체가 실패하므로 이것만으로도 크래시 없음의 1차 증거), HTTP 200, 6개 섹션 각각 기대 텍스트와 정확히 일치(예: `case-empty-generated` → "...2026-09-11 15:30 마감 데이터 · 기준시각 확인 불가 갱신", `case-malformed-session` → "...기준시각 확인 불가 마감 데이터 · 2026-09-12 07:10 갱신", `case-normal` → "국내증권시장(KRX) 기준 2026-09-11 15:30 마감 데이터 · 2026-09-12 07:10 갱신", `case-null-freshness` → "데이터 기준시각을 확인하는 중입니다") | **Pass** | v1 TC-018은 함수 단독 호출만 확인했을 뿐 실제 컴포넌트 렌더링까지는 확인하지 않았다 — 6단계가 이번에 처음으로 "실제 화면에 연결됐을 때도 크래시하지 않는다"는 것을 렌더링 레벨에서 증명(UNIT-06~08의 실제 연결 시나리오를 미리 시뮬레이션). 검증 후 라우트 삭제 → `npm run build` 재실행해 라우트가 다시 3개(`/`,`/_not-found`,`/about`)로 복귀함을 확인(원상복구 완료, `git status --short` 클린) |
+
+### DEF-001 잔존 리스크 조사 — AC 범위 밖, 위험 기반 신규 발견
+
+| ID | 시나리오 | 사전조건 | 실행 절차 | 예상 결과 | 실제 결과 | Pass/Fail | 비고 |
+|----|----------|----------|-----------|-----------|-----------|-----------|------|
+| TC-044 | TypeScript 타입을 우회하는 런타임 값 — `null` | `formatKstDateTime`의 매개변수 타입은 `string`(non-nullable)이지만, 백엔드 스키마 드리프트나 `JSON.parse()` 결과를 타입 단언(`as`)으로 흘려보내는 실전 시나리오를 가정해 런타임에 `null`을 강제 전달 | Node에서 `formatKstDateTime(null as unknown as string)` 호출 | AC-2 신규 불릿의 명시 대상은 아니나, "빈 문자열/malformed"와 같은 리스크 범주(스키마 드리프트)에 속하므로 위험 기반으로 확인 | **예외는 던지지 않지만 폴백 문구도 아닌 `"1970-01-01 09:00"`(Unix epoch)을 반환** — `new Date(null)`이 `Invalid Date`가 아니라 `1970-01-01T00:00:00.000Z`로 해석되어 `Number.isNaN(date.getTime())` 가드를 통과해버림 | **Fail(신규 결함, AC 범위 밖)** | **DEF-008로 등록(§6).** 크래시는 없으나(원래 DEF-001이 막고자 한 "페이지 전체 다운"은 발생하지 않음) 명백히 잘못된 날짜("1970-01-01")를 마치 정상 데이터처럼 표시해 사용자에게 오인을 줄 수 있다. 현재 `DataFreshnessBadge`의 실제 호출부는 `session_close_at`을 호출 전에 이미 null 체크하고, `generated_at`은 백엔드 Pydantic 모델이 non-Optional로 강제하므로 정상 계약 준수 시에는 발생하지 않는다 — 그러나 원래 DEF-001과 정확히 동일한 위협 모델("계약을 무시한 런타임 값")이므로 반드시 기록한다 |
+| TC-045 | TypeScript 타입을 우회하는 런타임 값 — `undefined`, `0` | 동일 | `formatKstDateTime(undefined as unknown as string)`, `formatKstDateTime(0 as unknown as string)` 호출 | 확인 필요(대조군) | `undefined` → `"기준시각 확인 불가"`(정상 폴백, `new Date(undefined)`가 `Invalid Date`이므로 가드 통과 안 함), `0` → `"1970-01-01 09:00"`(TC-044와 동일한 문제 — `new Date(0)`도 유효한 날짜로 해석됨) | **Pass(undefined)/Fail(0, DEF-008과 동일 근본원인)** | `undefined`는 문제 없음을 대조군으로 확인. `0`(falsy지만 유효한 타임스탬프로 해석되는 값)도 DEF-008과 동일한 근본 원인(`new Date()`가 "유효하지만 의미 없는" 날짜를 만들어내는 입력에 대해서는 현재 가드가 무력함)이므로 별도 결함 번호를 추가하지 않고 DEF-008에 근거로 병합 |
+
+### 회귀 확인 — v1 PASS 항목 (REQ-007/REQ-008 정상 경로/게이트)
+
+| ID | 시나리오 | 사전조건 | 실행 절차 | 예상 결과 | 실제 결과 | Pass/Fail | 비고 |
+|----|----------|----------|-----------|-----------|-----------|-----------|------|
+| TC-046 | REQ-007 실제 렌더링 회귀(배너/닫기부재/about 6개 h2) | `npm run build && npm run start -p 4399` | `curl`로 `/`, `/about` HTML 확인(TC-006~008, 011, 012와 동일 절차) | v1과 동일한 결과 | `class="disclaimer-banner"` 존재, 정확한 문구 4회 확인(배너 2곳 + 대체정보 확인), "닫기/close" 매칭 0건, `/about` 6개 `<h2>`("이 서비스는 무엇인가요"~"문의") 전부 정확히 존재 | **Pass** | 회귀 없음 |
+| TC-047 | `DISCLAIMER_TEXT` 문자 단위 일치 회귀 | 없음 | `services.public_api.schemas.envelope.DISCLAIMER_TEXT`를 직접 import해 `copy.ko.json`과 비교(Python) | 완전 동일 | `banner == backend: True`, `footer == backend: True` | **Pass** | 회귀 없음 |
+| TC-048 | 말줄임 미사용 CSS 회귀 | 빌드 산출물 | `.next/static/chunks/*.css`에서 `.disclaimer-banner__text` 규칙 확인 | `text-overflow` 없이 `overflow-wrap:break-word;white-space:normal`만 존재 | 정확히 동일한 규칙 확인(`overflow-wrap:break-word;white-space:normal;margin:0;font-size:13px;line-height:1.5`) | **Pass** | 회귀 없음 |
+| TC-049 | 프론트엔드 ESLint 회귀 | 없음 | `npm run lint` | 0 error/0 warning | 출력 없음(통과) | **Pass** | 5단계 note §5 "게이트1" 주장과 일치, 독립 재실행으로 확인 |
+| TC-050 | TypeScript strict 컴파일 회귀 | 없음 | `npx tsc --noEmit` | 오류 없음 | 출력 없음(통과) | **Pass** | 동일 |
+| TC-051 | 프로덕션 빌드 회귀(정상 카피) | `copy.ko.json` 원본 | `npm run build` | `prebuild`(11개 파일 통과) → `next build` 성공 → 라우트 3개 | `금지표현 검사 통과 (검사 파일 11개).` → `Compiled successfully` → `/`, `/_not-found`, `/about` | **Pass** | 회귀 없음 |
+| TC-052 | 백엔드 정적 분석 회귀 | 없음 | `python -m ruff check .` | 전부 통과 | `All checks passed!` | **Pass** | 이번 재작업이 프론트엔드 전용임에도 전체 재실행으로 재확인 |
+| TC-053 | 백엔드 단위테스트 회귀 | 없음 | `python -m pytest tests/unit -q` | 79 passed, 신규 실패 없음 | `79 passed, 1 warning`(경고는 기존과 동일한 `httpx` deprecation) | **Pass** | v1과 완전히 동일한 결과(신규 실패 0건) |
+
+> 정상 경로(TC-037, 040, 042의 정상 ISO, 043의 정상/null, 046~053), 경계값(TC-035의 들여쓰기 혼합, 039의 인접 경계, 042의 `'   '`/범위초과 날짜), 예외 입력(TC-034~036 멀티라인 금지어, 042의 빈 문자열/malformed, 043의 malformed 렌더링, 044~045의 타입 우회 값)을 모두 포함했다. 코드를 직접 수정하지 않고 재현·삭제만 반복했으며, 매 케이스 후 `git status --short`로 작업 트리 클린 상태를 확인했다.
 
 ## 5. 커버리지
-- 커버리지 지표: `unit-04-note.md` §7의 인수 조건(AC-1~AC-5) 전체 불릿을 1:1로 테스트 케이스에 매핑함 — AC-1(6개 불릿) → TC-006~012(7건, 불릿5는 이중노출까지 나눠 TC-011로 별도 확인), AC-2(5개 불릿) → TC-013~017(5건 1:1), AC-3(4개 불릿) → TC-019/020~024/025/026(4개 불릿 전부 커버, 금지어는 5종으로 확장), AC-4(2개 불릿) → TC-028~031(2건 1:1 + 보강 2건), AC-5(1개 항목) → TC-032~033(프론트/백엔드 분리 확인). AC 불릿 커버리지 100%.
-- 커버되지 않은 부분과 사유: §2 제외 범위에 명시한 4가지(실 브라우저/접근성 도구, `DataFreshnessBadge` 실 데이터 연결, CI 파이프라인 프론트엔드 잡, REQ-001~004 화면)는 이번 유닛의 AC 문면 밖이거나 후속 유닛/인프라 작업 범위라 커버하지 않았다. 이는 note가 이미 자인한 리스크와 동일하며, 5단계의 "만들지 않았다"는 서술을 그대로 받아들이지 않고 직접 grep으로 미사용(dead code)임을 재확인했다(§4 TC-013 비고).
+- 커버리지 지표: v1의 AC-1~AC-5 커버리지(100%)는 그대로 유지. **v2 추가**: `unit-04-note.md` "재작업 이력" 절이 신설한 AC-2 신규 불릿(DEF-001 재발 방지)과 AC-3 신규 불릿(DEF-002 재발 방지)을 각각 TC-042~045, TC-034~041로 매핑해 100% 커버했다. 회귀 대상인 기존 AC 전 불릿도 TC-046~053(및 §4 원문의 "v2에서 재확인" 비고)으로 재확인해 커버리지 공백이 없다.
+- 커버되지 않은 부분과 사유: v1 §2 제외 범위(실 브라우저/접근성 도구, `DataFreshnessBadge` 실 데이터 연결, CI 파이프라인 프론트엔드 잡, REQ-001~004 화면)는 v2에서도 동일하게 후속 유닛/인프라 범위로 남는다. **v2 신규**: DEF-008(TC-044/045)·DEF-009(TC-041)는 AC 문면 밖에서 위험 기반으로 발견한 항목이라 "커버되지 않은 부분"이 아니라 "AC 밖에서 능동적으로 추가 발견한 리스크"로 분류하며, §6/§7에 결함으로 정식 등록해 은폐 없이 다음 단계로 인계한다.
 
 ## 6. 결함(Defect) 목록
 
 | ID | 설명 | 재현 절차 | 심각도(Critical/High/Medium/Low) | 상태(Open/Fixed/Deferred) | 조치 내용 |
 |----|------|-----------|-----------------------------------|----------------------------|-----------|
-| DEF-001 | `formatKstDateTime()`이 빈 문자열/형식이 깨진 ISO 문자열을 받으면 `RangeError: Invalid time value`를 던진다. `DataFreshnessBadge`가 이 함수를 try/catch 없이 렌더 본문에서 직접 호출하므로, 백엔드가 어떤 이유로든(스키마 드리프트, 직렬화 버그) `generated_at`/`session_close_at`에 빈 값·깨진 값을 담아 보내면 이 컴포넌트를 쓰는 화면 전체가 렌더링 예외로 크래시한다. | `frontend/`에서 `node -e "..."`로 `formatKstDateTime('')`/`formatKstDateTime('not-a-date')`를 직접 호출(§4 TC-018). 둘 다 즉시 `RangeError` throw. | Medium | Open | 미조치. 현재 `DataFreshnessBadge`는 어떤 화면에서도 import되지 않는 dead code라 지금 당장 REQ-006 미반영으로 이어지지는 않지만, UNIT-06~08이 이 컴포넌트를 실 API 응답에 연결하기 전에 반드시 방어 코드(try/catch 또는 값 유효성 검사 후 대체 문구)를 추가해야 한다. 5단계 또는 UNIT-06~08 담당 유닛으로 재작업 요청. |
-| DEF-002 | `frontend/scripts/lint-forbidden-copy.mjs`가 파일을 물리적 줄(line) 단위로 스캔하기 때문에, 금지어가 실제 줄바꿈으로 분리되어 있으면(예: 템플릿 리터럴/멀티라인 JSX 텍스트 안의 "손실보\n전") 탐지하지 못하고 빌드를 통과시킨다. | `frontend/src/lib/`에 백틱 멀티라인 문자열로 "손실보\n전"을 담은 임시 `.ts` 파일을 만들고 `node scripts/lint-forbidden-copy.mjs` 실행(§4 TC-027) → "금지표현 검사 통과"로 오탐 없이 통과(exit 0), 실제로는 위반. | Medium | Open | 미조치. 현재 실제 카피(`copy.ko.json`)는 전부 단일 라인 JSON 문자열이라 즉시 발생하는 위반 사례는 없다(REQ-008 현재 미반영 아님). 그러나 03-system-design.md §6-4가 "위반 시 빌드 실패"를 CI 게이트의 핵심 보장으로 명시한 만큼, 향후 `.tsx`에 멀티라인 JSX 텍스트/템플릿 리터럴 카피가 추가되면 우회 가능하다. 스캔 로직을 파일 전체 문자열 기준(개행 제거 후 검사) 또는 AST 기반으로 강화하도록 5단계에 재작업 요청 권고. |
+| DEF-001 | `formatKstDateTime()`이 빈 문자열/형식이 깨진 ISO 문자열을 받으면 `RangeError: Invalid time value`를 던진다. | v1: `frontend/`에서 `node -e "..."`로 직접 호출, 즉시 `RangeError` throw(§4 TC-018). | Medium | **Fixed(v2 독립 재검증 완료)** | 5단계가 `Number.isNaN(date.getTime())` 가드 + `INVALID_DATE_FALLBACK_TEXT`("기준시각 확인 불가") 반환으로 수정. **6단계가 독립적으로 재현**: (1) Node `--experimental-strip-types`로 함수를 직접 실행해 `''`/`'not-a-date'`/범위초과 날짜값/공백 문자열 4종 전부 예외 없이 폴백 반환 확인(TC-042), (2) 정상 ISO 입력은 v1과 동일한 출력으로 회귀 없음 확인(TC-042), (3) 실제 `DataFreshnessBadge` 렌더링(임시 QA 라우트, `npm run build`/`start`)으로 4개 malformed/empty 조합이 전부 크래시 없이(빌드 성공, HTTP 200) 기대 폴백 텍스트를 렌더함을 확인(TC-043). AC-2 신규 불릿을 100% 충족. **단, 이 수정 범위를 벗어난 `null`/`0` 입력에서는 예외 대신 잘못된 날짜(1970-01-01)를 반환하는 신규 리스크를 발견해 DEF-008로 별도 등록했다(아래 참조, DEF-001 자체의 Fixed 판정과는 무관 — AC-2 신규 불릿이 요구한 범위는 정확히 충족했기 때문).** |
+| DEF-002 | `frontend/scripts/lint-forbidden-copy.mjs`가 파일을 물리적 줄(line) 단위로 스캔하기 때문에, 금지어가 실제 줄바꿈으로 분리되어 있으면 탐지하지 못하고 빌드를 통과시킨다. | v1: `frontend/src/lib/`에 "손실보\n전"(실제 줄바꿈)을 담은 임시 `.ts` 파일 생성 후 통과(§4 TC-027). | Medium | **Fixed(v2 독립 재검증 완료)** | 5단계가 파일 전체를 공백류 문자 제거 후 정규화한 문자열로 검사하도록 변경(`normalizeWithIndexMap()`). **6단계가 독립적으로 재현**: (1) v1과 동일한 시나리오("손실보\n전")를 재현해 exit 1로 정확히 탐지됨을 확인(TC-034), (2) 들여쓰기가 섞인 3줄 분리("확실한")와 정규식 패턴이 탭/개행에 걸쳐 분리된 경우("PER/PBR...")도 전부 exit 1로 탐지됨을 확인해 v1이 지적한 특정 사례 하나만 땜질된 것이 아니라 구조적으로 해결됐음을 확인(TC-035/036), (3) 자연스러운 문단 줄바꿈이 있는 정상 카피(11줄) 및 인접 단어 경계 근접 케이스에서 오탐이 없음을 확인해 "과도하게 민감해지지 않았는지"도 검증(TC-038/039), (4) 기존 단일 라인 위반("매수신호")을 실제 `copy.ko.json`에 주입해 회귀 없이 여전히 탐지됨을 확인(TC-040). AC-3 신규 불릿을 100% 충족. **단, 이 수정과 무관하게 원래부터 존재했던(퇴행 아님) JS 문자열 이스케이프 시퀀스 기반 우회를 발견해 DEF-009로 별도 등록했다(아래 참조).** |
+| DEF-008 | `formatKstDateTime()`이 TypeScript 타입 계약을 우회하는 런타임 `null`/`0` 값을 받으면, 예외를 던지지도 폴백 문구를 반환하지도 않고 `"1970-01-01 09:00"`(Unix epoch를 KST로 변환한 값)이라는 **잘못됐지만 형식은 정상처럼 보이는 날짜**를 반환한다. `new Date(null)`/`new Date(0)`이 `Invalid Date`가 아니라 유효한 `Date` 객체(1970-01-01)로 해석되기 때문에 `Number.isNaN(date.getTime())` 가드를 통과해버린다. | Node에서 `formatKstDateTime(null as unknown as string)`, `formatKstDateTime(0 as unknown as string)` 호출(§4-2 TC-044/045). 둘 다 `"1970-01-01 09:00"` 반환. | Low | Open | 미조치. DEF-001과 동일한 위협 모델(백엔드 스키마 드리프트/직렬화 버그로 계약을 벗어난 값이 런타임에 들어오는 경우)이지만, 현재 `DataFreshnessBadge`의 실제 호출부는 `session_close_at`을 호출 전에 이미 null 분기 처리하고, `generated_at`은 백엔드 Pydantic 모델이 non-Optional로 강제하므로 **정상 계약을 지키는 한 이 경로는 발생하지 않는다.** 크래시가 아니라 "그럴듯하지만 틀린 날짜"를 보여준다는 점에서 DEF-001(크래시)보다 사용자 체감 위험은 낮지만, 규제 민감 REQ-006(기준시각 표기 정확성)의 취지상 완전히 무해하다고 볼 수도 없어 Low로 등록한다. UNIT-06~08이 이 컴포넌트를 실 데이터에 연결할 때, 가드를 `Number.isNaN(date.getTime()) \|\| iso == null \|\| typeof iso !== "string" \|\| iso.trim() === ""`처럼 넓히는 방어적 보강을 권고한다. |
+| DEF-009 | `frontend/scripts/lint-forbidden-copy.mjs`가 소스 파일을 원문 텍스트 그대로 읽기 때문에(JS 런타임처럼 이스케이프 시퀀스를 해석하지 않음), 금지어가 **실제 줄바꿈이 아니라 JS 문자열 이스케이프 시퀀스**(예: `"손실보\n전"`, 소스 텍스트상 백슬래시+`n` 두 글자)로 분리되어 있으면 여전히 탐지하지 못한다. | `escape-seq.ts`에 `` `export const injected = "손실보\n전";` ``(실제 줄바꿈이 아니라 이스케이프 텍스트 그대로, `cat -A`로 개행이 없음을 직접 확인)를 생성 후 `node scripts/lint-forbidden-copy.mjs` 실행(§4-2 TC-041) → "금지표현 검사 통과"로 오탐 없이 통과(exit 0), 실제로는 위반. | Low | Open | 미조치. **DEF-002 수정으로 인한 신규 퇴행이 아니다** — 이 우회 경로는 물리적 줄 경계와 무관하며, 구버전(줄 단위 스캔)에서도 동일하게 우회 가능했을 것으로 판단된다(같은 줄 안에서도 리터럴 텍스트 매칭만으로는 이스케이프를 해석할 수 없기 때문). DEF-002가 해결한 것은 "물리적 개행에 의한 분리"이고, 이번에 발견한 것은 "이스케이프 문자에 의한 분리"로 서로 다른 경로다. 현재 실제 카피(`copy.ko.json`)는 JSON 문자열이라 그 안에 `\n`을 넣어도 JSON 파서가 실제 개행으로 해석해버려(JSON은 문자열 내 리터럴 개행을 허용하지 않으므로 `\n` 이스케이프를 쓰면 런타임 값 자체가 개행 문자가 됨) 이 경로로 실제 위반이 발생할 가능성은 낮으나, `.tsx`/`.ts`의 JS 문자열 리터럴에서는 여전히 유효한 우회다. 04-ux-design.md §2-6/`unit-04-test.md` v1 §9가 이미 인정한 "블랙리스트 텍스트 매칭 방식 자체의 구조적 한계"의 연장선으로, AST 기반 파싱(예: 문자열 리터럴 노드를 파싱해 이스케이프를 평가한 뒤 검사)으로 근본 해결이 가능하다는 점을 후속 개선 과제로 남긴다. |
 
-- 위 2건 외 결함 없음. TC-001~017, 019~026, 028~033(29건)은 모두 예상 결과와 실제 결과가 일치해 Pass 처리했으며, 각 행의 "실제 결과" 열에 재현 가능한 근거(명령/출력)를 남겼다.
+- 위 4건(DEF-001/DEF-002 Fixed, DEF-008/DEF-009 신규 Open) 외 결함 없음. TC-001~017, 019~026, 028~033, 034~040, 042~043, 046~053(총 46건)은 모두 예상 결과와 실제 결과가 일치해 Pass 처리했으며, 각 행의 "실제 결과" 열에 재현 가능한 근거(명령/출력)를 남겼다.
 
 ## 7. 리스크 및 잔존 이슈
-- **DEF-001/DEF-002는 REQ-006/REQ-008 자체의 "현재 미반영"을 의미하지 않는다** — 둘 다 아직 실제 화면/실제 카피에 노출되지 않은 잠재적 우회 경로다. 다만 규칙 I 대상 REQ이므로 시간이 지나 UNIT-05~08이 이 컴포넌트/카피 인프라를 확장할 때 이 두 결함이 실제 피해(REQ-006 화면 크래시, REQ-008 금지어 노출)로 이어지지 않도록 **UNIT-06/07/08 착수 전 해결을 권고**한다. traceability.md 비고에 이 의존성을 명시했다.
-- 실 브라우저 기반 접근성 검증(sticky 체감, 200% 확대 줄바꿈, 포커스 링 육안 확인)은 여전히 미실시 — note §3-1과 동일한 리스크, headless 환경의 구조적 한계다. UNIT-05(반응형 UI 셸) 또는 별도 접근성 감사에서 재검증 필요.
-- `automation/github-actions-harness.yml`에 프론트엔드 빌드 잡이 없어, 로컬에서만 확인된 `npm run build`(및 그 안의 금지어 게이트)가 실제 PR/머지 시점에 자동 강제되지 않는다 — 10단계(배포테스트) 또는 별도 인프라 작업으로 이관(note §3-3과 동일).
-- REQ-009 검증은 이번에 3개 엔드포인트에 대해서만 유효하다. UNIT-06~08이 새 엔드포인트(`/stocks/{code}/metrics`, `/screen`, `/market-summary`)를 추가하면 TC-028~031과 동일한 검증(정적 파라미터 검토 + 블랙박스 헤더/쿠키 동일성 테스트)을 반드시 반복해야 한다(note §1-5 "주의" 문단과 동일 결론, 회귀 위험으로 traceability.md에 이미 반영되어 있음).
-- 금지어 블랙리스트 방식 자체의 한계(대소문자/공백 변형, 유니코드 정규화, 완전히 새로운 신조어)는 이번 테스트에서 별도로 전수 조사하지 않았다 — 스크립트 자체 주석("화이트리스트가 아니라 블랙리스트 검사")이 이미 이 한계를 인정하고 있으며, 04-ux-design.md §2-6 표가 갱신될 때마다 스크립트도 함께 갱신해야 한다는 원칙이 유지된다.
+
+- **DEF-001/DEF-002는 v2에서 AC 문면 기준으로 완전히 해소됐다** — v1이 걸었던 "UNIT-06/07/08 착수 전 해결" 조건은 이번 v2로 충족됐으므로 더 이상 선행조건으로 남지 않는다.
+- **DEF-008(Low, Open)**: `null`/`0` 같은 계약 위반 런타임 값에서 크래시 대신 오인 가능한 날짜("1970-01-01")를 표시하는 잔존 리스크. 현재 실제 호출 경로에서는 발생하지 않지만(§6 참조), UNIT-06~08이 실 API 응답을 파싱해 이 컴포넌트에 연결할 때 타입 단언(`as`)을 남용하면 재현될 수 있다 — 연결 시점에 방어 코드 보강을 권고한다.
+- **DEF-009(Low, Open)**: 금지어 스캐너가 JS 문자열 이스케이프 시퀀스를 해석하지 않아 발생하는 구조적 한계. DEF-002의 회귀가 아니라 블랙리스트 텍스트 매칭 방식 자체의 근본적 한계(v1 §9가 이미 일반론으로 인정한 리스크)의 구체적 사례다. 현재 JSON 카피 리소스 특성상 즉시 발생 가능성은 낮으나, 향후 `.tsx`에 이스케이프 시퀀스를 포함한 문자열 리터럴 카피가 추가되면 우회될 수 있다.
+- 실 브라우저 기반 접근성 검증(sticky 체감, 200% 확대 줄바꿈, 포커스 링 육안 확인)은 v1과 동일하게 여전히 미실시 — headless 환경의 구조적 한계, UNIT-05 또는 별도 접근성 감사에서 재검증 필요.
+- `automation/github-actions-harness.yml`에 프론트엔드 빌드 잡이 없어, 로컬에서만 확인된 `npm run build`(및 금지어 게이트)가 실제 PR/머지 시점에 자동 강제되지 않는다 — v1과 동일, 10단계 또는 별도 인프라 작업으로 이관.
+- REQ-009 검증은 3개 엔드포인트에 대해서만 유효(v1과 동일). UNIT-06~08이 새 엔드포인트를 추가하면 TC-028~031과 동일한 검증을 반복해야 한다.
+- 금지어 블랙리스트 방식 자체의 한계(대소문자/공백 변형, 유니코드 정규화, 완전히 새로운 신조어, **v2에서 구체화된 이스케이프 시퀀스 우회**)는 이번 테스트에서도 전수 조사하지 않았다 — 04-ux-design.md §2-6 표가 갱신될 때마다 스크립트도 함께 갱신해야 한다는 원칙 유지.
 
 ## 8. 결론 및 판정
-- [ ] PASS — 다음 단계 진행 가능
-- [x] CONDITIONAL PASS — 조건: **DEF-001(Medium)·DEF-002(Medium) 둘 다 현재 배포된 화면/카피에는 영향이 없어(전자는 dead code, 후자는 현재 카피가 전부 단일 라인) REQ-006/007/008/009/010의 "현재 상태" 반영 여부는 PASS로 판정한다.** 단, (1) UNIT-06/07/08가 `DataFreshnessBadge`를 실 API 데이터에 연결하기 **전에** DEF-001을 해결해야 하고, (2) UNIT-05~08가 카피 리소스에 멀티라인 문자열(템플릿 리터럴/멀티라인 JSX 텍스트)을 도입하기 **전에** DEF-002를 해결해야 한다는 것을 다음 단계(07 통합테스트, 그리고 UNIT-05~08)로 넘기는 명시적 조건으로 건다. 두 결함 모두 Critical/High가 아니라 Medium으로 분류한 근거는 (a) AC-2/AC-3 문면이 요구한 케이스는 전부 실제로 Pass했고, (b) 두 결함 모두 현재 시점에 실제 REQ 미반영으로 이어지지 않았기 때문이다 — 그러나 근거 없이 낮게 평가하지 않기 위해 "왜 지금은 영향이 없는지"를 각 결함 설명에 명시했다.
+- [x] **PASS — 다음 단계 진행 가능**
+- [ ] CONDITIONAL PASS — 조건: (v1에서 CONDITIONAL PASS였으나 v2에서 조건이 해소되어 더 이상 해당 없음)
 - [ ] FAIL — 사유 및 재작업 요청 사항:
-- REQ-006/007/009/010은 AC 문면 기준 결함 0건으로 **PASS**. REQ-008은 AC 문면 기준 결함 0건(TC-019~026 전부 Pass)이나, AC 범위를 벗어나 위험 기반으로 추가한 TC-027에서 CI 게이트 자체의 구조적 우회 가능성(DEF-002)을 발견해 **CONDITIONAL PASS**로 하향했다. 규칙 I("확신이 없으면 위험을 낮게 평가하지 않는다")에 따라 실제 카피에 영향이 없다는 이유로 결함을 은폐하거나 등급을 낮추지 않고 그대로 기록했다.
+- **판정 근거**: v1이 CONDITIONAL PASS로 하향했던 유일한 사유(DEF-001/DEF-002, 둘 다 Medium)가 이번 v2 독립 재검증으로 **둘 다 Fixed** 확인됐다(TC-034~037, TC-040 → DEF-002; TC-042~043 → DEF-001). 5단계의 자체 재현 보고를 그대로 신뢰하지 않고, v1이 발견했던 것과 동일한 시나리오뿐 아니라 변형 시나리오(들여쓰기 혼합, 정규식 패턴 분리, 실제 컴포넌트 렌더링)로 독립적으로 재현했으며, 정상 경로 회귀(REQ-006/007/008/009/010 관련 TC-046~053, §4 원문 TC들)도 전부 재확인해 신규 실패가 없음을 확인했다. AC-1~AC-5(신규 불릿 포함) 전체 커버리지 100%, 결함 0건이 남지 않았다(단, DEF-008/DEF-009는 AC 문면 밖에서 위험 기반으로 발견한 신규 Low 결함이며, 아래에 규칙 I에 따라 근거와 함께 투명하게 기록했다).
+- **DEF-008/DEF-009(둘 다 Low, Open)가 최종 PASS를 막지 않는 이유**: (1) 둘 다 AC 문면이 요구한 범위(DEF-001/DEF-002의 재발 방지 신규 불릿)를 정확히 충족한 이후, 6단계가 스스로 위험 기반으로 범위를 넓혀 발견한 추가 리스크다(규칙 I에 따라 은폐하지 않고 등록). (2) 현재 실제 호출 경로/실제 카피 리소스 특성상 즉시 발생 가능성이 낮다는 것을 각 결함 설명에 근거와 함께 명시했다(추측이 아니라 코드 경로를 직접 확인). (3) 이 저장소의 기존 판정 관행(UNIT-01 DEF-004, UNIT-02 DEF-005, UNIT-03 DEF-006/007 — 전부 Low·Open이면서 PASS)과 일관되게, Critical/High/Medium이 아닌 Low·AC 비위반 결함은 다음 단계 진행을 막지 않되 추적 대상으로 남긴다는 원칙을 그대로 적용했다. (4) DEF-008/009 모두 §6/§7에 구체적 재현 절차·향후 권고 조치를 남겨 UNIT-06~08이 실 데이터 연결 시 놓치지 않도록 했다.
+- REQ-006/007/009/010은 v1과 동일하게 AC 문면 기준 결함 0건으로 PASS 유지. **REQ-008은 v1의 CONDITIONAL PASS(DEF-002)에서 v2 재검증으로 결함이 Fixed 확인되어 PASS로 상향**됐다. **종합 판정: PASS(조건부 아님).**
 
 ## 9. 내부 검증 (최소 2회, `verification-log-template.md` 사용)
-- 1차 검증 결과 요약: 작성자 관점 재검토에서 (a) AC-2 검증이 note에는 없던 실제 렌더링 검증이었는지 재확인(있음, TC-013~017), (b) DEF-001/DEF-002의 심각도(Medium) 근거가 "현재는 영향 없음"이라는 이유만으로 안일하게 낮춰진 것은 아닌지 재검토해 "왜 지금은 미반영이 아닌지" 문장을 각 결함 설명에 명시적으로 추가, (c) TC-030(블랙박스 동일성 검증)이 코디네이터가 요구한 "grep 검증의 충분성 판단·보강"에 실제로 대응하는 문장인지 확인해 비고란에 근거 보강.
-- 2차 검증 결과 요약: "오늘 처음 이 결과서를 받아본 07 통합테스터" 관점에서 (a) CONDITIONAL PASS 조건이 형식적이지 않고 구체적인 선행조건(UNIT-06~08 착수 전 DEF-001/002 해결)으로 걸려 있는지 재확인(그렇다), (b) DEF-002가 "결함 은폐"로 오독될 여지—AC 범위 밖 테스트에서 발견했다고 축소 서술하지 않았는지 재검토해 §8 결론에 규칙 I 문장을 추가, (c) traceability.md 갱신 문구가 이 문서의 CONDITIONAL PASS/DEF-001/DEF-002 내용과 정확히 대응하는지 상호 대조(반영 완료).
-- 검증 로그 파일 경로: `docs/harness/units/verify-log_unit-04-test.md`
+- 1차 검증 결과 요약(v2): 작성자 관점 재검토에서 (a) DEF-001/DEF-002의 AC 신규 불릿 커버리지가 100%인지 재확인(그렇다 — TC-034~037/040→AC-3 신규불릿, TC-042~043→AC-2 신규불릿), (b) TC-036에서 처음 시도했던 재현이 bash printf의 이중 이스케이프 문제로 실패했던 것을 "제품 결함"으로 잘못 보고할 뻔했다가 `cat -A`로 실제 파일 바이트를 확인해 테스트 자체의 오류였음을 스스로 발견하고 Write 도구로 정확한 실제 개행을 만들어 재현에 성공한 과정을 투명하게 기록(테스트가 결함을 놓칠 가능성을 항상 의심하라는 원칙의 실제 적용 사례), (c) DEF-008/DEF-009를 "결함"이 아니라 "참고사항"으로 격하해 은폐하려는 유혹이 없었는지 자가 검토 — 둘 다 정식 DEF 번호를 부여하고 §6/§7/§8에 구체적으로 남겨 은폐 없음을 확인.
+- 2차 검증 결과 요약(v2): "오늘 처음 이 v2 결과서를 받아본 07 통합테스터" 관점에서 (a) v1의 CONDITIONAL PASS 조건이 형식적으로 "Fixed"로 바뀐 것이 아니라 실제 재현 근거(TC 번호, 정확한 명령/출력)로 뒷받침되는지 재확인(그렇다 — TC-042~044, TC-034~037 각각 정확한 exit code와 출력 문자열을 인용), (b) DEF-008 설명 중 "현재 실제 호출 경로에서는 발생하지 않는다"는 주장이 근거 없는 낙관이 아닌지 재검토해, `DataFreshnessBadge.tsx`의 실제 소스 코드(session_close_at 삼항 분기, generated_at 타입)를 다시 인용해 근거를 명시적으로 보강, (c) 이 문서만 보고 07 통합테스터가 추가 질문 없이 "UNIT-04는 PASS다"라고 판단하고 다음 업무단위 통합테스트를 시작할 수 있는지 확인(가능 — §8에 판정 근거·잔존 Low 결함 2건·향후 권고가 명확히 구분되어 있음), (d) `traceability.md`의 REQ-006/REQ-008 "단위테스트" 컬럼이 이 문서의 v2 PASS 판정 및 DEF-008/DEF-009 내용과 정확히 대응하는지 상호 대조(반영 완료).
+- 검증 로그 파일 경로: `docs/harness/units/verify-log_unit-04-test.md`(v3 라운드 추가)
