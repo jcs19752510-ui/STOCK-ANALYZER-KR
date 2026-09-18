@@ -2,6 +2,7 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
+import pytest
 from fastapi.testclient import TestClient
 
 import services.public_api.api.metrics as metrics_module
@@ -16,9 +17,20 @@ from services.public_api.db.metrics_repository import DerivedMetricsRow, StockRo
 from services.public_api.db.session import get_db
 from services.public_api.db.stock_repository import StockSearchResultRow
 from services.public_api.main import app
+from services.public_api.rate_limit import reset_rate_limit_state
 from shared.calendar_service.types import CalendarRow
 
 KST = ZoneInfo("Asia/Seoul")
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    """DEF-SEC-01 회귀 수정으로 도입된 IP별 카운터는 모듈 레벨 상태라
+    테스트 세션 전체에서 누적된다. 이 스위트가 테스트마다 독립적으로
+    동작해야 하므로(그리고 rate limit 자체를 검증하는 테스트가 다른
+    테스트를 429로 오염시키지 않도록) 매 테스트 전에 초기화한다."""
+    reset_rate_limit_state()
+    yield
 
 
 def _patch_now(monkeypatch, fixed: datetime) -> None:
@@ -1182,3 +1194,261 @@ def test_get_cors_allowed_origins_falls_back_to_default_when_unset(monkeypatch):
     origins = get_cors_allowed_origins()
 
     assert origins == ["http://localhost:3000"]
+
+
+# --- 규칙 F 재작업(DEC-027): DEF-SEC-01/DEF-SEC-02/DEF-FS-01 확장판 ----------
+# 09-security-audit.md가 발견한 3건 모두 UNIT-01 공용 기반(main.py/session.py)
+# 으로 귀속되어 이번 재작업에서 함께 해소한다.
+
+import asyncio  # noqa: E402
+
+from sqlalchemy.exc import OperationalError  # noqa: E402
+from starlette.applications import Starlette  # noqa: E402
+from starlette.responses import PlainTextResponse  # noqa: E402
+from starlette.routing import Route  # noqa: E402
+from starlette.testclient import TestClient as StarletteTestClient  # noqa: E402
+
+from services.public_api.middleware import (  # noqa: E402
+    RequestTimeoutMiddleware,
+    SecurityHeadersMiddleware,
+)
+from services.public_api.rate_limit import RateLimitMiddleware  # noqa: E402
+
+# --- DEF-SEC-01(High) — IP 기준 rate limiting ---
+
+
+def test_rate_limit_middleware_blocks_after_limit_isolated():
+    """미들웨어 로직 자체를 낮은 한도로 격리 검증(전체 앱 기본값 60회를
+    매번 테스트에서 반복하지 않기 위함)."""
+
+    async def ok_endpoint(request):
+        return PlainTextResponse("ok")
+
+    reset_rate_limit_state()
+    isolated_app = Starlette(routes=[Route("/ping", ok_endpoint)])
+    isolated_app.add_middleware(RateLimitMiddleware, limit=3, window_seconds=60)
+    client = StarletteTestClient(isolated_app)
+
+    for _ in range(3):
+        assert client.get("/ping").status_code == 200
+
+    blocked = client.get("/ping")
+    reset_rate_limit_state()
+
+    assert blocked.status_code == 429
+    body = blocked.json()
+    assert body["error"]["code"] == "RATE_LIMITED"
+    assert body["data"] is None
+
+
+def test_app_rate_limit_returns_429_after_default_60_per_minute():
+    """03-system-design.md §6-3 "IP 기준 rate limiting(예: 분당 60회)"이
+    실제 앱(main.py)에 연결되어 있는지 종단으로 확인한다."""
+
+    def _override_db():
+        yield FakeDbSession()
+
+    app.dependency_overrides[get_db] = _override_db
+    client = TestClient(app)
+
+    for _ in range(60):
+        resp = client.get("/api/v1/health")
+        assert resp.status_code == 200
+
+    blocked = client.get("/api/v1/health")
+
+    app.dependency_overrides.clear()
+    assert blocked.status_code == 429
+    assert blocked.json()["error"]["code"] == "RATE_LIMITED"
+    assert blocked.json()["data"] is None
+
+
+def test_rate_limited_response_still_carries_cors_header():
+    """CORSMiddleware가 가장 바깥쪽에 있어야 429 응답에도 Origin 헤더가
+    붙는다(main.py 미들웨어 등록 순서 주석 참조)."""
+
+    def _override_db():
+        yield FakeDbSession()
+
+    app.dependency_overrides[get_db] = _override_db
+    client = TestClient(app)
+
+    for _ in range(60):
+        client.get("/api/v1/health", headers={"Origin": "http://localhost:3000"})
+    blocked = client.get("/api/v1/health", headers={"Origin": "http://localhost:3000"})
+
+    app.dependency_overrides.clear()
+    assert blocked.status_code == 429
+    assert blocked.headers["access-control-allow-origin"] == "http://localhost:3000"
+
+
+def test_rate_limited_response_still_carries_security_headers():
+    """DEF-005(unit-01-test.md v5 §4-5 TC-090) 회귀 테스트 — 429 short-
+    circuit 응답에도 CSP/X-Content-Type-Options/HSTS가 붙어야 한다.
+    RateLimitMiddleware는 call_next()를 호출하지 않고 자체 응답을 반환하므로,
+    SecurityHeadersMiddleware가 그보다 바깥쪽(main.py에서 더 나중에
+    add_middleware)에 있어야만 이 응답에도 헤더가 적용된다."""
+
+    def _override_db():
+        yield FakeDbSession()
+
+    app.dependency_overrides[get_db] = _override_db
+    client = TestClient(app)
+
+    for _ in range(60):
+        client.get("/api/v1/health")
+    blocked = client.get("/api/v1/health")
+
+    app.dependency_overrides.clear()
+    assert blocked.status_code == 429
+    expected_csp = "default-src 'none'; frame-ancestors 'none'"
+    assert blocked.headers["content-security-policy"] == expected_csp
+    assert blocked.headers["x-content-type-options"] == "nosniff"
+    assert "max-age=63072000" in blocked.headers["strict-transport-security"]
+
+
+# --- DEF-SEC-02(Medium) — 보안 응답 헤더 ---
+
+
+def test_security_headers_present_on_response():
+    def _override_db():
+        yield FakeDbSession()
+
+    app.dependency_overrides[get_db] = _override_db
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/health")
+
+    app.dependency_overrides.clear()
+    assert resp.headers["content-security-policy"] == "default-src 'none'; frame-ancestors 'none'"
+    assert resp.headers["x-content-type-options"] == "nosniff"
+    assert "max-age=63072000" in resp.headers["strict-transport-security"]
+    assert "includeSubDomains" in resp.headers["strict-transport-security"]
+
+
+def test_security_headers_middleware_isolated():
+    async def ok_endpoint(request):
+        return PlainTextResponse("ok")
+
+    isolated_app = Starlette(routes=[Route("/ping", ok_endpoint)])
+    isolated_app.add_middleware(SecurityHeadersMiddleware)
+    client = StarletteTestClient(isolated_app)
+
+    resp = client.get("/ping")
+
+    assert resp.headers["x-content-type-options"] == "nosniff"
+
+
+# --- DEF-FS-01/REQ-025(High, 확장판) — 전역 예외 처리 부재 ---
+
+
+class ExplodingStockSearchRepository:
+    """09-security-audit.md TC-SEC-24의 ExplodingRepository와 동일한 취지 —
+    실 DB/실 서비스 없이 애플리케이션 계층만 격리해 예외 매핑을 검증한다."""
+
+    def __init__(self, exc: Exception):
+        self._exc = exc
+
+    def search(self, *, query: str, market: str):
+        raise self._exc
+
+
+def test_db_operational_error_returns_503_service_unavailable_envelope():
+    exc = OperationalError("SELECT 1", {}, Exception("connection refused"))
+    app.dependency_overrides[get_stock_search_repository] = lambda: (
+        ExplodingStockSearchRepository(exc)
+    )
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/stocks", params={"query": "삼성"})
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 503
+    body = resp.json()
+    assert body["error"]["code"] == "SERVICE_UNAVAILABLE"
+    assert body["data"] is None
+
+
+def test_unexpected_exception_returns_503_envelope_not_raw_500():
+    """TC-SEC-25: DB 예외에 국한되지 않는 임의의 미처리 예외도 raw 500이
+    아니라 Envelope 계약을 지키는 503으로 응답해야 한다."""
+    exc = ValueError("예상치 못한 버그")
+    app.dependency_overrides[get_stock_search_repository] = lambda: (
+        ExplodingStockSearchRepository(exc)
+    )
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/stocks", params={"query": "삼성"})
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 503
+    body = resp.json()
+    assert body["error"]["code"] == "SERVICE_UNAVAILABLE"
+    assert body["data"] is None
+
+
+def test_unknown_route_404_is_unaffected_by_catch_all_handler():
+    """catch-all Exception 핸들러가 FastAPI 기본 404 처리를 가로채지
+    않아야 한다(MRO 기반 최적 일치 핸들러 선택, main.py 주석 참조)."""
+    client = TestClient(app)
+
+    resp = client.get("/api/v1/does-not-exist")
+
+    assert resp.status_code == 404
+
+
+def test_request_timeout_middleware_returns_503_service_unavailable_envelope():
+    """09-security-audit.md §4-6 권고 — 요청 단위 타임아웃. 실제 4.5초를
+    기다리지 않도록 격리된 앱에서 타임아웃 값을 짧게 재현한다."""
+
+    async def slow_endpoint(request):
+        await asyncio.sleep(0.2)
+        return PlainTextResponse("too slow")
+
+    isolated_app = Starlette(routes=[Route("/slow", slow_endpoint)])
+    isolated_app.add_middleware(RequestTimeoutMiddleware, timeout_seconds=0.05)
+    client = StarletteTestClient(isolated_app)
+
+    resp = client.get("/slow")
+
+    assert resp.status_code == 503
+    body = resp.json()
+    assert body["error"]["code"] == "SERVICE_UNAVAILABLE"
+    assert body["data"] is None
+
+
+def test_request_timeout_response_still_carries_security_headers():
+    """DEF-005(unit-01-test.md v5 §4-5 TC-091) 회귀 테스트 — 요청 타임아웃
+    503 short-circuit 응답에도 보안 헤더가 붙어야 한다. main.py와 동일한
+    상대적 배치(SecurityHeaders가 RequestTimeout보다 바깥쪽)를 격리된 앱으로
+    재현한다."""
+
+    async def slow_endpoint(request):
+        await asyncio.sleep(0.2)
+        return PlainTextResponse("too slow")
+
+    isolated_app = Starlette(routes=[Route("/slow", slow_endpoint)])
+    isolated_app.add_middleware(RequestTimeoutMiddleware, timeout_seconds=0.05)
+    isolated_app.add_middleware(SecurityHeadersMiddleware)
+    client = StarletteTestClient(isolated_app)
+
+    resp = client.get("/slow")
+
+    assert resp.status_code == 503
+    assert resp.headers["content-security-policy"] == "default-src 'none'; frame-ancestors 'none'"
+    assert resp.headers["x-content-type-options"] == "nosniff"
+    assert "max-age=63072000" in resp.headers["strict-transport-security"]
+
+
+def test_request_timeout_middleware_allows_fast_requests():
+    async def fast_endpoint(request):
+        return PlainTextResponse("ok")
+
+    isolated_app = Starlette(routes=[Route("/fast", fast_endpoint)])
+    isolated_app.add_middleware(RequestTimeoutMiddleware, timeout_seconds=0.5)
+    client = StarletteTestClient(isolated_app)
+
+    resp = client.get("/fast")
+
+    assert resp.status_code == 200
+    assert resp.text == "ok"
