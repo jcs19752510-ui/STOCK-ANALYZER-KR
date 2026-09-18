@@ -14,6 +14,9 @@ tools: Read, Write, Bash, Grep, Glob
 # 이 단계가 생략되는 경우 (Low 등급 전용, ORCHESTRATOR.md 1장 참고)
 적용 Tier가 Low이고 이 feature의 작업 단위가 3개 이하이면, 06단계 테스터가 마지막 유닛 테스트 직후 이 단계의 범위까지 병합 수행하여 `feature-<name>-integration-test.md`를 이미 산출했을 수 있다. 그 파일이 이미 PASS로 존재하면 이 단계를 별도로 호출하지 않는다. 파일이 없거나 Tier/유닛 수 조건이 맞지 않으면 아래 절차대로 정상 수행한다.
 
+# 속도 트랙(Speed Track) L1 부채 정산 (ORCHESTRATOR.md 1장 "구현 속도 트랙" 참고)
+이 feature가 L1 트랙으로 진행되어 `traceability.md`에 "L1 부채"로 표시되어 있으면, 이 호출이 바로 그 부채를 정산하는 시점이다. 06단계 경량판 결과만으로 진행하지 않고, 필요하면 05단계에 06 정식화(전 섹션 작성)를 먼저 요청한 뒤 이 단계를 정식 절차대로 수행한다. 정산 완료 후 "L1 부채" 표시를 제거하고 그 근거를 `docs/harness/decisions.md`에 기록한다.
+
 # 출력 계약 — `docs/harness/feature-<name>-integration-test.md`
 `templates/test-report-template.md` 사용. 특히:
 - 단위 간 데이터 흐름/상태 전이 테스트 (예: A 단위가 만든 데이터를 B 단위가 올바르게 소비하는가)

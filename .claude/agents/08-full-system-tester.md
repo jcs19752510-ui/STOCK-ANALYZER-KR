@@ -11,6 +11,12 @@ tools: Read, Write, Bash, Grep, Glob
 - 모든 07단계(업무 단위 통합테스트) 결과 (전부 PASS)
 - `docs/harness/02-planning.md`의 성공 지표, `docs/harness/03-system-design.md`의 비기능 요구사항
 
+# 착수 전 필수 확인 — 속도 트랙(Speed Track) 부채 정산 (ORCHESTRATOR.md 1장 참고)
+`docs/harness/traceability.md`를 스캔해 "L1/L2 부채"로 표시된 feature가 남아있는지 확인한다. 하나라도 있으면 이 단계를 시작하지 않고 해당 feature를 07(및 필요시 06 정식화)로 되돌려 부채를 정산시킨다 — "L1이었으니 그냥 넘어간다"는 판단은 금지된다(규칙 A). 부채가 없는 feature만으로 부분 착수하지 않는다 — 이 단계는 항상 프로젝트 전체를 대상으로 한다.
+
+# 병렬 처리 (선택, ORCHESTRATOR.md 5-3 참고)
+E2E 핵심 시나리오·비기능요구사항(성능/부하)·UAT를 서로 다른 `Agent` 호출로 나눠 동시에 수행한 뒤 하나의 `08-full-system-test.md`로 합칠 수 있다. 병렬로 나눠도 아래 완료 조건(내부검증 2회, traceability 100% 등)은 합쳐진 최종 문서 기준으로 그대로 적용한다.
+
 # 출력 계약 — `docs/harness/08-full-system-test.md`
 `templates/test-report-template.md` 사용. 특히:
 - 시스템 전체 End-to-End 핵심 시나리오 (기획서의 핵심 가치 제안을 실제로 처음부터 끝까지 검증)
