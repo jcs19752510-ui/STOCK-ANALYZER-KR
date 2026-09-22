@@ -52,7 +52,7 @@ from services.ingestion_batch.gov_data_client import (  # noqa: E402
     GovDataClientError,
     GovDataPortalClient,
 )
-from services.ingestion_batch.repository import upsert_ohlcv  # noqa: E402
+from services.ingestion_batch.repository import upsert_fundamentals, upsert_ohlcv  # noqa: E402
 from shared.calendar_service import CalendarIntegrityError, get_last_trading_day  # noqa: E402
 from shared.calendar_service.types import CalendarLookup  # noqa: E402
 
@@ -148,6 +148,25 @@ def run_once(
         if validation_passed
         else f"수신 {affected}건 / API totalCount {result.total_count}건 — 일부 누락 가능성"
     )
+
+    # 재무지표(시가총액) 수집은 OHLCV와 같은 오퍼레이션을 재호출해 별도로
+    # 처리한다(§0 docstring — 새 외부 API 추가 없음, fetch_stock_master_snapshot과
+    # 동일 패턴). PER/PBR은 이 오퍼레이션이 제공하지 않아 항상 None으로
+    # 적재된다(gov_data_client.py DEF-005 정정 참조). 이 단계 실패는 OHLCV
+    # 성공 여부(핵심 시세/스크리닝 기능)를 함께 FAILED로 끌어내리지 않는다 —
+    # 재무지표는 raw_fundamentals가 애초에 전 컬럼 nullable로 설계된 "있으면
+    # 쓰고 없어도 되는" 보조 데이터이기 때문이다(모델 docstring 참조).
+    try:
+        fundamentals_result = client.fetch_fundamentals(target_date)
+        upsert_fundamentals(
+            session, fundamentals_result.records, source_batch_id=batch_run_id
+        )
+    except (GovDataApiError, GovDataClientError) as exc:
+        fundamentals_warning = f"재무지표(raw_fundamentals) 수집 실패(OHLCV는 정상 반영됨): {exc}"
+        error_summary = (
+            f"{error_summary}; {fundamentals_warning}" if error_summary else fundamentals_warning
+        )
+
     finish_run(
         session,
         batch_run_id,

@@ -402,4 +402,120 @@ def test_fetch_stock_master_snapshot_shares_gateway_error_handling():
         result = client.fetch_stock_master_snapshot(TRADE_DATE)
 
     assert call_count == 1
+
+
+def test_fetch_fundamentals_success_parses_market_cap_and_leaves_per_pbr_none():
+    item = _item()
+    item["mrktTotAmt"] = "500000000000000"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_success_body([item], total_count=1))
+
+    with _make_client(handler) as client:
+        result = client.fetch_fundamentals(TRADE_DATE)
+
+    assert result.total_count == 1
     assert len(result.records) == 1
+    record = result.records[0]
+    assert record.stock_code == "005930"
+    assert record.trade_date == TRADE_DATE
+    assert record.market_cap == 500000000000000
+    # PER/PBR은 이 오퍼레이션이 제공하지 않는 것으로 판단해 항상 None이어야 한다
+    # (DEF-005 정정 — 상상으로 채우지 않는다).
+    assert record.per is None
+    assert record.pbr is None
+
+
+def test_fetch_fundamentals_missing_market_cap_field_defaults_to_none():
+    """mrktTotAmt 필드 자체가 없는 item은 실패시키지 않고 market_cap=None으로 둔다."""
+    item = _item()
+    assert "mrktTotAmt" not in item
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_success_body([item], total_count=1))
+
+    with _make_client(handler) as client:
+        result = client.fetch_fundamentals(TRADE_DATE)
+
+    assert result.records[0].market_cap is None
+
+
+def test_fetch_fundamentals_empty_string_market_cap_defaults_to_none():
+    item = _item()
+    item["mrktTotAmt"] = ""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_success_body([item], total_count=1))
+
+    with _make_client(handler) as client:
+        result = client.fetch_fundamentals(TRADE_DATE)
+
+    assert result.records[0].market_cap is None
+
+
+def test_fetch_fundamentals_unparseable_market_cap_raises():
+    """필드가 존재하는데 숫자가 아니면(진짜 이상값) 조용히 넘기지 않고 명시적으로 실패한다."""
+    item = _item()
+    item["mrktTotAmt"] = "not-a-number"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_success_body([item], total_count=1))
+
+    with _make_client(handler) as client, pytest.raises(GovDataClientError):
+        client.fetch_fundamentals(TRADE_DATE)
+
+
+def test_fetch_fundamentals_bas_dt_mismatch_raises():
+    item = _item()
+    item["basDt"] = "20260101"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_success_body([item], total_count=1))
+
+    with _make_client(handler) as client, pytest.raises(GovDataClientError):
+        client.fetch_fundamentals(TRADE_DATE)
+
+
+def test_fetch_fundamentals_missing_required_field_raises():
+    item = _item()
+    del item["srtnCd"]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_success_body([item], total_count=1))
+
+    with _make_client(handler) as client, pytest.raises(GovDataClientError):
+        client.fetch_fundamentals(TRADE_DATE)
+
+
+def test_fetch_fundamentals_single_item_as_dict_not_list():
+    item = _item()
+    item["mrktTotAmt"] = "123456789"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_success_body(item, total_count=1))
+
+    with _make_client(handler) as client:
+        result = client.fetch_fundamentals(TRADE_DATE)
+
+    assert len(result.records) == 1
+    assert result.records[0].market_cap == 123456789
+
+
+def test_fetch_fundamentals_shares_gateway_error_handling():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "OpenAPI_ServiceResponse": {
+                    "cmmMsgHeader": {
+                        "errMsg": "SERVICE_KEY_IS_NOT_REGISTERED_ERROR",
+                        "returnAuthMsg": "등록되지 않은 서비스키",
+                        "returnReasonCode": "30",
+                    }
+                }
+            },
+        )
+
+    with _make_client(handler) as client, pytest.raises(GovDataApiError) as exc_info:
+        client.fetch_fundamentals(TRADE_DATE)
+    assert exc_info.value.retryable is False

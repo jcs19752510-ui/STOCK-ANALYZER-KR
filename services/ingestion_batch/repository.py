@@ -13,8 +13,8 @@ from datetime import UTC, datetime
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from services.ingestion_batch.gov_data_client import RawOhlcvRecord
-from services.ingestion_batch.models import RawOhlcv
+from services.ingestion_batch.gov_data_client import RawFundamentalsRecord, RawOhlcvRecord
+from services.ingestion_batch.models import RawFundamentals, RawOhlcv
 
 
 def upsert_ohlcv(
@@ -49,6 +49,39 @@ def upsert_ohlcv(
                 "close": stmt.excluded.close,
                 "volume": stmt.excluded.volume,
                 "trading_value": stmt.excluded.trading_value,
+                "ingested_at": stmt.excluded.ingested_at,
+                "source_batch_id": stmt.excluded.source_batch_id,
+            },
+        )
+        session.execute(stmt)
+        affected += 1
+    return affected
+
+
+def upsert_fundamentals(
+    session: Session,
+    records: list[RawFundamentalsRecord],
+    *,
+    source_batch_id: uuid.UUID,
+) -> int:
+    affected = 0
+    ingested_at = datetime.now(UTC)
+    for record in records:
+        stmt = pg_insert(RawFundamentals).values(
+            stock_code=record.stock_code,
+            trade_date=record.trade_date,
+            per=record.per,
+            pbr=record.pbr,
+            market_cap=record.market_cap,
+            ingested_at=ingested_at,
+            source_batch_id=source_batch_id,
+        )
+        stmt = stmt.on_conflict_do_update(
+            index_elements=[RawFundamentals.stock_code, RawFundamentals.trade_date],
+            set_={
+                "per": stmt.excluded.per,
+                "pbr": stmt.excluded.pbr,
+                "market_cap": stmt.excluded.market_cap,
                 "ingested_at": stmt.excluded.ingested_at,
                 "source_batch_id": stmt.excluded.source_batch_id,
             },

@@ -17,6 +17,9 @@ db.sqlite3
 # CI 헤드리스 실행 로그 (automation/run-harness-agent.sh 산출물)
 docs/harness/_ci-logs/
 
+# 일일 배치 스케줄러(scripts/run_daily_batch.ps1) 실행 로그 — 로컬 전용
+logs/
+
 # frontend (Next.js)
 frontend/node_modules/
 frontend/.next/
