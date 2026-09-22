@@ -63,11 +63,19 @@ export function validateScreenForm(values: ScreenFormValues): FieldError[] {
   return errors;
 }
 
+/**
+ * 시장 탭(전체/코스피/코스닥) 선택 시 자동으로 채워지는 기본 필터값(2026-09-22
+ * 사용자 결정 — "유동성+대형주 중심" 프리셋). 아무 조건도 모르는 사용자가
+ * 바로 [조건 적용]을 눌러도, 거래정지에 가까운 초소형·이상치 종목이 상위에
+ * 섞이지 않고 바로 유의미한 결과를 보게 하는 것이 목적이다. `market`만 다르고
+ * 나머지는 세 탭 공통이다 — 탭을 바꾸면 이 값 그대로(입력했던 다른 조건은
+ * 초기화됨) 다시 채워진다(ScreenerClient.tsx `handleMarketChange` 참조).
+ */
 export const DEFAULT_SCREEN_FORM_VALUES: ScreenFormValues = {
   market: "ALL",
-  marketCapMin: "",
+  marketCapMin: "500",
   marketCapMax: "",
-  volumeMin: "",
+  volumeMin: "100000",
   returnPctMin: "",
   returnPctMax: "",
   perMax: "",
@@ -78,6 +86,11 @@ export const DEFAULT_SCREEN_FORM_VALUES: ScreenFormValues = {
   ma20GapPctMax: "",
   volumeAnomalyScoreMin: "",
   volumeAnomalyScoreMax: "",
-  sortBy: "return_pct",
+  sortBy: "market_cap",
   sortDir: "desc",
 };
+
+/** 시장 탭 전환 시 폼 전체를 이 값으로 되돌린다(market만 교체). */
+export function defaultScreenFormValuesFor(market: ScreenFormValues["market"]): ScreenFormValues {
+  return { ...DEFAULT_SCREEN_FORM_VALUES, market };
+}
