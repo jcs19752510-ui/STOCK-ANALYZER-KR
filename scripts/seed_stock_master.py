@@ -117,14 +117,19 @@ def fetch_all_records(
 
 
 def upsert_stock_master(session: Session, records: list[StockMasterSnapshotRecord]) -> int:
-    """(stock_code) 충돌 시 name/market/is_active/updated_at만 갱신한다.
+    """(stock_code) 충돌 시 name/market/updated_at만 갱신한다. `is_active`는
 
-    sector/listing_date는 이 데이터 소스에서 얻을 수 없어(unit-03-note.md §0
-    참조) SET 절에서 제외한다 — 향후 별도 출처로 채워질 값을 이 스크립트
-    재실행이 덮어쓰지 않도록 하기 위함이다. 응답에 없는(=상장폐지 가능성이
-    있는) 기존 종목의 `is_active`를 자동으로 false로 전환하지는 않는다(REQ-001
-    요구사항에 상장폐지 자동 감지가 명시되어 있지 않음 — unit-03-note.md
-    "수동으로 확인이 필요한 부분" 참조).
+    **기존 행에 대해서는 건드리지 않는다**(DEF-007 수정, 2026-09-22). 신규
+    종목(첫 등장)은 여전히 `is_active=True`로 삽입된다 — API가 내려주는
+    종목은 정상 상장 상태로 보는 게 합리적이기 때문이다. 그러나 이미 있는
+    종목의 `is_active`를 SET 절에 넣어 매번 무조건 `True`로 되돌리면,
+    운영자가 수동으로 상장폐지 처리(`is_active=false`)해둔 종목이 이
+    스크립트를 재실행할 때마다 다시 "정상 상장"으로 되돌아가는 결함이
+    있었다(REQ-001에 상장폐지 자동 감지가 없어 이 수동 처리가 유일한
+    경로인데, 재시드가 그걸 조용히 무효화했다). sector/listing_date는
+    여전히 이 데이터 소스에서 얻을 수 없어(unit-03-note.md §0 참조) SET
+    절에서 제외한다 — 향후 별도 출처로 채워질 값을 이 스크립트 재실행이
+    덮어쓰지 않도록 하기 위함이다.
     """
     affected = 0
     for record in records:
@@ -139,7 +144,6 @@ def upsert_stock_master(session: Session, records: list[StockMasterSnapshotRecor
             set_={
                 "name": stmt.excluded.name,
                 "market": stmt.excluded.market,
-                "is_active": True,
                 # DEF-004(unit-01-test.md) 재발 방지: 내용이 갱신될 때
                 # updated_at도 함께 갱신한다. Core upsert 경로에서는 모델
                 # 컬럼의 onupdate가 트리거되지 않으므로 set_에 명시해야 한다.

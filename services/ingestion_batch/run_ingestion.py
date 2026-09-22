@@ -48,6 +48,8 @@ from services.ingestion_batch.circuit_breaker import (  # noqa: E402
 )
 from services.ingestion_batch.core.config import ConfigError, get_settings  # noqa: E402
 from services.ingestion_batch.gov_data_client import (  # noqa: E402
+    FetchResult,
+    FundamentalsFetchResult,
     GovDataApiError,
     GovDataClientError,
     GovDataPortalClient,
@@ -60,9 +62,59 @@ KST = ZoneInfo("Asia/Seoul")
 INGEST_MARKET = "KRX"  # MVP 범위: KRX 정규장만 (DEC-010)
 CIRCUIT_BREAKER_THRESHOLD = 3
 
+# 2026-09-22 실 서비스키로 최초 실행해 발견한 결함: 전 종목이 약 2,867건인데
+# 기본 num_of_rows=1000 한 페이지만 가져오고 페이지네이션을 전혀 하지 않아
+# 65% 가까이 누락된 채 PARTIAL로 끝났다(unit-02-note.md §3이 "실 데이터
+# 규모를 몰라 배선을 보류"라고 명시했던 그 갭). scripts/seed_stock_master.py의
+# 페이지네이션 패턴(PAGE_SIZE/MAX_PAGES)을 그대로 따른다.
+PAGE_SIZE = 1000
+MAX_PAGES = 10
+
 
 class IngestionRunError(RuntimeError):
     """이번 실행이 실패했음을 나타낸다(배치 프로세스 자체는 계속 정상 종료 흐름을 탄다)."""
+
+
+def _fetch_all_ohlcv(client: GovDataPortalClient, trade_date: date) -> FetchResult:
+    records = []
+    page_no = 1
+    total_count = 0
+    while True:
+        result = client.fetch_ohlcv(trade_date, page_no=page_no, num_of_rows=PAGE_SIZE)
+        total_count = result.total_count
+        records.extend(result.records)
+        if len(records) >= total_count:
+            break
+        if page_no >= MAX_PAGES:
+            raise IngestionRunError(
+                f"OHLCV 페이지 상한({MAX_PAGES})에 도달했지만 아직 totalCount"
+                f"({total_count})에 도달하지 못했습니다(현재까지 {len(records)}건). "
+                "PAGE_SIZE/MAX_PAGES 조정이 필요합니다."
+            )
+        page_no += 1
+    return FetchResult(records=records, total_count=total_count)
+
+
+def _fetch_all_fundamentals(
+    client: GovDataPortalClient, trade_date: date
+) -> FundamentalsFetchResult:
+    records = []
+    page_no = 1
+    total_count = 0
+    while True:
+        result = client.fetch_fundamentals(trade_date, page_no=page_no, num_of_rows=PAGE_SIZE)
+        total_count = result.total_count
+        records.extend(result.records)
+        if len(records) >= total_count:
+            break
+        if page_no >= MAX_PAGES:
+            raise IngestionRunError(
+                f"재무지표 페이지 상한({MAX_PAGES})에 도달했지만 아직 totalCount"
+                f"({total_count})에 도달하지 못했습니다(현재까지 {len(records)}건). "
+                "PAGE_SIZE/MAX_PAGES 조정이 필요합니다."
+            )
+        page_no += 1
+    return FundamentalsFetchResult(records=records, total_count=total_count)
 
 
 def resolve_target_trade_date(calendar: CalendarLookup, *, override: date | None) -> date:
@@ -110,8 +162,8 @@ def run_once(
         return "FAILED", None, str(exc)
 
     try:
-        result = client.fetch_ohlcv(target_date)
-    except (GovDataApiError, GovDataClientError) as exc:
+        result = _fetch_all_ohlcv(client, target_date)
+    except (GovDataApiError, GovDataClientError, IngestionRunError) as exc:
         error_summary = f"API 호출 실패: {exc}"
         finish_run(
             session,
@@ -157,11 +209,11 @@ def run_once(
     # 재무지표는 raw_fundamentals가 애초에 전 컬럼 nullable로 설계된 "있으면
     # 쓰고 없어도 되는" 보조 데이터이기 때문이다(모델 docstring 참조).
     try:
-        fundamentals_result = client.fetch_fundamentals(target_date)
+        fundamentals_result = _fetch_all_fundamentals(client, target_date)
         upsert_fundamentals(
             session, fundamentals_result.records, source_batch_id=batch_run_id
         )
-    except (GovDataApiError, GovDataClientError) as exc:
+    except (GovDataApiError, GovDataClientError, IngestionRunError) as exc:
         fundamentals_warning = f"재무지표(raw_fundamentals) 수집 실패(OHLCV는 정상 반영됨): {exc}"
         error_summary = (
             f"{error_summary}; {fundamentals_warning}" if error_summary else fundamentals_warning
