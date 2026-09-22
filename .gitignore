@@ -20,6 +20,10 @@ docs/harness/_ci-logs/
 # 일일 배치 스케줄러(scripts/run_daily_batch.ps1) 실행 로그 — 로컬 전용
 logs/
 
+# 화면 캡처(오류/설정 화면 등)에 인증키·서비스키 등 민감정보가 찍히는 경우가 있어
+# 실수로 커밋되지 않도록 새 파일은 기본적으로 git 추적에서 제외한다.
+99.화면오류/*.png
+
 # frontend (Next.js)
 frontend/node_modules/
 frontend/.next/
