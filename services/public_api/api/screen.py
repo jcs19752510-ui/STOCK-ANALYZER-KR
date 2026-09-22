@@ -32,7 +32,15 @@ KST = ZoneInfo("Asia/Seoul")
 DERIVATION_MARKET: Market = "KRX"
 
 # 03-system-design.md §4-2 `GET /screen` 허용값.
-SORT_BY_VALUES: tuple[str, ...] = ("return_pct", "market_cap", "per", "pbr", "volume_anomaly_score")
+SORT_BY_VALUES: tuple[str, ...] = (
+    "return_pct",
+    "market_cap",
+    "per",
+    "pbr",
+    "volume_anomaly_score",
+    "ma5_gap_pct",
+    "ma20_gap_pct",
+)
 SORT_DIR_VALUES: tuple[str, ...] = ("asc", "desc")
 DEFAULT_PAGE_SIZE = 50
 MAX_PAGE_SIZE = 200
@@ -80,6 +88,12 @@ def _resolve_matched_metric_keys(filters: ScreenFilters) -> list[str]:
         keys.add("per")
     if filters.pbr_max is not None:
         keys.add("pbr")
+    if filters.ma5_gap_pct_min is not None or filters.ma5_gap_pct_max is not None:
+        keys.add("ma5_gap_pct")
+    if filters.ma20_gap_pct_min is not None or filters.ma20_gap_pct_max is not None:
+        keys.add("ma20_gap_pct")
+    if filters.volume_anomaly_score_min is not None or filters.volume_anomaly_score_max is not None:
+        keys.add("volume_anomaly_score")
     keys.add(filters.sort_by)
     return sorted(keys)
 
@@ -91,6 +105,8 @@ def _build_matched_metrics(row: ScreenRow, keys: list[str]) -> dict[str, float |
         "per": _to_float(row.per_percentile),
         "pbr": _to_float(row.pbr_percentile),
         "volume_anomaly_score": _to_float(row.volume_anomaly_score),
+        "ma5_gap_pct": _to_float(row.ma5_gap_pct),
+        "ma20_gap_pct": _to_float(row.ma20_gap_pct),
     }
     return {key: value_by_key[key] for key in keys}
 
@@ -107,6 +123,12 @@ def screen_stocks(
     return_pct_max: float | None = Query(None, description="등락률 최대값(%)"),
     per_max: float | None = Query(None, description="PER 최대값(배)"),
     pbr_max: float | None = Query(None, description="PBR 최대값(배)"),
+    ma5_gap_pct_min: float | None = Query(None, description="5일 이동평균 이격도 최소값(%)"),
+    ma5_gap_pct_max: float | None = Query(None, description="5일 이동평균 이격도 최대값(%)"),
+    ma20_gap_pct_min: float | None = Query(None, description="20일 이동평균 이격도 최소값(%)"),
+    ma20_gap_pct_max: float | None = Query(None, description="20일 이동평균 이격도 최대값(%)"),
+    volume_anomaly_score_min: float | None = Query(None, description="거래량 이상치 스코어 최소값"),
+    volume_anomaly_score_max: float | None = Query(None, description="거래량 이상치 스코어 최대값"),
     sort_by: str = Query("return_pct", description="정렬 기준"),
     sort_dir: str = Query("desc", description="정렬 방향(asc|desc)"),
     page: int = Query(1, ge=1),
@@ -140,6 +162,11 @@ def screen_stocks(
         )
     _require_range_order(market_cap_min, market_cap_max, field_name="market_cap")
     _require_range_order(return_pct_min, return_pct_max, field_name="return_pct")
+    _require_range_order(ma5_gap_pct_min, ma5_gap_pct_max, field_name="ma5_gap_pct")
+    _require_range_order(ma20_gap_pct_min, ma20_gap_pct_max, field_name="ma20_gap_pct")
+    _require_range_order(
+        volume_anomaly_score_min, volume_anomaly_score_max, field_name="volume_anomaly_score"
+    )
 
     market_typed: ListedMarketFilter = market  # type: ignore[assignment]
 
@@ -178,6 +205,12 @@ def screen_stocks(
         return_pct_max=return_pct_max,
         per_max=per_max,
         pbr_max=pbr_max,
+        ma5_gap_pct_min=ma5_gap_pct_min,
+        ma5_gap_pct_max=ma5_gap_pct_max,
+        ma20_gap_pct_min=ma20_gap_pct_min,
+        ma20_gap_pct_max=ma20_gap_pct_max,
+        volume_anomaly_score_min=volume_anomaly_score_min,
+        volume_anomaly_score_max=volume_anomaly_score_max,
         sort_by=sort_by,
         sort_dir=sort_dir,
         page=page,

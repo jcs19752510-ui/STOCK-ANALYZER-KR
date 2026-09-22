@@ -16,6 +16,8 @@ export const MATCHED_METRIC_DISPLAY_ORDER = [
   "market_cap",
   "per",
   "pbr",
+  "ma5_gap_pct",
+  "ma20_gap_pct",
   "volume_anomaly_score",
 ] as const;
 
@@ -58,6 +60,20 @@ export function formatMatchedMetric(key: string, value: number | null): Formatte
           value === null
             ? copy.stockDetail.valuationUnavailableText
             : `${copy.stockDetail.percentileUpPrefix} ${value}%`,
+      };
+    case "ma5_gap_pct":
+      return {
+        label: copy.screener.metricLabels.ma5GapPct,
+        text: value === null ? copy.stockDetail.missingDataText : formatSignedPercent(value),
+        valueClassName: value === null ? undefined : percentValueClassName(value),
+        srOnlyPrefix: value === null ? undefined : percentDirectionLabel(value),
+      };
+    case "ma20_gap_pct":
+      return {
+        label: copy.screener.metricLabels.ma20GapPct,
+        text: value === null ? copy.stockDetail.missingDataText : formatSignedPercent(value),
+        valueClassName: value === null ? undefined : percentValueClassName(value),
+        srOnlyPrefix: value === null ? undefined : percentDirectionLabel(value),
       };
     case "volume_anomaly_score":
       return {

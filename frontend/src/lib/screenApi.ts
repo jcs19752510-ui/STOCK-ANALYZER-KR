@@ -17,7 +17,14 @@ export function eokToKrw(eok: number): number {
   return Math.round(eok * KRW_PER_EOK);
 }
 
-export type ScreenSortBy = "return_pct" | "market_cap" | "per" | "pbr" | "volume_anomaly_score";
+export type ScreenSortBy =
+  | "return_pct"
+  | "market_cap"
+  | "per"
+  | "pbr"
+  | "volume_anomaly_score"
+  | "ma5_gap_pct"
+  | "ma20_gap_pct";
 export type ScreenSortDir = "asc" | "desc";
 export type ScreenMarket = "ALL" | "KOSPI" | "KOSDAQ";
 
@@ -30,6 +37,12 @@ export interface ScreenQuery {
   returnPctMax?: number;
   perMax?: number;
   pbrMax?: number;
+  ma5GapPctMin?: number;
+  ma5GapPctMax?: number;
+  ma20GapPctMin?: number;
+  ma20GapPctMax?: number;
+  volumeAnomalyScoreMin?: number;
+  volumeAnomalyScoreMax?: number;
   sortBy: ScreenSortBy;
   sortDir: ScreenSortDir;
   page: number;
@@ -53,6 +66,24 @@ function buildSearchParams(query: ScreenQuery): URLSearchParams {
   if (query.returnPctMax !== undefined) params.set("return_pct_max", String(query.returnPctMax));
   if (query.perMax !== undefined) params.set("per_max", String(query.perMax));
   if (query.pbrMax !== undefined) params.set("pbr_max", String(query.pbrMax));
+  if (query.ma5GapPctMin !== undefined) {
+    params.set("ma5_gap_pct_min", String(query.ma5GapPctMin));
+  }
+  if (query.ma5GapPctMax !== undefined) {
+    params.set("ma5_gap_pct_max", String(query.ma5GapPctMax));
+  }
+  if (query.ma20GapPctMin !== undefined) {
+    params.set("ma20_gap_pct_min", String(query.ma20GapPctMin));
+  }
+  if (query.ma20GapPctMax !== undefined) {
+    params.set("ma20_gap_pct_max", String(query.ma20GapPctMax));
+  }
+  if (query.volumeAnomalyScoreMin !== undefined) {
+    params.set("volume_anomaly_score_min", String(query.volumeAnomalyScoreMin));
+  }
+  if (query.volumeAnomalyScoreMax !== undefined) {
+    params.set("volume_anomaly_score_max", String(query.volumeAnomalyScoreMax));
+  }
   params.set("sort_by", query.sortBy);
   params.set("sort_dir", query.sortDir);
   params.set("page", String(query.page));

@@ -32,6 +32,8 @@ SORT_COLUMN_MAP = {
     "per": DerivedMetricsDaily.per_raw,
     "pbr": DerivedMetricsDaily.pbr_raw,
     "volume_anomaly_score": DerivedMetricsDaily.volume_anomaly_score,
+    "ma5_gap_pct": DerivedMetricsDaily.ma5_gap_pct,
+    "ma20_gap_pct": DerivedMetricsDaily.ma20_gap_pct,
 }
 
 
@@ -46,6 +48,15 @@ class ScreenFilters:
     return_pct_max: float | None
     per_max: float | None
     pbr_max: float | None
+    # 2026-09-22 추가: 이동평균 이격도/거래량 이상치는 이미 종목 상세 화면(§2-4)에서
+    # 계산·표시 중이던 값이라(derived_metrics_daily에 이미 존재), 새 컬럼/가공 로직
+    # 없이 스크리닝 필터에만 연결하면 된다.
+    ma5_gap_pct_min: float | None
+    ma5_gap_pct_max: float | None
+    ma20_gap_pct_min: float | None
+    ma20_gap_pct_max: float | None
+    volume_anomaly_score_min: float | None
+    volume_anomaly_score_max: float | None
     sort_by: str
     sort_dir: str
     page: int
@@ -62,6 +73,8 @@ class ScreenRow:
     pbr_percentile: Decimal | None
     market_cap_percentile: Decimal | None
     volume_anomaly_score: Decimal | None
+    ma5_gap_pct: Decimal | None
+    ma20_gap_pct: Decimal | None
 
 
 @dataclass(frozen=True)
@@ -97,6 +110,22 @@ def _apply_filters(stmt: Select, filters: ScreenFilters) -> Select:
         stmt = stmt.where(DerivedMetricsDaily.per_raw <= filters.per_max)
     if filters.pbr_max is not None:
         stmt = stmt.where(DerivedMetricsDaily.pbr_raw <= filters.pbr_max)
+    if filters.ma5_gap_pct_min is not None:
+        stmt = stmt.where(DerivedMetricsDaily.ma5_gap_pct >= filters.ma5_gap_pct_min)
+    if filters.ma5_gap_pct_max is not None:
+        stmt = stmt.where(DerivedMetricsDaily.ma5_gap_pct <= filters.ma5_gap_pct_max)
+    if filters.ma20_gap_pct_min is not None:
+        stmt = stmt.where(DerivedMetricsDaily.ma20_gap_pct >= filters.ma20_gap_pct_min)
+    if filters.ma20_gap_pct_max is not None:
+        stmt = stmt.where(DerivedMetricsDaily.ma20_gap_pct <= filters.ma20_gap_pct_max)
+    if filters.volume_anomaly_score_min is not None:
+        stmt = stmt.where(
+            DerivedMetricsDaily.volume_anomaly_score >= filters.volume_anomaly_score_min
+        )
+    if filters.volume_anomaly_score_max is not None:
+        stmt = stmt.where(
+            DerivedMetricsDaily.volume_anomaly_score <= filters.volume_anomaly_score_max
+        )
     return stmt
 
 
@@ -137,6 +166,8 @@ class SqlScreenRepository:
                 pbr_percentile=metrics.pbr_percentile,
                 market_cap_percentile=metrics.market_cap_percentile,
                 volume_anomaly_score=metrics.volume_anomaly_score,
+                ma5_gap_pct=metrics.ma5_gap_pct,
+                ma20_gap_pct=metrics.ma20_gap_pct,
             )
             for metrics, name in rows
         ]

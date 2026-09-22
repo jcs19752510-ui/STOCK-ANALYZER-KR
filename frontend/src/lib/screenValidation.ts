@@ -13,6 +13,12 @@ export interface ScreenFormValues {
   returnPctMax: string;
   perMax: string;
   pbrMax: string;
+  ma5GapPctMin: string;
+  ma5GapPctMax: string;
+  ma20GapPctMin: string;
+  ma20GapPctMax: string;
+  volumeAnomalyScoreMin: string;
+  volumeAnomalyScoreMax: string;
   sortBy: string;
   sortDir: "asc" | "desc";
 }
@@ -27,6 +33,9 @@ export interface FieldError {
 const RANGE_PAIRS: Array<[ScreenFormField, ScreenFormField, string]> = [
   ["marketCapMin", "marketCapMax", "시가총액"],
   ["returnPctMin", "returnPctMax", "등락률"],
+  ["ma5GapPctMin", "ma5GapPctMax", "5일 이동평균 이격도"],
+  ["ma20GapPctMin", "ma20GapPctMax", "20일 이동평균 이격도"],
+  ["volumeAnomalyScoreMin", "volumeAnomalyScoreMax", "거래량 이상치 스코어"],
 ];
 
 /** 빈 문자열은 "입력 안 함"이므로 오류 대상이 아니다(모든 필드는 선택 입력). */
@@ -63,6 +72,12 @@ export const DEFAULT_SCREEN_FORM_VALUES: ScreenFormValues = {
   returnPctMax: "",
   perMax: "",
   pbrMax: "",
+  ma5GapPctMin: "",
+  ma5GapPctMax: "",
+  ma20GapPctMin: "",
+  ma20GapPctMax: "",
+  volumeAnomalyScoreMin: "",
+  volumeAnomalyScoreMax: "",
   sortBy: "return_pct",
   sortDir: "desc",
 };
