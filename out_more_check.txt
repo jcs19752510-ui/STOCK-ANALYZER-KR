@@ -1,0 +1,4 @@
+유한양행 CorpFinancialsRecord(corp_code='00145109', bsns_year='2025', reprt_code='11011', fs_div='CFS', net_income=Decimal('194079171666'), equity=Decimal('2362284335746'))
+동화약품 CorpFinancialsRecord(corp_code='00119195', bsns_year='2025', reprt_code='11011', fs_div='CFS', net_income=Decimal('8686052916'), equity=Decimal('379526943267'))
+삼양홀딩스 CorpFinancialsRecord(corp_code='00126937', bsns_year='2025', reprt_code='11011', fs_div='CFS', net_income=Decimal('-199950170956'), equity=Decimal('1824995442526'))
+KR모터스 CorpFinancialsRecord(corp_code='00112378', bsns_year='2025', reprt_code='11011', fs_div='CFS', net_income=Decimal('-1895969813'), equity=Decimal('43672331167'))

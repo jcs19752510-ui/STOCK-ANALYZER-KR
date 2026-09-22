@@ -44,6 +44,16 @@ data.go.kr 공식 Swagger 원문 대조 결과(traceability.md DEF-005). PER/PBR
 못했다(서비스키 활성화 대기 중) — 이 파싱 로직 자체는 문서 명세 기준으로
 작성했고, 실측 검증은 키 활성화 후 별도로 진행한다.
 
+**(2026-09-22 추가)** PER/PBR을 대체할 무료 소스로 KRX Open API도 검토했으나
+"주식" 카테고리 8개 API 전부 실측한 결과 PER/PBR·업종분류 모두 없었고, KRX
+Data Marketplace가 제공하는 해당 상품은 "데이터상품" 메뉴의 유료 구매
+항목으로 확인됐다(사용자 실측 스크린샷). 최종적으로 DART(전자공시시스템)
+OpenAPI로 대체했다 — `dart_client.py`가 재무제표 원문(당기순이익/자본총계)을
+가져오고, `repository.apply_dart_valuation()`이 이 오퍼레이션이 채운
+`market_cap`과 조합해 PER/PBR을 계산해 같은 `raw_fundamentals` 테이블에
+반영한다(이 클라이언트 자체는 변경 없음 — 원칙대로 이 API가 안 주는 필드는
+여전히 파싱하지 않는다).
+
 **(UNIT-03 추가)** `itmsNm`(종목명)/`mrktCtg`(시장구분)도 이 오퍼레이션의
 같은 응답 item에 함께 내려오는 필드로 문서에 기재되어 있다(위 필드 목록
 참조, 실측은 못 함 — 위와 동일한 한계). `public_serving.stock_master`(REQ-001)

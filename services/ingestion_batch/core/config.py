@@ -39,12 +39,15 @@ class Settings:
     database_url: str
     gov_data_portal_base_url: str
     gov_data_portal_service_key: str | None
+    dart_api_key: str | None = None
     request_timeout_seconds: float = 10.0
     max_retries: int = 3
     circuit_breaker_threshold: int = 3
 
 
-def get_settings(*, require_service_key: bool) -> Settings:
+def get_settings(
+    *, require_service_key: bool, require_dart_key: bool = False
+) -> Settings:
     database_url = os.environ.get("BATCH_DATABASE_URL")
     if not database_url:
         raise ConfigError(
@@ -60,10 +63,18 @@ def get_settings(*, require_service_key: bool) -> Settings:
             "서비스키(디코딩 인증키)를 설정하세요."
         )
 
+    dart_api_key = os.environ.get("DART_API_KEY")
+    if require_dart_key and not dart_api_key:
+        raise ConfigError(
+            "환경변수 DART_API_KEY가 설정되지 않았습니다. "
+            "opendart.fss.or.kr에서 발급받은 인증키(40자리)를 설정하세요."
+        )
+
     base_url = os.environ.get("GOV_DATA_PORTAL_BASE_URL", DEFAULT_GOV_DATA_PORTAL_BASE_URL)
 
     return Settings(
         database_url=database_url,
         gov_data_portal_base_url=base_url,
         gov_data_portal_service_key=service_key,
+        dart_api_key=dart_api_key,
     )
