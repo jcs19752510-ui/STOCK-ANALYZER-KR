@@ -13,4 +13,10 @@ export const SCREEN_FIELD_IDS: Partial<Record<ScreenFormField, string>> = {
   returnPctMax: "screen-return-pct-max",
   perMax: "screen-per-max",
   pbrMax: "screen-pbr-max",
+  ma5GapPctMin: "screen-ma5-gap-pct-min",
+  ma5GapPctMax: "screen-ma5-gap-pct-max",
+  ma20GapPctMin: "screen-ma20-gap-pct-min",
+  ma20GapPctMax: "screen-ma20-gap-pct-max",
+  volumeAnomalyScoreMin: "screen-volume-anomaly-score-min",
+  volumeAnomalyScoreMax: "screen-volume-anomaly-score-max",
 };

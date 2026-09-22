@@ -19,6 +19,8 @@ const SORT_BY_OPTIONS: Array<{ value: ScreenSortBy; label: string }> = [
   { value: "market_cap", label: copy.screener.sortByMarketCap },
   { value: "per", label: copy.screener.sortByPer },
   { value: "pbr", label: copy.screener.sortByPbr },
+  { value: "ma5_gap_pct", label: copy.screener.sortByMa5GapPct },
+  { value: "ma20_gap_pct", label: copy.screener.sortByMa20GapPct },
   { value: "volume_anomaly_score", label: copy.screener.sortByVolumeAnomalyScore },
 ];
 

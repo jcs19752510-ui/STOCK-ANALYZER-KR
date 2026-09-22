@@ -166,6 +166,78 @@ export function ConditionFilterPanel({
             errorMessage={errorFor(fieldErrors, "pbrMax")}
           />
 
+          <fieldset className="condition-field-group">
+            <legend className="condition-field-group__legend">
+              {copy.screener.ma5GapPctLabel}
+            </legend>
+            <div className="condition-field-group__row">
+              <ConditionField
+                id={SCREEN_FIELD_IDS.ma5GapPctMin!}
+                label={copy.screener.marketCapMinPlaceholder}
+                value={values.ma5GapPctMin}
+                onChange={(v) => onFieldChange("ma5GapPctMin", v)}
+                placeholder={copy.screener.marketCapMinPlaceholder}
+                errorMessage={errorFor(fieldErrors, "ma5GapPctMin")}
+              />
+              <ConditionField
+                id={SCREEN_FIELD_IDS.ma5GapPctMax!}
+                label={copy.screener.marketCapMaxPlaceholder}
+                value={values.ma5GapPctMax}
+                onChange={(v) => onFieldChange("ma5GapPctMax", v)}
+                placeholder={copy.screener.marketCapMaxPlaceholder}
+                errorMessage={errorFor(fieldErrors, "ma5GapPctMax")}
+              />
+            </div>
+          </fieldset>
+
+          <fieldset className="condition-field-group">
+            <legend className="condition-field-group__legend">
+              {copy.screener.ma20GapPctLabel}
+            </legend>
+            <div className="condition-field-group__row">
+              <ConditionField
+                id={SCREEN_FIELD_IDS.ma20GapPctMin!}
+                label={copy.screener.marketCapMinPlaceholder}
+                value={values.ma20GapPctMin}
+                onChange={(v) => onFieldChange("ma20GapPctMin", v)}
+                placeholder={copy.screener.marketCapMinPlaceholder}
+                errorMessage={errorFor(fieldErrors, "ma20GapPctMin")}
+              />
+              <ConditionField
+                id={SCREEN_FIELD_IDS.ma20GapPctMax!}
+                label={copy.screener.marketCapMaxPlaceholder}
+                value={values.ma20GapPctMax}
+                onChange={(v) => onFieldChange("ma20GapPctMax", v)}
+                placeholder={copy.screener.marketCapMaxPlaceholder}
+                errorMessage={errorFor(fieldErrors, "ma20GapPctMax")}
+              />
+            </div>
+          </fieldset>
+
+          <fieldset className="condition-field-group">
+            <legend className="condition-field-group__legend">
+              {copy.screener.volumeAnomalyScoreLabel}
+            </legend>
+            <div className="condition-field-group__row">
+              <ConditionField
+                id={SCREEN_FIELD_IDS.volumeAnomalyScoreMin!}
+                label={copy.screener.marketCapMinPlaceholder}
+                value={values.volumeAnomalyScoreMin}
+                onChange={(v) => onFieldChange("volumeAnomalyScoreMin", v)}
+                placeholder={copy.screener.marketCapMinPlaceholder}
+                errorMessage={errorFor(fieldErrors, "volumeAnomalyScoreMin")}
+              />
+              <ConditionField
+                id={SCREEN_FIELD_IDS.volumeAnomalyScoreMax!}
+                label={copy.screener.marketCapMaxPlaceholder}
+                value={values.volumeAnomalyScoreMax}
+                onChange={(v) => onFieldChange("volumeAnomalyScoreMax", v)}
+                placeholder={copy.screener.marketCapMaxPlaceholder}
+                errorMessage={errorFor(fieldErrors, "volumeAnomalyScoreMax")}
+              />
+            </div>
+          </fieldset>
+
           <SortControl
             sortBy={values.sortBy as ScreenSortBy}
             sortDir={values.sortDir}

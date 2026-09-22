@@ -567,6 +567,8 @@ _SCREEN_ROW = ScreenRow(
     pbr_percentile=Decimal("30.0"),
     market_cap_percentile=Decimal("10.0"),
     volume_anomaly_score=Decimal("2.3"),
+    ma5_gap_pct=Decimal("1.5"),
+    ma20_gap_pct=Decimal("4.8"),
 )
 
 
@@ -686,6 +688,83 @@ def test_screen_per_pbr_sort_by_matched_metrics(monkeypatch):
     assert resp.status_code == 200
     item = resp.json()["data"]["items"][0]
     assert item["matched_metrics"] == {"pbr": 30.0, "per": 20.0}
+
+
+def test_screen_ma_gap_and_volume_anomaly_filters_included_in_matched_metrics(monkeypatch):
+    """2026-09-22 추가: 이동평균 이격도/거래량 이상치 필터도 market_cap 등 기존
+    필터와 동일하게 조건으로 걸리고 matched_metrics에도 노출돼야 한다."""
+    repo = FakeScreenRepository(
+        published_trade_date=_TRADING_DAY,
+        result=ScreenQueryResult(items=[_SCREEN_ROW], total_count=1),
+    )
+    _setup_screen_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get(
+        "/api/v1/screen",
+        params={
+            "ma5_gap_pct_min": -5,
+            "ma20_gap_pct_max": 10,
+            "volume_anomaly_score_min": 1.0,
+            "sort_by": "ma20_gap_pct",
+        },
+    )
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    item = resp.json()["data"]["items"][0]
+    assert item["matched_metrics"] == {
+        "ma5_gap_pct": 1.5,
+        "ma20_gap_pct": 4.8,
+        "volume_anomaly_score": 2.3,
+    }
+    assert repo.captured_filters.ma5_gap_pct_min == -5
+    assert repo.captured_filters.ma20_gap_pct_max == 10
+    assert repo.captured_filters.volume_anomaly_score_min == 1.0
+
+
+def test_screen_ma5_gap_pct_min_greater_than_max_returns_400(monkeypatch):
+    repo = FakeScreenRepository(published_trade_date=None, result=ScreenQueryResult([], 0))
+    _setup_screen_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get(
+        "/api/v1/screen", params={"ma5_gap_pct_min": 10, "ma5_gap_pct_max": 5}
+    )
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "INVALID_PARAMETER"
+    assert repo.captured_filters is None
+
+
+def test_screen_ma20_gap_pct_min_greater_than_max_returns_400(monkeypatch):
+    repo = FakeScreenRepository(published_trade_date=None, result=ScreenQueryResult([], 0))
+    _setup_screen_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get(
+        "/api/v1/screen", params={"ma20_gap_pct_min": 10, "ma20_gap_pct_max": 5}
+    )
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "INVALID_PARAMETER"
+
+
+def test_screen_volume_anomaly_score_min_greater_than_max_returns_400(monkeypatch):
+    repo = FakeScreenRepository(published_trade_date=None, result=ScreenQueryResult([], 0))
+    _setup_screen_overrides(monkeypatch, repository=repo)
+    client = TestClient(app)
+
+    resp = client.get(
+        "/api/v1/screen",
+        params={"volume_anomaly_score_min": 5, "volume_anomaly_score_max": 1},
+    )
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "INVALID_PARAMETER"
 
 
 def test_screen_zero_results_returns_empty_list(monkeypatch):

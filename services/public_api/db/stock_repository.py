@@ -21,6 +21,21 @@ from shared.market_types import ListedMarketFilter
 # 계약으로 추가하는 대신 구현 내부 상수로만 둔다 — unit-03-note.md 참조).
 MAX_SEARCH_RESULTS = 100
 
+# ILIKE 패턴 특수문자(%,_)와 이스케이프 문자(\) 자체를 이스케이프한다(DEF-006).
+# 이걸 안 하면 검색어에 %나 _가 그대로 들어간 사용자 입력이 LIKE 와일드카드로
+# 해석되어(예: "_" 한 글자만 검색해도 전체 종목이 매칭), 부분일치 검색이라는
+# 기능 계약이 깨진다. 파라미터 바인딩을 쓰므로 SQL 인젝션 자체는 원래도
+# 아니었다 — 이건 순수 검색 정확도 결함이다.
+_LIKE_ESCAPE_CHAR = "\\"
+
+
+def _escape_like_pattern(raw: str) -> str:
+    return (
+        raw.replace(_LIKE_ESCAPE_CHAR, _LIKE_ESCAPE_CHAR * 2)
+        .replace("%", f"{_LIKE_ESCAPE_CHAR}%")
+        .replace("_", f"{_LIKE_ESCAPE_CHAR}_")
+    )
+
 
 @dataclass(frozen=True)
 class StockSearchResultRow:
@@ -45,10 +60,13 @@ class SqlStockSearchRepository:
         있어, 더 이상 상장되어 있지 않은 종목은 검색 대상이 아니라고 판단했다
         — unit-03-note.md "설계서 대비 편차" 참조).
         """
-        pattern = f"%{query}%"
+        pattern = f"%{_escape_like_pattern(query)}%"
         stmt = select(StockMaster).where(
             StockMaster.is_active.is_(True),
-            or_(StockMaster.name.ilike(pattern), StockMaster.stock_code.ilike(pattern)),
+            or_(
+                StockMaster.name.ilike(pattern, escape=_LIKE_ESCAPE_CHAR),
+                StockMaster.stock_code.ilike(pattern, escape=_LIKE_ESCAPE_CHAR),
+            ),
         )
         if market != "ALL":
             stmt = stmt.where(StockMaster.market == market)

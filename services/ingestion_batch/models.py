@@ -59,11 +59,12 @@ class RawOhlcv(RawInternalBase):
 class RawFundamentals(RawInternalBase):
     """원본 재무지표 원문. 03-system-design.md §3-2 `raw_internal.raw_fundamentals`.
 
-    **중요(unit-02-note.md 참조)**: 이 유닛은 이 테이블의 스키마만 만들고,
-    Ingestion Batch는 아직 이 테이블에 실제로 데이터를 적재하지 않는다.
-    채택 API(공공데이터포털 "금융위원회_주식시세정보")가 PER/PBR을 이
-    엔드포인트에서 실제로 제공하는지 실 API 키 없이 확인할 수 없었기
-    때문이다(추측으로 필드명을 지어내지 않는다 — unit-02-note.md §2 참조).
+    `market_cap`은 공공데이터포털 "금융위원회_주식시세정보"(`mrktTotAmt`)가
+    매일 채운다. `per`/`pbr`은 이 API가 제공하지 않아(DEF-005) 이 오퍼레이션
+    경로로는 항상 None이었으나, 2026-09-22부터 DART 재무 원문(당기순이익/
+    자본총계, `raw_corp_financials`)과 이 `market_cap`을 조합해
+    `repository.apply_dart_valuation()`이 계산·반영한다(`run_ingestion.py`에서
+    호출).
     """
 
     __tablename__ = "raw_fundamentals"
@@ -76,3 +77,28 @@ class RawFundamentals(RawInternalBase):
     market_cap: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     ingested_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     source_batch_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+
+
+class RawCorpFinancials(RawInternalBase):
+    """DART(전자공시시스템) 재무 원문. 0010 리비전 참조.
+
+    PER/PBR을 공공데이터포털이 제공하지 않는다는 사실이 실측(DEF-005)으로
+    확정된 뒤 도입한 대체 소스 — `net_income`/`equity`는 지배기업
+    소유주지분 기준(연결, CFS) 또는 총계(개별, OFS)이며, `dart_client.py`가
+    어느 쪽을 썼는지 `fs_div`에 남긴다. PER=시가총액/net_income,
+    PBR=시가총액/equity로 `run_ingestion.py`가 계산해 `raw_fundamentals`에
+    반영한다(이 테이블 자체는 원문 보관용, 계산된 비율을 담지 않는다).
+    """
+
+    __tablename__ = "raw_corp_financials"
+    __table_args__ = {"schema": "raw_internal"}
+
+    stock_code: Mapped[str] = mapped_column(String(6), primary_key=True)
+    corp_code: Mapped[str] = mapped_column(String(8), nullable=False)
+    bsns_year: Mapped[str] = mapped_column(String(4), nullable=False)
+    reprt_code: Mapped[str] = mapped_column(String(5), nullable=False)
+    fs_div: Mapped[str] = mapped_column(String(3), nullable=False)
+    net_income: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    equity: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    ingested_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    source_batch_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)

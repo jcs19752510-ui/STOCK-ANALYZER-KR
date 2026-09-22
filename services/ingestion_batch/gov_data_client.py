@@ -34,9 +34,25 @@ getStockPriceInfo`)를 직접 호출해 **실측**했다(2026-09-15). 추측으�
      자체로 실측하지 못함), 이 경우를 "결과 0건"으로 명시적으로 처리한다
      (대상 거래일 데이터 미배포 감지에 사용, run_ingestion.py 참조).
 
-PER/PBR/시가총액(raw_fundamentals 대상) 필드가 이 오퍼레이션에 실제로
-포함되는지는 확인하지 못해 이 클라이언트는 파싱하지 않는다(services/
-ingestion_batch/models.py RawFundamentals 문서 참조).
+**(2026-09-22 추가, DEF-005 정정 반영)** PER/PBR/시가총액 중 **시가총액
+(`mrktTotAmt`)만 이 오퍼레이션이 실제로 제공하는 것으로 확인됐다** —
+data.go.kr 공식 Swagger 원문 대조 결과(traceability.md DEF-005). PER/PBR은
+여전히 이 오퍼레이션에 없는 것으로 판단해 파싱하지 않는다(상상으로 필드를
+지어내지 않는다는 원칙 유지 — `services/ingestion_batch/models.py`
+`RawFundamentals` 문서 참조. `per`/`pbr` 컬럼이 nullable인 이유이기도 하다).
+실 서비스키로 `mrktTotAmt`가 진짜 응답에 포함되는지는 아직 실측하지
+못했다(서비스키 활성화 대기 중) — 이 파싱 로직 자체는 문서 명세 기준으로
+작성했고, 실측 검증은 키 활성화 후 별도로 진행한다.
+
+**(2026-09-22 추가)** PER/PBR을 대체할 무료 소스로 KRX Open API도 검토했으나
+"주식" 카테고리 8개 API 전부 실측한 결과 PER/PBR·업종분류 모두 없었고, KRX
+Data Marketplace가 제공하는 해당 상품은 "데이터상품" 메뉴의 유료 구매
+항목으로 확인됐다(사용자 실측 스크린샷). 최종적으로 DART(전자공시시스템)
+OpenAPI로 대체했다 — `dart_client.py`가 재무제표 원문(당기순이익/자본총계)을
+가져오고, `repository.apply_dart_valuation()`이 이 오퍼레이션이 채운
+`market_cap`과 조합해 PER/PBR을 계산해 같은 `raw_fundamentals` 테이블에
+반영한다(이 클라이언트 자체는 변경 없음 — 원칙대로 이 API가 안 주는 필드는
+여전히 파싱하지 않는다).
 
 **(UNIT-03 추가)** `itmsNm`(종목명)/`mrktCtg`(시장구분)도 이 오퍼레이션의
 같은 응답 item에 함께 내려오는 필드로 문서에 기재되어 있다(위 필드 목록
@@ -124,6 +140,28 @@ class StockMasterFetchResult:
     total_count: int
 
 
+@dataclass(frozen=True)
+class RawFundamentalsRecord:
+    """getStockPriceInfo 응답 item에서 재무지표(raw_fundamentals 대상)를 추출.
+
+    `per`/`pbr`은 이 오퍼레이션이 제공하지 않는 것으로 판단해 항상 `None`이다
+    (§0 docstring DEF-005 정정 참조 — 상상으로 채우지 않는다). `market_cap`
+    (`mrktTotAmt`)만 파싱한다.
+    """
+
+    stock_code: str
+    trade_date: date
+    per: Decimal | None
+    pbr: Decimal | None
+    market_cap: int | None
+
+
+@dataclass(frozen=True)
+class FundamentalsFetchResult:
+    records: list[RawFundamentalsRecord]
+    total_count: int
+
+
 def _parse_decimal(value: str, *, field: str) -> Decimal:
     try:
         return Decimal(value)
@@ -198,6 +236,45 @@ def _parse_stock_master_item(
         raise GovDataClientError(f"종목명(itmsNm)이 비어 있습니다: item={item!r}")
 
     return StockMasterSnapshotRecord(stock_code=item["srtnCd"], name=name, market=market)
+
+
+def _parse_fundamentals_item(item: dict, *, expected_trade_date: date) -> RawFundamentalsRecord:
+    """`mrktTotAmt`(시가총액)만 파싱한다. `per`/`pbr`은 이 오퍼레이션이 제공하지
+    않는 것으로 판단해 항상 `None`(§0 docstring DEF-005 정정 참조).
+
+    `srtnCd`/`basDt`는 OHLCV와 동일하게 필수로 취급한다(이 값들이 없으면 어느
+    종목/거래일의 시가총액인지조차 알 수 없어 행 자체가 무의미하다). 반면
+    `mrktTotAmt`는 이 항목만 빠지는 경우가 있을 수 있다고 보고(공식 문서가
+    "관리종목/거래정지 등 일부 케이스는 값이 없을 수 있다"를 명시하지 않았지만,
+    raw_fundamentals.market_cap이 애초에 nullable로 설계된 이유이기도 함),
+    필드 자체가 없거나 빈 문자열이면 조용히 `None`으로 두고, 값이 있는데
+    숫자로 파싱이 안 되면(진짜 이상값) 그때는 다른 필드와 동일하게 명시적으로
+    실패시킨다.
+    """
+    required = ("srtnCd", "basDt")
+    missing = [f for f in required if f not in item]
+    if missing:
+        raise GovDataClientError(f"응답 item에 필수 필드가 없습니다: {missing} (item={item!r})")
+
+    bas_dt = item["basDt"]
+    if bas_dt != expected_trade_date.strftime("%Y%m%d"):
+        raise GovDataClientError(
+            f"요청한 basDt({expected_trade_date:%Y%m%d})와 응답 item의 basDt({bas_dt})가 "
+            "다릅니다. API가 다른 날짜 데이터를 반환했을 가능성이 있어 명시적으로 실패시킵니다."
+        )
+
+    raw_market_cap = item.get("mrktTotAmt")
+    market_cap: int | None = None
+    if raw_market_cap not in (None, ""):
+        market_cap = _parse_int(raw_market_cap, field="mrktTotAmt")
+
+    return RawFundamentalsRecord(
+        stock_code=item["srtnCd"],
+        trade_date=expected_trade_date,
+        per=None,
+        pbr=None,
+        market_cap=market_cap,
+    )
 
 
 def _gateway_error_from_fields(
@@ -328,6 +405,24 @@ class GovDataPortalClient:
             is not None
         ]
         return StockMasterFetchResult(records=records, total_count=total_count)
+
+    def fetch_fundamentals(
+        self, trade_date: date, *, page_no: int = 1, num_of_rows: int = 1000
+    ) -> FundamentalsFetchResult:
+        """지정 거래일의 전체 종목 시가총액(raw_fundamentals 대상)을 조회한다.
+
+        `fetch_ohlcv`/`fetch_stock_master_snapshot`와 동일한 오퍼레이션·요청 경로를
+        공유한다(새 외부 API를 추가하지 않는다는 원칙 동일). `per`/`pbr`은 이
+        오퍼레이션이 제공하지 않아 항상 `None`으로 채워진 레코드가 반환된다
+        (§0 docstring, `_parse_fundamentals_item` 참조).
+        """
+        raw_items, total_count = self._fetch_raw_items(
+            trade_date, page_no=page_no, num_of_rows=num_of_rows
+        )
+        records = [
+            _parse_fundamentals_item(item, expected_trade_date=trade_date) for item in raw_items
+        ]
+        return FundamentalsFetchResult(records=records, total_count=total_count)
 
     def _fetch_raw_items(
         self, trade_date: date, *, page_no: int, num_of_rows: int

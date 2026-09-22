@@ -73,12 +73,17 @@
     "perSuffix": "이하",
     "pbrLabel": "PBR(배)",
     "pbrSuffix": "이하",
+    "ma5GapPctLabel": "5일 이동평균 이격도(%)",
+    "ma20GapPctLabel": "20일 이동평균 이격도(%)",
+    "volumeAnomalyScoreLabel": "거래량 이상치 스코어",
     "sortByLabel": "정렬 기준",
     "sortByReturnPct": "등락률순",
     "sortByMarketCap": "시가총액순",
     "sortByPer": "PER순",
     "sortByPbr": "PBR순",
     "sortByVolumeAnomalyScore": "거래량 변동성순",
+    "sortByMa5GapPct": "5일 이격도순",
+    "sortByMa20GapPct": "20일 이격도순",
     "sortDirLabel": "정렬 방향",
     "sortDirDesc": "값이 큰 순",
     "sortDirAsc": "값이 작은 순",
@@ -95,7 +100,9 @@
       "marketCap": "시가총액",
       "per": "PER",
       "pbr": "PBR",
-      "volumeAnomalyScore": "거래량 변동성"
+      "volumeAnomalyScore": "거래량 변동성",
+      "ma5GapPct": "5일 이평 대비",
+      "ma20GapPct": "20일 이평 대비"
     }
   },
   "home": {

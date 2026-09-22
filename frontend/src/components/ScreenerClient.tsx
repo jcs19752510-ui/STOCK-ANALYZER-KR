@@ -17,6 +17,7 @@ import { orderMatchedMetricKeys } from "@/lib/screenMetricFormat";
 import { useIsDesktopViewport } from "@/lib/useIsDesktopViewport";
 import {
   DEFAULT_SCREEN_FORM_VALUES,
+  defaultScreenFormValuesFor,
   validateScreenForm,
   type FieldError,
   type ScreenFormValues,
@@ -54,6 +55,12 @@ function toScreenQuery(values: ScreenFormValues, page: number): ScreenQuery {
     returnPctMax: parseOptionalFloat(values.returnPctMax),
     perMax: parseOptionalFloat(values.perMax),
     pbrMax: parseOptionalFloat(values.pbrMax),
+    ma5GapPctMin: parseOptionalFloat(values.ma5GapPctMin),
+    ma5GapPctMax: parseOptionalFloat(values.ma5GapPctMax),
+    ma20GapPctMin: parseOptionalFloat(values.ma20GapPctMin),
+    ma20GapPctMax: parseOptionalFloat(values.ma20GapPctMax),
+    volumeAnomalyScoreMin: parseOptionalFloat(values.volumeAnomalyScoreMin),
+    volumeAnomalyScoreMax: parseOptionalFloat(values.volumeAnomalyScoreMax),
     sortBy: values.sortBy as ScreenSortBy,
     sortDir: values.sortDir,
     page,
@@ -76,6 +83,20 @@ export function ScreenerClient() {
 
   function updateField(field: keyof ScreenFormValues, value: string) {
     setFormValues((prev) => ({ ...prev, [field]: value }));
+  }
+
+  /**
+   * 시장 탭(전체/코스피/코스닥) 전환 시 폼 전체를 기본값으로 되돌린다
+   * (2026-09-22 사용자 결정 — "조건을 몰라도 [조건 적용]을 누르면 바로
+   * 유의미한 결과가 나오게" 해달라는 요청). `updateField`처럼 market 필드만
+   * 바꾸지 않고 전체를 리셋하는 이유: 이전 탭에서 입력해둔 조건이 새 시장
+   * 범위에서도 그대로 유효하다고 보장할 수 없고(예: PER 조건은 괜찮지만
+   * 시가총액 조건은 시장마다 분포가 다름), 탭 전환 자체가 "새로 시작"이라는
+   * 사용자 기대에 더 맞는다.
+   */
+  function handleMarketChange(market: ScreenFormValues["market"]) {
+    setFormValues(defaultScreenFormValuesFor(market));
+    setFieldErrors([]);
   }
 
   async function runQuery(query: ScreenQuery) {
@@ -151,7 +172,7 @@ export function ScreenerClient() {
           values={formValues}
           fieldErrors={fieldErrors}
           onFieldChange={updateField}
-          onMarketChange={(value) => updateField("market", value)}
+          onMarketChange={handleMarketChange}
           onSortByChange={(value) => updateField("sortBy", value)}
           onSortDirChange={(value: ScreenSortDir) => updateField("sortDir", value)}
           onSubmit={handleSubmit}

@@ -48,11 +48,17 @@ from services.ingestion_batch.circuit_breaker import (  # noqa: E402
 )
 from services.ingestion_batch.core.config import ConfigError, get_settings  # noqa: E402
 from services.ingestion_batch.gov_data_client import (  # noqa: E402
+    FetchResult,
+    FundamentalsFetchResult,
     GovDataApiError,
     GovDataClientError,
     GovDataPortalClient,
 )
-from services.ingestion_batch.repository import upsert_ohlcv  # noqa: E402
+from services.ingestion_batch.repository import (  # noqa: E402
+    apply_dart_valuation,
+    upsert_fundamentals,
+    upsert_ohlcv,
+)
 from shared.calendar_service import CalendarIntegrityError, get_last_trading_day  # noqa: E402
 from shared.calendar_service.types import CalendarLookup  # noqa: E402
 
@@ -60,9 +66,59 @@ KST = ZoneInfo("Asia/Seoul")
 INGEST_MARKET = "KRX"  # MVP 범위: KRX 정규장만 (DEC-010)
 CIRCUIT_BREAKER_THRESHOLD = 3
 
+# 2026-09-22 실 서비스키로 최초 실행해 발견한 결함: 전 종목이 약 2,867건인데
+# 기본 num_of_rows=1000 한 페이지만 가져오고 페이지네이션을 전혀 하지 않아
+# 65% 가까이 누락된 채 PARTIAL로 끝났다(unit-02-note.md §3이 "실 데이터
+# 규모를 몰라 배선을 보류"라고 명시했던 그 갭). scripts/seed_stock_master.py의
+# 페이지네이션 패턴(PAGE_SIZE/MAX_PAGES)을 그대로 따른다.
+PAGE_SIZE = 1000
+MAX_PAGES = 10
+
 
 class IngestionRunError(RuntimeError):
     """이번 실행이 실패했음을 나타낸다(배치 프로세스 자체는 계속 정상 종료 흐름을 탄다)."""
+
+
+def _fetch_all_ohlcv(client: GovDataPortalClient, trade_date: date) -> FetchResult:
+    records = []
+    page_no = 1
+    total_count = 0
+    while True:
+        result = client.fetch_ohlcv(trade_date, page_no=page_no, num_of_rows=PAGE_SIZE)
+        total_count = result.total_count
+        records.extend(result.records)
+        if len(records) >= total_count:
+            break
+        if page_no >= MAX_PAGES:
+            raise IngestionRunError(
+                f"OHLCV 페이지 상한({MAX_PAGES})에 도달했지만 아직 totalCount"
+                f"({total_count})에 도달하지 못했습니다(현재까지 {len(records)}건). "
+                "PAGE_SIZE/MAX_PAGES 조정이 필요합니다."
+            )
+        page_no += 1
+    return FetchResult(records=records, total_count=total_count)
+
+
+def _fetch_all_fundamentals(
+    client: GovDataPortalClient, trade_date: date
+) -> FundamentalsFetchResult:
+    records = []
+    page_no = 1
+    total_count = 0
+    while True:
+        result = client.fetch_fundamentals(trade_date, page_no=page_no, num_of_rows=PAGE_SIZE)
+        total_count = result.total_count
+        records.extend(result.records)
+        if len(records) >= total_count:
+            break
+        if page_no >= MAX_PAGES:
+            raise IngestionRunError(
+                f"재무지표 페이지 상한({MAX_PAGES})에 도달했지만 아직 totalCount"
+                f"({total_count})에 도달하지 못했습니다(현재까지 {len(records)}건). "
+                "PAGE_SIZE/MAX_PAGES 조정이 필요합니다."
+            )
+        page_no += 1
+    return FundamentalsFetchResult(records=records, total_count=total_count)
 
 
 def resolve_target_trade_date(calendar: CalendarLookup, *, override: date | None) -> date:
@@ -110,8 +166,8 @@ def run_once(
         return "FAILED", None, str(exc)
 
     try:
-        result = client.fetch_ohlcv(target_date)
-    except (GovDataApiError, GovDataClientError) as exc:
+        result = _fetch_all_ohlcv(client, target_date)
+    except (GovDataApiError, GovDataClientError, IngestionRunError) as exc:
         error_summary = f"API 호출 실패: {exc}"
         finish_run(
             session,
@@ -148,6 +204,48 @@ def run_once(
         if validation_passed
         else f"수신 {affected}건 / API totalCount {result.total_count}건 — 일부 누락 가능성"
     )
+
+    # 재무지표(시가총액) 수집은 OHLCV와 같은 오퍼레이션을 재호출해 별도로
+    # 처리한다(§0 docstring — 새 외부 API 추가 없음, fetch_stock_master_snapshot과
+    # 동일 패턴). 이 오퍼레이션 자체는 PER/PBR을 제공하지 않는다(gov_data_client.py
+    # DEF-005 정정 참조) — 여기서는 market_cap만 채워지고, PER/PBR은 아래
+    # apply_dart_valuation() 단계에서 DART 재무 원문을 조합해 별도로 채운다.
+    # 이 단계 실패는 OHLCV 성공 여부(핵심 시세/스크리닝 기능)를 함께 FAILED로
+    # 끌어내리지 않는다 —
+    # 재무지표는 raw_fundamentals가 애초에 전 컬럼 nullable로 설계된 "있으면
+    # 쓰고 없어도 되는" 보조 데이터이기 때문이다(모델 docstring 참조).
+    try:
+        fundamentals_result = _fetch_all_fundamentals(client, target_date)
+        upsert_fundamentals(
+            session, fundamentals_result.records, source_batch_id=batch_run_id
+        )
+    except (GovDataApiError, GovDataClientError, IngestionRunError) as exc:
+        fundamentals_warning = f"재무지표(raw_fundamentals) 수집 실패(OHLCV는 정상 반영됨): {exc}"
+        error_summary = (
+            f"{error_summary}; {fundamentals_warning}" if error_summary else fundamentals_warning
+        )
+
+    # PER/PBR 계산·반영(DEF-005 대체 소스, 2026-09-22 도입). 방금 위에서 받은
+    # market_cap과 `scripts/enrich_corp_financials.py`가 미리 적재해 둔 DART
+    # 재무 원문(raw_corp_financials)을 조합한다 — 이 단계도 재무지표와 같은
+    # "있으면 쓰고 없어도 되는" 보조 데이터라 실패해도 OHLCV 성공 여부를
+    # 끌어내리지 않는다. enrich_corp_financials.py를 아직 한 번도 돌리지
+    # 않았다면 raw_corp_financials가 비어 있어 조용히 0건 반영으로 끝난다.
+    try:
+        valuation_result = apply_dart_valuation(
+            session, trade_date=target_date, source_batch_id=batch_run_id
+        )
+        if valuation_result.updated:
+            print(
+                f"[정보] PER/PBR {valuation_result.updated}건 반영 "
+                f"(재무 원문 없어 건너뜀 {valuation_result.skipped_no_financials}건)"
+            )
+    except Exception as exc:  # DB 계층 예기치 못한 오류도 이 보조 단계 밖으로 전파하지 않는다
+        valuation_warning = f"PER/PBR 반영 실패(OHLCV/재무지표는 정상 반영됨): {exc}"
+        error_summary = (
+            f"{error_summary}; {valuation_warning}" if error_summary else valuation_warning
+        )
+
     finish_run(
         session,
         batch_run_id,
