@@ -1,4 +1,0 @@
-status 000 정상
-count 223
-필드 목록(첫 항목): ['account_detail', 'account_id', 'account_nm', 'bsns_year', 'corp_code', 'currency', 'frmtrm_amount', 'frmtrm_nm', 'ord', 'rcept_no', 'reprt_code', 'sj_div', 'sj_nm', 'thstrm_amount', 'thstrm_nm']
-{'rcept_no': '20260814003699', 'reprt_code': '11012', 'bsns_year': '2026', 'corp_code': '00126380', 'sj_div': 'IS', 'sj_nm': '손익계산서', 'account_id': 'ifrs-full_ProfitLossAttributableToOwnersOfParent', 'account_nm': '지배회사지분 반기순이익', 'account_detail': '-', 'thstrm_nm': '제 58 기 반기', 'thstrm_amount': '71269468000000', 'thstrm_add_amount': '118370658000000', 'frmtrm_q_nm': '제 57 기 반기', 'frmtrm_q_amount': '4934034000000', 'frmtrm_add_amount': '12962441000000', 'ord': '21', 'currency': 'KRW'}

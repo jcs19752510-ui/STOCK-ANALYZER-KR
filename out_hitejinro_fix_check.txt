@@ -1,1 +1,0 @@
-CorpFinancialsRecord(corp_code='00150244', bsns_year='2025', reprt_code='11011', fs_div='CFS', net_income=Decimal('41492231483'), equity=Decimal('1121101872935'))
