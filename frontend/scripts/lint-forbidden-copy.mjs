@@ -57,6 +57,17 @@ function walk(dir, files = []) {
 
 const WHITESPACE_RE = /\s/;
 
+// DEF-009(unit-04-test.md TC-050 계열) 대응: 이 스캐너는 파일을 텍스트
+// 그대로 읽을 뿐 JS 파서가 아니므로, 소스 코드에 "실제 개행 문자"가 아니라
+// "개행을 나타내는 이스케이프 시퀀스"가 백슬래시+문자 형태의 리터럴 텍스트로
+// 들어있으면(예: `"손실보\n전"`의 소스 텍스트는 실제로는 백슬래시(1글자)와
+// n(1글자) 두 개의 평범한 문자다) 아래 WHITESPACE_RE가 이를 공백으로 인식하지
+// 못해 탐지를 우회당한다. \n/\r/\t 이스케이프와 공백류를 나타내는 \uXXXX
+// 유니코드 이스케이프까지 같은 방식으로 "공백류"로 취급해 건너뛴다.
+const ESCAPE_WHITESPACE_CHARS = new Set(["n", "r", "t"]);
+const WHITESPACE_CODEPOINTS = new Set([0x09, 0x0a, 0x0d, 0x20, 0xa0]);
+const HEX4_RE = /^[0-9a-fA-F]{4}$/;
+
 /**
  * DEF-002(unit-04-test.md TC-027) 대응: 예전 구현은 파일을 물리적 줄(line)
  * 단위로 쪼개 검사했기 때문에, 금지어가 실제 줄바꿈으로 분리되면(예: 멀티라인
@@ -65,15 +76,41 @@ const WHITESPACE_RE = /\s/;
  * 문자열"을 만들어 검사한다 — 물리적 줄 경계 자체를 없애 우회 자체가 불가능한
  * 구조로 바꾼 것이다. 정규화 과정에서 원본 문자 위치를 그대로 추적(`indexMap`)해,
  * 정규화 후에도 정확한 원본 줄번호를 리포트할 수 있게 한다.
+ *
+ * DEF-009 대응: 실제 공백류 문자뿐 아니라, 소스 텍스트상의 JS 이스케이프
+ * 시퀀스(백슬래시+n/r/t, 또는 공백류 코드포인트를 가리키는 \uXXXX)도 동일하게
+ * 건너뛴다.
  */
 function normalizeWithIndexMap(content) {
   const chars = [];
   const indexMap = [];
-  for (let i = 0; i < content.length; i += 1) {
+  let i = 0;
+  while (i < content.length) {
     const ch = content[i];
-    if (WHITESPACE_RE.test(ch)) continue;
+
+    if (WHITESPACE_RE.test(ch)) {
+      i += 1;
+      continue;
+    }
+
+    if (ch === "\\" && i + 1 < content.length) {
+      const next = content[i + 1];
+      if (ESCAPE_WHITESPACE_CHARS.has(next)) {
+        i += 2;
+        continue;
+      }
+      if (next === "u" && i + 6 <= content.length) {
+        const hex = content.slice(i + 2, i + 6);
+        if (HEX4_RE.test(hex) && WHITESPACE_CODEPOINTS.has(parseInt(hex, 16))) {
+          i += 6;
+          continue;
+        }
+      }
+    }
+
     chars.push(ch);
     indexMap.push(i);
+    i += 1;
   }
   return { normalized: chars.join(""), indexMap };
 }

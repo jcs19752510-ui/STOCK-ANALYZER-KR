@@ -13,8 +13,18 @@ export const INVALID_DATE_FALLBACK_TEXT = "기준시각 확인 불가";
  * 버그 등) 예외를 던지지 않고 `INVALID_DATE_FALLBACK_TEXT`를 반환한다 — 이
  * 함수를 try/catch 없이 렌더 본문에서 직접 호출하는 컴포넌트가 크래시하지
  * 않도록 하기 위함.
+ *
+ * DEF-008 대응: `new Date(null)`/`new Date(0)`은 `Invalid Date`가 아니라
+ * 1970-01-01(Unix epoch)이라는 "유효하지만 틀린" 날짜를 반환하므로, 위
+ * `Number.isNaN` 검사만으로는 TS 타입 계약을 우회한 런타임 `null`/`0`
+ * 입력을 걸러내지 못한다. `typeof` 가드를 Date 생성 이전에 두어, 문자열이
+ * 아닌 값은 애초에 `new Date()`에 넘기지 않고 폴백을 반환한다.
  */
 export function formatKstDateTime(iso: string): string {
+  if (typeof iso !== "string") {
+    return INVALID_DATE_FALLBACK_TEXT;
+  }
+
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
     return INVALID_DATE_FALLBACK_TEXT;

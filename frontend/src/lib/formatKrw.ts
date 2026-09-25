@@ -12,7 +12,18 @@
 const EOK = 100_000_000; // 1억
 const JO = 1_000_000_000_000; // 1조
 
+/** DEF-U08-02(unit-08-test.md TC-045) 대응 — 유효하지 않은 입력의 안전한 폴백 문구. */
+export const INVALID_TRADING_VALUE_FALLBACK_TEXT = "거래대금 확인 불가";
+
 export function formatTradingValueKrw(krw: number): string {
+  // DEF-U08-02 대응: TypeScript 타입 계약(`number`)을 우회하는 런타임
+  // `NaN`/`undefined`/`Infinity` 등은 모든 비교 연산자가 그대로 false를
+  // 반환해 마지막 분기(조 단위)까지 흘러가 "NaN조원" 같은 의미 없는 문자열을
+  // 만든다. `Number.isFinite`는 NaN/Infinity/비-number 전부를 false로
+  // 판별하므로 이 가드 하나로 세 경우를 동시에 막는다.
+  if (!Number.isFinite(krw)) {
+    return INVALID_TRADING_VALUE_FALLBACK_TEXT;
+  }
   if (krw <= 0) {
     return "0원";
   }

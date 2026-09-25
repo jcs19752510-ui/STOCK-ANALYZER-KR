@@ -399,7 +399,7 @@ def test_fetch_stock_master_snapshot_shares_gateway_error_handling():
         return httpx.Response(200, json=_success_body([_item()], total_count=1))
 
     with _make_client(handler) as client:
-        result = client.fetch_stock_master_snapshot(TRADE_DATE)
+        client.fetch_stock_master_snapshot(TRADE_DATE)
 
     assert call_count == 1
 
