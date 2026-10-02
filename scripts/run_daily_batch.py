@@ -75,6 +75,7 @@ def _pending_dates() -> tuple[list[date], date] | None:
         from shared.batch_catchup import (
             DEFAULT_CATCHUP_TRADING_DAYS,
             fetch_derived_dates,
+            fetch_exhausted_dates,
             fetch_trading_dates,
             plan_catchup,
         )
@@ -91,7 +92,19 @@ def _pending_dates() -> tuple[list[date], date] | None:
             trading = fetch_trading_dates(session, market="KRX", target=target, max_days=max_days)
             since = target - timedelta(days=max_days * 3 + 10)
             done = fetch_derived_dates(session, since=since)
-        return plan_catchup(trading, done, target=target, max_days=max_days), target
+            exhausted = [
+                d
+                for d in fetch_exhausted_dates(session, since=since, before=target)
+                if d not in set(done)
+            ]
+        if exhausted:
+            print(
+                "[경고] 반복 실패·부분 성공으로 더 이상 재시도하지 않는 거래일: "
+                + ", ".join(d.isoformat() for d in sorted(exhausted))
+                + " — 필요하면 `--trade-date`로 수동 처리하세요.",
+                file=sys.stderr,
+            )
+        return plan_catchup(trading, [*done, *exhausted], target=target, max_days=max_days), target
     except Exception as exc:  # 계획 단계 실패가 배치 자체를 막지 않게 한다(기존 동작으로 폴백)
         print(f"[경고] 따라잡기 계획 실패, 단일 실행으로 진행: {exc}", file=sys.stderr)
         return None
@@ -134,6 +147,14 @@ def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     dry_run = "--dry-run" in argv
 
+    planned = None
+    if not dry_run and "--no-catchup" not in argv:
+        planned = _pending_dates()
+        if planned is not None and not planned[0]:
+            # 이미 최신이면 종목 마스터 갱신까지 건너뛰어 공공데이터를 전혀
+            # 호출하지 않고 끝낸다(하루 여러 번 실행해도 안전).
+            return _run_with_catchup(*planned)
+
     seed_cmd = [sys.executable, str(REPO_ROOT / "scripts" / "seed_stock_master.py")]
     if dry_run:
         seed_cmd.append("--dry-run")
@@ -145,10 +166,8 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
 
-    if not dry_run and "--no-catchup" not in argv:
-        planned = _pending_dates()
-        if planned is not None:
-            return _run_with_catchup(*planned)
+    if planned is not None:
+        return _run_with_catchup(*planned)
 
     ingest_cmd = [sys.executable, "-m", "services.ingestion_batch.run_ingestion"]
     if dry_run:

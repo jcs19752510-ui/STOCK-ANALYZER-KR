@@ -11,13 +11,19 @@ from __future__ import annotations
 from collections.abc import Iterable
 from datetime import date, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from shared.db_models.public_serving import BatchRun
 from shared.db_models.reference import MarketCalendar
 
 DEFAULT_CATCHUP_TRADING_DAYS = 10
+# 같은 (과거) 거래일이 이만큼 실패·부분 성공으로 끝나면 더는 다시 시도하지 않는다
+# (운영자에게 경고만 남김). 이력이 없어 가공이 항상 PARTIAL로 끝나는 날짜나,
+# 캘린더는 거래일인데 API가 영구히 0건을 주는 날짜 때문에 매 실행마다 같은 호출을
+# 반복하는 것을 막는다. 대상(최신) 거래일에는 적용하지 않는다(공개 지연으로
+# 정상적으로 반복될 수 있음).
+MAX_ATTEMPTS_PER_PAST_DATE = 3
 
 
 def plan_catchup(
@@ -60,5 +66,22 @@ def fetch_derived_dates(session: Session, *, since: date) -> list[date]:
             BatchRun.trade_date_covered >= since,
         )
         .distinct()
+    ).scalars()
+    return [d for d in rows if d is not None]
+
+
+def fetch_exhausted_dates(
+    session: Session, *, since: date, before: date, max_attempts: int = MAX_ATTEMPTS_PER_PAST_DATE
+) -> list[date]:
+    """`since` 이상 `before` 미만 거래일 중 실패·부분 성공이 `max_attempts`회 이상 쌓인 날짜."""
+    rows = session.execute(
+        select(BatchRun.trade_date_covered)
+        .where(
+            BatchRun.trade_date_covered >= since,
+            BatchRun.trade_date_covered < before,
+            BatchRun.status.in_(("FAILED", "PARTIAL")),
+        )
+        .group_by(BatchRun.trade_date_covered)
+        .having(func.count() >= max_attempts)
     ).scalars()
     return [d for d in rows if d is not None]
