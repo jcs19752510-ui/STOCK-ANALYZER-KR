@@ -149,6 +149,8 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
   const [bubbleDismissed, setBubbleDismissed] = useState(false);
   const [intra, setIntra] = useState<IntraSpec | null>(null);
   const [menu, setMenu] = useState<"minute" | "tick" | null>(null);
+  // 개인 로컬 모드가 꺼진 상태에서 분·틱을 눌렀을 때 이유를 보여 주는 안내(눌러도 무반응으로 보이지 않게).
+  const [unavailableNotice, setUnavailableNotice] = useState<"minute" | "tick" | null>(null);
   const intraPath =
     localMode && intra && stockCode
       ? intra.mode === "minute"
@@ -262,8 +264,11 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
                   key={mode}
                   type="button"
                   className="chart-seg__btn chart-seg__btn--disabled"
-                  disabled
+                  aria-disabled="true"
+                  aria-controls="chart-intraday-notice"
+                  aria-expanded={unavailableNotice === mode}
                   title={mode === "minute" ? copy.stockDetail.minuteDisabled : copy.stockDetail.tickDisabled}
+                  onClick={() => setUnavailableNotice((v) => (v === mode ? null : mode))}
                 >
                   {label}
                   <span aria-hidden="true" className="chart-seg__caret" />
@@ -371,6 +376,12 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
           </button>
         </div>
       </div>
+
+      {!localMode && unavailableNotice && (
+        <p id="chart-intraday-notice" className="stock-chart__status stock-chart__notice" role="status">
+          {copy.stockDetail.intradayUnavailable}
+        </p>
+      )}
 
       {settingsOpen && (
         <fieldset id="chart-settings-panel" className="chart-settings">

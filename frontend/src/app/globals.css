@@ -2091,6 +2091,13 @@ main {
   font-size: 13px;
 }
 
+.stock-chart__notice {
+  padding: var(--space-2) var(--space-3);
+  border-radius: 8px;
+  background: #f3f4f6;
+  line-height: 1.5;
+}
+
 /* 도구 줄이 360px 폭에서 한 줄에 들어가도록(분·틱 선택 + 요약·설정·도구 아이콘) */
 .chart-seg__btn {
   min-width: 36px;

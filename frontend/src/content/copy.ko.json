@@ -46,6 +46,7 @@
     "timeframeTick": "틱",
     "minuteDisabled": "분봉은 제공하지 않습니다(일 단위 데이터만 제공)",
     "tickDisabled": "틱 차트는 제공하지 않습니다(일 단위 데이터만 제공)",
+    "intradayUnavailable": "분·틱 차트는 현재 사용할 수 없습니다. 이 서비스는 일 단위(종가 기준) 데이터만 제공합니다. 내 PC에서 개인 로컬 모드를 켠 경우에만 증권사 앱키로 분·틱을 볼 수 있습니다(설정 방법: docs/ops/local-intraday-guide.md).",
     "settingsLabel": "차트 설정",
     "settingsMa": "이동평균 {n}",
     "settingsVolMa": "거래량 이동평균",
