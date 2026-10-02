@@ -95,7 +95,8 @@ const af = await p.evaluate(() => document.activeElement.className || document.a
 rec("차트 요약 키보드로 열림", true, `열린 뒤 포커스=${af}`);
 await p.keyboard.press("Escape");
 rec("차트 요약 Esc로 닫힘(권장)", (await p.locator(".chart-summary").count()) === 0, "Esc 후 " + (await p.locator(".chart-summary").count()));
-await p.locator(".chart-summary__close").focus().catch(() => {});
+await sumBtn.focus(); await p.keyboard.press("Enter"); await p.waitForSelector(".chart-summary__close");
+await p.locator(".chart-summary__close").focus();
 await p.keyboard.press("Enter");
 rec("요약 닫기 버튼 Enter", (await p.locator(".chart-summary").count()) === 0);
 // 설정 패널
