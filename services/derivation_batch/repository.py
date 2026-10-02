@@ -24,11 +24,13 @@ from shared.db_models.public_serving import (
     MarketSummaryDaily,
     StockMaster,
 )
+from shared.pattern_params import PATTERN_WINDOW_ROWS
 
-# MA20(당일 포함 20일) + 거래량 이상치 기준선(당일 제외 직전 20일) 양쪽을
-# 한 번의 쿼리로 충족하려면 최대 1(당일) + 20(MA20 나머지) + 20(기준선) = 41행이
-# 필요하다(compute.py 참조).
-OHLCV_WINDOW_SIZE = 41
+# 기존 지표(MA20 당일 포함 20일 + 거래량 이상치 기준선 직전 20일)는 최대 41행이면 충분했다.
+# 패턴 지표(REQ-030)는 최소 80행이 필요하므로 여유(20행)를 더해 `PATTERN_WINDOW_ROWS`(100)행을
+# 조회한다(설계서 02 §3-2). 기존 지표 함수는 앞쪽 필요한 행만 슬라이스해 쓰므로 값이 바뀌지
+# 않는다(TC-D08).
+OHLCV_WINDOW_SIZE = PATTERN_WINDOW_ROWS
 VOLUME_BASELINE_WINDOW = 20
 
 
@@ -109,6 +111,18 @@ class DerivedMetricsInput:
     per_percentile: Decimal | None = None
     pbr_percentile: Decimal | None = None
     market_cap_percentile: Decimal | None = None
+    # 패턴 지표(REQ-030, 0011). 산정 불가면 status만 채워지고 나머지는 None.
+    sideways_range_pct: Decimal | None = None
+    sideways_net_change_pct: Decimal | None = None
+    ma_convergence_pct: Decimal | None = None
+    volatility_contraction_ratio: Decimal | None = None
+    ma60_gap_pct: Decimal | None = None
+    ma20_vs_ma60_gap_pct: Decimal | None = None
+    ma60_slope_pct: Decimal | None = None
+    ma60_cross_up_days: int | None = None
+    volume_ratio_5_60: Decimal | None = None
+    recent_surge_flag: bool | None = None
+    pattern_metrics_status: str | None = None
 
 
 def upsert_derived_metrics(
@@ -133,6 +147,17 @@ def upsert_derived_metrics(
             per_percentile=row.per_percentile,
             pbr_percentile=row.pbr_percentile,
             market_cap_percentile=row.market_cap_percentile,
+            sideways_range_pct=row.sideways_range_pct,
+            sideways_net_change_pct=row.sideways_net_change_pct,
+            ma_convergence_pct=row.ma_convergence_pct,
+            volatility_contraction_ratio=row.volatility_contraction_ratio,
+            ma60_gap_pct=row.ma60_gap_pct,
+            ma20_vs_ma60_gap_pct=row.ma20_vs_ma60_gap_pct,
+            ma60_slope_pct=row.ma60_slope_pct,
+            ma60_cross_up_days=row.ma60_cross_up_days,
+            volume_ratio_5_60=row.volume_ratio_5_60,
+            recent_surge_flag=row.recent_surge_flag,
+            pattern_metrics_status=row.pattern_metrics_status,
             computed_at=computed_at,
             batch_run_id=batch_run_id,
         )
@@ -155,6 +180,17 @@ def upsert_derived_metrics(
                 "per_percentile": stmt.excluded.per_percentile,
                 "pbr_percentile": stmt.excluded.pbr_percentile,
                 "market_cap_percentile": stmt.excluded.market_cap_percentile,
+                "sideways_range_pct": stmt.excluded.sideways_range_pct,
+                "sideways_net_change_pct": stmt.excluded.sideways_net_change_pct,
+                "ma_convergence_pct": stmt.excluded.ma_convergence_pct,
+                "volatility_contraction_ratio": stmt.excluded.volatility_contraction_ratio,
+                "ma60_gap_pct": stmt.excluded.ma60_gap_pct,
+                "ma20_vs_ma60_gap_pct": stmt.excluded.ma20_vs_ma60_gap_pct,
+                "ma60_slope_pct": stmt.excluded.ma60_slope_pct,
+                "ma60_cross_up_days": stmt.excluded.ma60_cross_up_days,
+                "volume_ratio_5_60": stmt.excluded.volume_ratio_5_60,
+                "recent_surge_flag": stmt.excluded.recent_surge_flag,
+                "pattern_metrics_status": stmt.excluded.pattern_metrics_status,
                 "computed_at": stmt.excluded.computed_at,
                 "batch_run_id": stmt.excluded.batch_run_id,
             },

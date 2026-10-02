@@ -42,6 +42,7 @@ from services.derivation_batch.compute import (  # noqa: E402
     MarketSummaryInput,
     compute_ma_gap_pct,
     compute_market_summary,
+    compute_pattern_metrics,
     compute_return_pct,
     compute_volume_anomaly_score,
     rank_percentile,
@@ -106,6 +107,18 @@ class StockDayMetrics:
     # REQ-003 `GET /screen?volume_min=` 필터 전용(unit-07-note.md §2 참조).
     # API 응답에는 절대 노출하지 않는다 — per_raw/pbr_raw와 동일한 원칙.
     volume_raw: int | None = None
+    # 패턴 지표(REQ-030, 02 설계서 §3-1). 산정 불가면 status만 채우고 나머지는 None.
+    sideways_range_pct: Decimal | None = None
+    sideways_net_change_pct: Decimal | None = None
+    ma_convergence_pct: Decimal | None = None
+    volatility_contraction_ratio: Decimal | None = None
+    ma60_gap_pct: Decimal | None = None
+    ma20_vs_ma60_gap_pct: Decimal | None = None
+    ma60_slope_pct: Decimal | None = None
+    ma60_cross_up_days: int | None = None
+    volume_ratio_5_60: Decimal | None = None
+    recent_surge_flag: bool | None = None
+    pattern_metrics_status: str | None = None
 
 
 def compute_stock_day_metrics(
@@ -139,6 +152,11 @@ def compute_stock_day_metrics(
         window[0].volume, baseline_volumes, window=VOLUME_BASELINE_WINDOW
     )
 
+    # 패턴 지표(REQ-030): `window`는 최신순이라 `compute_pattern_metrics`의 입력 규약과 같다.
+    # 이력 부족·단절 의심이어도 예외 없이 status만 채워 반환하므로 아래 기존 흐름과 검증
+    # (`_validation_passed`)에 영향을 주지 않는다.
+    pattern = compute_pattern_metrics(closes, [point.volume for point in window])
+
     return StockDayMetrics(
         stock_code=stock.stock_code,
         market=stock.market,
@@ -150,6 +168,17 @@ def compute_stock_day_metrics(
         pbr_raw=fundamentals.pbr if fundamentals else None,
         market_cap_raw_krw=fundamentals.market_cap if fundamentals else None,
         volume_raw=window[0].volume,
+        sideways_range_pct=pattern.sideways_range_pct,
+        sideways_net_change_pct=pattern.sideways_net_change_pct,
+        ma_convergence_pct=pattern.ma_convergence_pct,
+        volatility_contraction_ratio=pattern.volatility_contraction_ratio,
+        ma60_gap_pct=pattern.ma60_gap_pct,
+        ma20_vs_ma60_gap_pct=pattern.ma20_vs_ma60_gap_pct,
+        ma60_slope_pct=pattern.ma60_slope_pct,
+        ma60_cross_up_days=pattern.ma60_cross_up_days,
+        volume_ratio_5_60=pattern.volume_ratio_5_60,
+        recent_surge_flag=pattern.recent_surge_flag,
+        pattern_metrics_status=pattern.pattern_metrics_status,
     )
 
 
@@ -195,6 +224,17 @@ def build_derivation_inputs(
             per_percentile=per_percentiles.get(r.stock_code),
             pbr_percentile=pbr_percentiles.get(r.stock_code),
             market_cap_percentile=market_cap_percentiles.get(r.stock_code),
+            sideways_range_pct=r.sideways_range_pct,
+            sideways_net_change_pct=r.sideways_net_change_pct,
+            ma_convergence_pct=r.ma_convergence_pct,
+            volatility_contraction_ratio=r.volatility_contraction_ratio,
+            ma60_gap_pct=r.ma60_gap_pct,
+            ma20_vs_ma60_gap_pct=r.ma20_vs_ma60_gap_pct,
+            ma60_slope_pct=r.ma60_slope_pct,
+            ma60_cross_up_days=r.ma60_cross_up_days,
+            volume_ratio_5_60=r.volume_ratio_5_60,
+            recent_surge_flag=r.recent_surge_flag,
+            pattern_metrics_status=r.pattern_metrics_status,
         )
         for r in rows
     ]

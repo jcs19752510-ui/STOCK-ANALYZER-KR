@@ -36,6 +36,7 @@ class TempDb:
     name: str
     migrator_url: URL  # DDL/시드용(슈퍼유저급)
     batch_url: URL  # batch_worker — 스크립트가 실제로 쓰는 역할
+    api_url: URL  # api_service — 읽기 전용 역할(공개 API·보정 리포트가 쓰는 계정)
 
     @staticmethod
     def render(url: URL) -> str:
@@ -78,6 +79,7 @@ def temp_database() -> Iterator[TempDb]:
     try:
         migrator = _base_url("ALEMBIC_DATABASE_URL")
         batch = _base_url("BATCH_DATABASE_URL")
+        api = _base_url("PUBLIC_API_DATABASE_URL")
         probe = subprocess.run(
             ["docker", "exec", CONTAINER, "pg_isready"],
             capture_output=True,
@@ -113,10 +115,26 @@ def temp_database() -> Iterator[TempDb]:
             name=name,
             migrator_url=migrator.set(database=name),
             batch_url=batch.set(database=name),
+            api_url=api.set(database=name),
         )
     finally:
         if created:
             _psql(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
+
+
+def run_alembic(db: TempDb, *args: str) -> subprocess.CompletedProcess:
+    """임시 DB에 alembic 명령을 실행한다(예: `run_alembic(db, "downgrade", "0010")`)."""
+    env = {**os.environ, "ALEMBIC_DATABASE_URL": TempDb.render(db.migrator_url)}
+    return subprocess.run(
+        [sys.executable, "-m", "alembic", *args],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=300,
+    )
 
 
 def leftover_temp_databases() -> list[str]:

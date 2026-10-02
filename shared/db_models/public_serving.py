@@ -21,12 +21,14 @@ from decimal import Decimal
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     Enum,
     ForeignKey,
     Integer,
     Numeric,
+    SmallInteger,
     String,
     Text,
 )
@@ -135,7 +137,14 @@ class DerivedMetricsDaily(Base):
     """
 
     __tablename__ = "derived_metrics_daily"
-    __table_args__ = {"schema": "public_serving"}
+    __table_args__ = (
+        # 패턴 지표 상태(0011). NULL = 패턴 지표 도입 이전 배치 행.
+        CheckConstraint(
+            "pattern_metrics_status IN ('OK', 'INSUFFICIENT_HISTORY', 'SUSPECT_PRICE_JUMP')",
+            name="ck_derived_metrics_daily_pattern_metrics_status",
+        ),
+        {"schema": "public_serving"},
+    )
 
     stock_code: Mapped[str] = mapped_column(String(6), primary_key=True)
     trade_date: Mapped[date] = mapped_column(Date, primary_key=True)
@@ -156,6 +165,19 @@ class DerivedMetricsDaily(Base):
     per_percentile: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
     pbr_percentile: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
     market_cap_percentile: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    # 패턴 스크리닝 "급등 전 압축주" 지표(REQ-030, 0011 마이그레이션, 설계서 02 §3-1). 전부
+    # nullable이며 비율(%)·배수·일수·불리언뿐이다 — 원본 시세는 담지 않는다(§4-3 원칙 유지).
+    sideways_range_pct: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    sideways_net_change_pct: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    ma_convergence_pct: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    volatility_contraction_ratio: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    ma60_gap_pct: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    ma20_vs_ma60_gap_pct: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    ma60_slope_pct: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    ma60_cross_up_days: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    volume_ratio_5_60: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    recent_surge_flag: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    pattern_metrics_status: Mapped[str | None] = mapped_column(String(24), nullable=True)
     computed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

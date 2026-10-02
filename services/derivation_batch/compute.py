@@ -18,6 +18,8 @@ import statistics
 from dataclasses import dataclass
 from decimal import Decimal
 
+from shared import pattern_params as _pp
+
 _QUANT = Decimal("0.0001")
 _PCT_QUANT = Decimal("0.1")
 
@@ -174,12 +176,138 @@ def compute_market_summary(
     )
 
 
+# ── 패턴 스크리닝 "급등 전 압축주" 지표 (REQ-030, 02-system-design.md §3~§4) ─────────────
+# 아래 정의는 `docs/pattern-screening/prototype/pattern_rules_reference.py`(기준 구현)와 1:1이며
+# `tests/unit/test_pattern_compute.py`가 합성 시계열 300건으로 교차 검증한다.
+# 기존 함수는 바꾸지 않았다.
+
+
+@dataclass(frozen=True)
+class PatternMetrics:
+    """`derived_metrics_daily` 패턴 지표 11개 컬럼과 1:1(설계서 §3-1).
+
+    산정 불가(`INSUFFICIENT_HISTORY`/`SUSPECT_PRICE_JUMP`)면 `pattern_metrics_status`만 채우고
+    나머지는 전부 `None`이다. 상태가 `OK`여도 분모 0인 개별 값은 `None`일 수 있다
+    (3값 논리, 설계서 §4-1-3).
+    """
+
+    sideways_range_pct: Decimal | None = None
+    sideways_net_change_pct: Decimal | None = None
+    ma_convergence_pct: Decimal | None = None
+    volatility_contraction_ratio: Decimal | None = None
+    ma60_gap_pct: Decimal | None = None
+    ma20_vs_ma60_gap_pct: Decimal | None = None
+    ma60_slope_pct: Decimal | None = None
+    ma60_cross_up_days: int | None = None
+    volume_ratio_5_60: Decimal | None = None
+    recent_surge_flag: bool | None = None
+    pattern_metrics_status: str = _pp.PATTERN_STATUS_OK
+
+
+def _mean(values: list[Decimal]) -> Decimal:
+    return sum(values, Decimal(0)) / Decimal(len(values))
+
+
+def _ma(closes: list[Decimal], window: int, offset: int = 0) -> Decimal:
+    """`closes[offset:offset+window]`의 단순평균. 호출자가 길이 충분을 보장한다(MIN_ROWS 게이트)."""
+    return _mean(closes[offset : offset + window])
+
+
+def _daily_returns_pct(closes: list[Decimal], count: int) -> list[Decimal]:
+    """최신순 `closes`의 최근 `count`개 일수익률(%): (closes[i]-closes[i+1])/closes[i+1]*100."""
+    return [(closes[i] - closes[i + 1]) / closes[i + 1] * 100 for i in range(count)]
+
+
+def compute_pattern_metrics(closes: list[Decimal], volumes: list[int]) -> PatternMetrics:
+    """패턴 스크리닝 지표 11개를 계산한다(순수 함수, I/O·전역 상태 변경 없음).
+
+    **입력 규약: `closes`·`volumes`는 최신순(내림차순)이며 0번 원소가 대상 거래일(T)이다.**
+    오름차순(과거→최신)으로 넘기면 결과가 달라지므로(오용 방지, TC-U42) 호출자가 순서를 맞춘다.
+    배치는 종목당 `PATTERN_WINDOW_ROWS`(100)행을 최신순으로 조회해 넘기지만 이 함수는 앞쪽
+    `PATTERN_MIN_ROWS`(80)행만 쓴다 — 그보다 오래된 행은 결과에 영향이 없다(TC-U41).
+
+    산정 불가 게이트(설계서 §4-1):
+    1. 종가·거래량 중 하나라도 80행 미만 → `INSUFFICIENT_HISTORY`.
+    2. 앞 80행 종가에 0 이하가 있거나, 앞 80행의 일 변동률 절댓값이 31%를 넘는 날이 있음
+       → `SUSPECT_PRICE_JUMP`(액면분할 등 수정주가 미반영 의심).
+    3. 개별 지표의 분모가 0이면(60일 수익률 표준편차 0, 60일 평균 거래량 0) 그 값만 `None`.
+    모든 수치는 소수 4자리로 정규화한다. 비교는 경계 포함이다(예: 급등 +10.0%·3.0배는 충족).
+    """
+    p = _pp
+    if len(closes) < p.PATTERN_MIN_ROWS or len(volumes) < p.PATTERN_MIN_ROWS:
+        return PatternMetrics(pattern_metrics_status=p.PATTERN_STATUS_INSUFFICIENT_HISTORY)
+    if any(c <= 0 for c in closes[: p.PATTERN_MIN_ROWS]):
+        return PatternMetrics(pattern_metrics_status=p.PATTERN_STATUS_SUSPECT_PRICE_JUMP)
+    for i in range(p.PATTERN_LOOKBACK_DAYS - 1):
+        if abs((closes[i] - closes[i + 1]) / closes[i + 1] * 100) > p.PRICE_JUMP_LIMIT_PCT:
+            return PatternMetrics(pattern_metrics_status=p.PATTERN_STATUS_SUSPECT_PRICE_JUMP)
+
+    window = closes[: p.PATTERN_LOOKBACK_DAYS]
+    short_ma, mid_ma, long_ma = (_ma(closes, n) for n in p.CONVERGENCE_MA_WINDOWS)
+    ma20 = long_ma
+    ma60 = _ma(closes, p.MA60_WINDOW)
+    ma60_prev = _ma(closes, p.MA60_WINDOW, p.MA60_SLOPE_DAYS)
+
+    # 변동성 수축비: 최근 10일 / 60일 일수익률 모표준편차. 60일 표준편차 0이면 None.
+    sd_long = statistics.pstdev(_daily_returns_pct(closes, p.VOL_LONG))
+    volatility_ratio = (
+        None
+        if sd_long == 0
+        else statistics.pstdev(_daily_returns_pct(closes, p.VOL_SHORT)) / sd_long
+    )
+
+    # 최근 10거래일 내 종가가 60일선을 상향 돌파한 가장 최근 시점(0=오늘). 종가==MA60은 돌파 아님.
+    cross_days: int | None = None
+    for k in range(p.CROSS_LOOKBACK_DAYS):
+        if closes[k] > _ma(closes, p.MA60_WINDOW, k) and closes[k + 1] <= _ma(
+            closes, p.MA60_WINDOW, k + 1
+        ):
+            cross_days = k
+            break
+
+    vol_dec = [Decimal(v) for v in volumes[: p.PATTERN_MIN_ROWS]]
+    vr_den = _mean(vol_dec[: p.VR_LONG])
+    volume_ratio = None if vr_den == 0 else _mean(vol_dec[: p.VR_SHORT]) / vr_den
+
+    # 급등 이력(뉴스 반영 대리 지표): 일 등락률 ≥ +10% 그리고 거래량 ≥ 직전 20일 평균 × 3.
+    # 직전 20일 평균 거래량이 0이면 그 날은 건너뛴다(0 나눗셈 방지·기준 부재).
+    surge = False
+    for d in range(p.SURGE_LOOKBACK_DAYS):
+        ret = (closes[d] - closes[d + 1]) / closes[d + 1] * 100
+        base = _mean(vol_dec[d + 1 : d + 1 + p.SURGE_BASELINE_DAYS])
+        if ret >= p.SURGE_RETURN_PCT and base > 0 and vol_dec[d] >= p.SURGE_VOLUME_MULT * base:
+            surge = True
+            break
+
+    def q(value: Decimal | None) -> Decimal | None:
+        return None if value is None else value.quantize(_QUANT)
+
+    oldest = closes[p.PATTERN_LOOKBACK_DAYS - 1]
+    return PatternMetrics(
+        sideways_range_pct=q((max(window) - min(window)) / _mean(window) * 100),
+        sideways_net_change_pct=q((closes[0] - oldest) / oldest * 100),
+        ma_convergence_pct=q(
+            (max(short_ma, mid_ma, long_ma) - min(short_ma, mid_ma, long_ma)) / ma20 * 100
+        ),
+        volatility_contraction_ratio=q(volatility_ratio),
+        ma60_gap_pct=q((closes[0] - ma60) / ma60 * 100),
+        ma20_vs_ma60_gap_pct=q((ma20 - ma60) / ma60 * 100),
+        ma60_slope_pct=q((ma60 - ma60_prev) / ma60_prev * 100),
+        ma60_cross_up_days=cross_days,
+        volume_ratio_5_60=q(volume_ratio),
+        recent_surge_flag=surge,
+        pattern_metrics_status=p.PATTERN_STATUS_OK,
+    )
+
+
 __all__ = [
     "MarketSummaryInput",
     "MarketSummaryResult",
+    "PatternMetrics",
     "SectorTradingValue",
     "compute_ma_gap_pct",
     "compute_market_summary",
+    "compute_pattern_metrics",
     "compute_return_pct",
     "compute_volume_anomaly_score",
     "rank_percentile",
