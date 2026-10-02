@@ -302,6 +302,9 @@ function EarningsPanel({ state }: { state: LazyState<StockEarningsData> }) {
   }
   return (
     <div className="daily-table-wrap" role="region" tabIndex={0} aria-label={copy.stockDetail.earningsLabel}>
+      <p className="stock-tabs__note" aria-hidden="true">
+        {copy.stockDetail.earningsLabel}
+      </p>
       <table className="daily-table">
         <caption className="sr-only">{copy.stockDetail.earningsLabel}</caption>
         <thead>
