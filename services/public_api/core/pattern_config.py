@@ -42,6 +42,7 @@ _DECIMAL_SPECS: tuple[tuple[str, str, str, str, str], ...] = (
 )
 _CROSS_ENV = "PATTERN_CROSS_EARLY_MAX_DAYS"
 _ENABLED_ENV = "PATTERN_SCREEN_ENABLED"
+_EXCLUDE_SPECIAL_ENV = "PATTERN_EXCLUDE_SPAC_PREFERRED"
 
 # 임계값 환경변수 → (`PatternThresholds` 필드, 허용 최소, 허용 최대). 보정 리포트의 민감도 변형이
 # 설정 허용 범위를 벗어나지 않도록 같은 출처를 공유한다(범위가 두 곳에서 따로 관리되지 않게).
@@ -70,6 +71,9 @@ class PatternThresholds:
     volume_ratio_max: Decimal  # c5
     volume_anomaly_max: Decimal  # c5 오늘 거래량 폭발 배제
     enabled: bool = True  # 기능 스위치(PATTERN_SCREEN_ENABLED)
+    # 스팩·우선주를 평가 대상에서 제외(기본 true, 사용자 결정 Q3). 조용한 제외가 아니도록 응답
+    # `definition.universe`에 제외 유형을 항상 공개한다.
+    exclude_special_stocks: bool = True
 
     def definition_thresholds(self) -> dict[str, int | float]:
         """API 응답 `definition.thresholds`(설계서 §5-2) — 로드된 설정을 그대로 노출한다."""
@@ -85,6 +89,10 @@ class PatternThresholds:
             "volume_ratio_max": float(self.volume_ratio_max),
             "volume_anomaly_max": float(self.volume_anomaly_max),
         }
+
+    def definition_universe(self) -> dict[str, list[str]]:
+        """API 응답 `definition.universe` — 평가 대상에서 제외하는 종목 유형(없으면 빈 목록)."""
+        return {"excluded_types": ["SPAC", "PREFERRED"] if self.exclude_special_stocks else []}
 
     @staticmethod
     def definition_calc() -> dict[str, int | float]:
@@ -152,4 +160,17 @@ def load_pattern_thresholds(env: Mapping[str, str] | None = None) -> PatternThre
     else:
         raise ConfigError(f"{_ENABLED_ENV}={raw_enabled!r}: true 또는 false여야 합니다.")
 
-    return PatternThresholds(cross_early_max_days=cross_days, enabled=enabled, **values)
+    raw_exclude = _raw(source, _EXCLUDE_SPECIAL_ENV)
+    if raw_exclude is None:
+        exclude_special = True
+    elif raw_exclude.lower() in ("true", "false"):
+        exclude_special = raw_exclude.lower() == "true"
+    else:
+        raise ConfigError(f"{_EXCLUDE_SPECIAL_ENV}={raw_exclude!r}: true 또는 false여야 합니다.")
+
+    return PatternThresholds(
+        cross_early_max_days=cross_days,
+        enabled=enabled,
+        exclude_special_stocks=exclude_special,
+        **values,
+    )

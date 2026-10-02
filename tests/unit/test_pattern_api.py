@@ -133,8 +133,9 @@ class FakeRepo:
         self.calls.append(("published", market))
         return self.published
 
-    def readiness(self, trade_date, market):
+    def readiness(self, trade_date, market, thresholds):
         self.calls.append(("readiness", trade_date, market))
+        self.readiness_thresholds = thresholds
         return self.total, self.ok
 
     def search(self, filters, thresholds):
@@ -590,7 +591,7 @@ def test_s08_db_failure_returns_503_envelope_without_internal_details():
     from sqlalchemy.exc import OperationalError
 
     class Broken(FakeRepo):
-        def readiness(self, trade_date, market):
+        def readiness(self, trade_date, market, thresholds):
             raise OperationalError("SELECT 1", {}, Exception("password=SECRETPW host=10.0.0.5"))
 
     client, _ = _client(Broken())
@@ -616,3 +617,17 @@ def test_invalid_pattern_environment_prevents_app_start():
     )
     assert proc.returncode != 0
     assert "PATTERN_RANGE_MAX_PCT" in proc.stderr
+
+
+# ── Q3: 스팩·우선주 제외는 조용히 하지 않는다(definition.universe) ─────────────────────
+def test_definition_universe_discloses_excluded_types_and_readiness_receives_same_thresholds():
+    th = load_pattern_thresholds({})
+    client, repo = _client(thresholds=th)
+    data = client.get("/api/v1/screen/pattern").json()["data"]
+    assert data["definition"]["universe"] == {"excluded_types": ["SPAC", "PREFERRED"]}
+    assert repo.readiness_thresholds is th  # 평가 대상 집계도 같은 설정(제외 여부)을 쓴다
+
+    th_off = load_pattern_thresholds({"PATTERN_EXCLUDE_SPAC_PREFERRED": "false"})
+    client, _ = _client(thresholds=th_off)
+    off = client.get("/api/v1/screen/pattern").json()["data"]["definition"]["universe"]
+    assert off == {"excluded_types": []}

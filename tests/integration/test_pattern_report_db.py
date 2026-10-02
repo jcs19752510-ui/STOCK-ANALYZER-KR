@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import statistics
+import uuid
 from collections.abc import Iterator
 from decimal import Decimal
 
@@ -301,3 +302,46 @@ def test_cli_rejects_invalid_threshold_environment(db, monkeypatch, capsys):
     assert rpt.main([]) == 1
     assert "PATTERN_RANGE_MAX_PCT" in capsys.readouterr().err
     _ = Decimal
+
+
+def test_report_universe_excludes_spac_and_preferred_like_the_api(derived):
+    """리포트 숫자와 API 결과가 어긋나지 않도록 같은 평가 대상(스팩·우선주 제외)을 쓴다."""
+    mig, _ = derived
+    batch_id = uuid.uuid4()
+    rows = [
+        ("Q00010", "테스트스팩"),
+        ("Q00015", "삼성테스트우"),
+        ("Q00020", "성우"),  # 보통주(코드 끝자리 0) — 포함
+    ]
+    with mig.begin() as c:
+        c.execute(
+            text(
+                "INSERT INTO public_serving.batch_run(batch_run_id,run_type,status)"
+                " VALUES (:i,'derive','SUCCESS')"
+            ),
+            {"i": batch_id},
+        )
+        for code, name in rows:
+            c.execute(
+                text(
+                    "INSERT INTO public_serving.stock_master(stock_code,name,market,is_active)"
+                    " VALUES (:c,:n,'KOSPI',true)"
+                ),
+                {"c": code, "n": name},
+            )
+            c.execute(
+                text(
+                    "INSERT INTO public_serving.derived_metrics_daily"
+                    "(stock_code,trade_date,market,pattern_metrics_status,recent_surge_flag,"
+                    "batch_run_id) VALUES (:c,:d,'KOSPI','OK',false,:b)"
+                ),
+                {"c": code, "d": TARGET_DATE, "b": batch_id},
+            )
+    with Session(mig) as s:
+        on = rpt.generate_report(s, TH, market="ALL", trade_date=None, sensitivity_pct=20)
+    with Session(mig) as s:
+        off_th = load_pattern_thresholds({"PATTERN_EXCLUDE_SPAC_PREFERRED": "false"})
+        off = rpt.generate_report(s, off_th, market="ALL", trade_date=None, sensitivity_pct=20)
+    assert on.total_rows == 11  # 픽스처 10 + 보통주 '성우'(스팩·우선주 2종목 제외)
+    assert off.total_rows == 13  # 제외 스위치 off면 모두 포함
+    assert on.ok_rows == 9 and off.ok_rows == 11

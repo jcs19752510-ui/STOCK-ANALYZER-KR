@@ -1148,14 +1148,41 @@ main {
   line-height: 1.4;
 }
 
-/* 결과 표(≥1024px) */
-.pattern-table th,
-.pattern-table td {
-  vertical-align: top;
+/* 결과 표(≥1024px). 사이드 패널(280px)과 함께 있어 폭이 좁으므로 셀 안에서 줄바꿈하고,
+   그래도 넘치면 표 컨테이너 안에서만 가로 스크롤한다(페이지 가로 스크롤은 만들지 않는다). */
+.pattern-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
 }
 
+.pattern-table-wrap:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.pattern-table th,
 .pattern-table td {
-  min-width: 150px;
+  padding: var(--space-3) var(--space-2);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.pattern-table .results-table__link,
+.pattern-list__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px; /* 터치 타깃 44px(03-ux-design.md §8) */
+}
+
+.pattern-page .screener-page__mobile-filter-trigger {
+  min-height: 44px;
+}
+
+@media (min-width: 1024px) {
+  /* 결과 영역이 표의 최소 너비 때문에 그리드 밖으로 밀려 페이지 가로 스크롤이 생기지 않게 한다 */
+  .pattern-page .screener-page__layout {
+    grid-template-columns: 280px minmax(0, 1fr);
+  }
 }
 
 /* 결과 카드(<1024px) */
@@ -1248,4 +1275,11 @@ main {
 
 .pattern-page .screener-page__results {
   min-width: 0;
+}
+
+/* 종목 열: 종목명이 글자 단위로 쪼개지지 않게 최소 폭을 둔다 */
+.pattern-table th[scope="row"] {
+  min-width: 120px;
+  overflow-wrap: normal;
+  word-break: keep-all;
 }

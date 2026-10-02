@@ -43,12 +43,19 @@ class PatternItem(BaseModel):
     ma60_stage: str | None
 
 
+class PatternUniverse(BaseModel):
+    """평가 대상에서 제외한 종목 유형(SPAC·PREFERRED). 조용한 제외 금지 — 항상 공개."""
+
+    excluded_types: list[str]
+
+
 class PatternDefinition(BaseModel):
     """서버 설정을 그대로 노출 — 화면의 조건 설명이 문서·코드와 어긋나지 않게 하는 단일 출처."""
 
     version: str
     thresholds: dict[str, int | float]
     calc: dict[str, int | float]
+    universe: PatternUniverse
 
 
 class PatternReadiness(BaseModel):

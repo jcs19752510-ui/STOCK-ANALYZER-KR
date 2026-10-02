@@ -126,7 +126,7 @@
 | A12 | `page=0` | 기존 `/screen`과 동일 형식의 오류 |
 | A13 | 페이지네이션 결정론 | 동률 시 `stock_code` 오름차순, 페이지 간 중복·누락 없음 |
 | A14 | 정렬 NULL 처리 | 산정 불가 행이 **마지막**(NULLS LAST) |
-| A15 | **3값 응답 매핑** | `T00008`→전 조건 `met=null, reason=INSUFFICIENT_HISTORY`; `T00009`→`SUSPECT_PRICE_JUMP`; `T00010`→ 값 NULL인 조건만 `null`+`METRIC_UNAVAILABLE` |
+| A15 | **3값 응답 매핑**(2026-10-02 정정: 필수 `required` 조건은 `IS TRUE`로 걸리므로 산정 불가 종목은 결과 행에 나올 수 없다 — 설계서 §5-4) | ① `reason_for()` 매핑: `INSUFFICIENT_HISTORY`·`SUSPECT_PRICE_JUMP`·상태 OK인데 값 NULL·구 배치 행(상태 NULL)→`METRIC_UNAVAILABLE`, 값이 있으면 사유 없음 ② SQL 계층: `T00008`/`T00009`는 전 조건 NULL(상태 게이트) ③ API 응답: `T00010`은 **필수가 아닌** 조건 셀에서 `met=null`+`METRIC_UNAVAILABLE`(c2·c5)이고 c4는 `false` |
 | A16 | 필터는 TRUE만 통과 | FALSE·NULL 행은 `required` 조건에서 **제외** |
 | A17 | `total_count` | 필터 적용 후 실제 건수와 일치 |
 | A18 | `readiness` | `evaluated_count`=status OK 행 수, `total_count`=시장 필터 후 활성 행 수, `ready_ratio` 일치 |

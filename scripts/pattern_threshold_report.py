@@ -43,8 +43,9 @@ from services.public_api.core.pattern_config import (  # noqa: E402
 from services.public_api.db.pattern_repository import (  # noqa: E402
     CONDITION_IDS,
     build_condition_exprs,
+    special_stock_expr,
 )
-from shared.db_models.public_serving import CurrentPublishedBatch  # noqa: E402
+from shared.db_models.public_serving import CurrentPublishedBatch, StockMaster  # noqa: E402
 from shared.db_models.public_serving import DerivedMetricsDaily as D  # noqa: E402
 from shared.pattern_params import PATTERN_STATUS_OK  # noqa: E402
 
@@ -151,6 +152,11 @@ def _market_filter(market: str):
     return [] if market == "ALL" else [D.market == market]
 
 
+def _universe_filter(th: PatternThresholds):
+    """API와 같은 평가 대상(스팩·우선주 제외, Q3) — 리포트 숫자가 화면과 어긋나지 않게 한다."""
+    return [~special_stock_expr()] if th.exclude_special_stocks else []
+
+
 def _published_trade_date(session: Session) -> date:
     published = session.execute(
         select(CurrentPublishedBatch.trade_date).where(
@@ -180,7 +186,12 @@ def _counts(session: Session, th: PatternThresholds, trade_date: date, market: s
             func.count().filter(exprs[cid].is_(None)).label(f"{cid}_n"),
         ]
     row = (
-        session.execute(select(*cols).where(D.trade_date == trade_date, *_market_filter(market)))
+        session.execute(
+            select(*cols)
+            .select_from(D)
+            .join(StockMaster, StockMaster.stock_code == D.stock_code)
+            .where(D.trade_date == trade_date, *_market_filter(market), *_universe_filter(th))
+        )
         .one()
         ._mapping
     )
@@ -195,7 +206,9 @@ def _counts(session: Session, th: PatternThresholds, trade_date: date, market: s
     }
 
 
-def _quantiles(session: Session, trade_date: date, market: str) -> dict[str, QuantileRow]:
+def _quantiles(
+    session: Session, th: PatternThresholds, trade_date: date, market: str
+) -> dict[str, QuantileRow]:
     ok_only = D.pattern_metrics_status == PATTERN_STATUS_OK
     cols = []
     for name in QUANTILE_METRICS:
@@ -206,7 +219,12 @@ def _quantiles(session: Session, trade_date: date, market: str) -> dict[str, Qua
                 func.percentile_cont(q).within_group(col).filter(ok_only).label(f"{name}__{label}")
             )
     row = (
-        session.execute(select(*cols).where(D.trade_date == trade_date, *_market_filter(market)))
+        session.execute(
+            select(*cols)
+            .select_from(D)
+            .join(StockMaster, StockMaster.stock_code == D.stock_code)
+            .where(D.trade_date == trade_date, *_market_filter(market), *_universe_filter(th))
+        )
         .one()
         ._mapping
     )
@@ -294,7 +312,7 @@ def generate_report(
         ok_rows=base["ok"],
         condition_counts=base["cond"],
         all_met=base["all_met"],
-        quantiles=_quantiles(session, target, market),
+        quantiles=_quantiles(session, th, target, market),
     )
     data.verdict = judge(all_met=data.all_met, total_rows=data.total_rows, ok_rows=data.ok_rows)
     if data.ok_rows > 0:

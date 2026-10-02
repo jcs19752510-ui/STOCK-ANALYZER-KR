@@ -37,6 +37,7 @@ from services.public_api.schemas.envelope import DataFreshness, Envelope, Meta
 from services.public_api.schemas.pattern import (
     ConditionResult,
     PatternDefinition,
+    PatternUniverse,
     PatternItem,
     PatternMetricsOut,
     PatternReadiness,
@@ -207,7 +208,9 @@ def screen_pattern(
 
     # `market` 필터 적용 후 집합 기준: 발행 거래일에 산정 가능(OK) 행이 0건이면 명시적으로 실패한다
     # (예: KOSDAQ만 미준비여도 그 요청은 424 — 부분 시장 준비 상태를 숨기지 않는다).
-    total_rows, evaluated_rows = repository.readiness(published_trade_date, market_typed)
+    total_rows, evaluated_rows = repository.readiness(
+        published_trade_date, market_typed, thresholds
+    )
     if evaluated_rows == 0:
         raise ApiError(
             status_code=424,
@@ -260,6 +263,7 @@ def screen_pattern(
                 version=DEFINITION_VERSION,
                 thresholds=thresholds.definition_thresholds(),
                 calc=PatternThresholds.definition_calc(),
+                universe=PatternUniverse(**thresholds.definition_universe()),
             ),
             readiness=PatternReadiness(
                 evaluated_count=evaluated_rows,

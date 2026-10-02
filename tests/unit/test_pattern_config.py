@@ -47,6 +47,7 @@ RANGES = {
 
 def test_c01_no_environment_uses_documented_defaults():
     th = load_pattern_thresholds({})
+    assert th.exclude_special_stocks is True  # Q3: 스팩·우선주 제외가 기본값
     for field, expected in DEFAULTS.items():
         assert getattr(th, field) == expected, field
     assert th.enabled is True  # PATTERN_SCREEN_ENABLED 기본 true
@@ -192,3 +193,24 @@ def test_error_message_names_variable_and_reason_without_dumping_environment():
     msg = str(exc.value)
     assert "PATTERN_RANGE_MAX_PCT" in msg and "abc" in msg
     assert "SECRETPW" not in msg  # 다른 환경변수(비밀)는 메시지에 포함되지 않는다
+
+
+# ── Q3: 스팩·우선주 제외 스위치 ─────────────────────────────────────────────────
+@pytest.mark.parametrize(("raw", "expected"), [("true", True), ("false", False), ("FALSE", False)])
+def test_exclude_special_stocks_switch_accepts_only_true_or_false(raw, expected):
+    th = load_pattern_thresholds({"PATTERN_EXCLUDE_SPAC_PREFERRED": raw})
+    assert th.exclude_special_stocks is expected
+
+
+@pytest.mark.parametrize("bad", ["yes", "1", "", "  ", "off"])
+def test_exclude_special_stocks_switch_rejects_anything_else(bad):
+    with pytest.raises(ConfigError, match="PATTERN_EXCLUDE_SPAC_PREFERRED"):
+        load_pattern_thresholds({"PATTERN_EXCLUDE_SPAC_PREFERRED": bad})
+
+
+def test_definition_universe_names_excluded_types_so_exclusion_is_never_silent():
+    on = load_pattern_thresholds({})
+    off = load_pattern_thresholds({"PATTERN_EXCLUDE_SPAC_PREFERRED": "false"})
+    assert on.definition_universe() == {"excluded_types": ["SPAC", "PREFERRED"]}
+    assert off.definition_universe() == {"excluded_types": []}
+

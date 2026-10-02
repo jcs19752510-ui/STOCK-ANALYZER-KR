@@ -62,6 +62,7 @@ flowchart LR
 ### UNIT-15 — 판정 임계값 설정 + 보정 리포트 (REQ-032, REQ-036)
 - **파일**: `services/public_api/core/pattern_config.py`, `scripts/pattern_threshold_report.py`, 테스트.
 - **AC**: 설계서 §3-3 범위 검증(범위 밖·MIN≥MAX·잘못된 타입 → `ConfigError`, TC-C01~08), 리포트는 **읽기 전용**이며 조건별 충족 수·전체 충족 수·임계값 ±민감도 표를 출력.
+- **구현 메모(2026-10-02)**: 보정 리포트가 API와 같은 판정식을 써야 하므로 `services/public_api/db/pattern_repository.py`의 `build_condition_exprs()`·`ma60_stage_expr()`를 이 유닛에서 구현했다(DEC-035). UNIT-16은 이를 import해 리포지토리·API만 추가했다.
 - **🛑 질문**: 리포트 결과로 **임계값 확정(Q2)** 을 사용자에게 받는다. 기본값이 0건 또는 전 종목의 10% 초과면 그 사실과 대안 분포를 함께 보고.
 
 ### UNIT-16 — API (REQ-032, 034~036)

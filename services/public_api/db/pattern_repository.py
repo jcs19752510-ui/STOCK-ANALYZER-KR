@@ -169,10 +169,27 @@ class PatternQueryResult:
     total_count: int
 
 
+def special_stock_expr() -> ColumnElement[bool]:
+    """스팩·우선주 판별(사용자 결정 Q3, 평가 대상에서 제외).
+
+    - 스팩: 이름에 '스팩'
+    - 우선주: 이름이 우/우B/2우B/우(전환) 꼴로 끝나고 종목코드 끝자리가 0이 아님
+      (보통주 코드는 끝자리 0 — 이름만 보면 '성우' 등 보통주를 잘못 제외한다)
+    """
+    spac = StockMaster.name.like("%스팩%")
+    preferred = and_(
+        StockMaster.name.op("~")(r"우(\(전환\))?[A-C]?$"),
+        func.right(StockMaster.stock_code, 1) != "0",
+    )
+    return or_(spac, preferred)
+
+
 class PatternScreenRepository(Protocol):
     def get_current_published_trade_date(self, market: str) -> date | None: ...
 
-    def readiness(self, trade_date: date, market: ListedMarketFilter) -> tuple[int, int]: ...
+    def readiness(
+        self, trade_date: date, market: ListedMarketFilter, thresholds: PatternThresholds
+    ) -> tuple[int, int]: ...
 
     def search(
         self, filters: PatternFilters, thresholds: PatternThresholds
@@ -192,15 +209,24 @@ class SqlPatternScreenRepository:
         row = self._session.get(CurrentPublishedBatch, market)
         return row.trade_date if row is not None else None
 
-    def readiness(self, trade_date: date, market: ListedMarketFilter) -> tuple[int, int]:
+    def readiness(
+        self, trade_date: date, market: ListedMarketFilter, thresholds: PatternThresholds
+    ) -> tuple[int, int]:
         """(발행 거래일의 행 수, 산정 가능(`OK`) 행 수).
 
-        `market` 필터 적용 후 집합 기준이다(설계서 §5-4).
+        `market` 필터와 평가 대상 제외(스팩·우선주) 적용 후 집합 기준이다(설계서 §5-4).
         """
-        stmt = select(
-            func.count(),
-            func.count().filter(D.pattern_metrics_status == PATTERN_STATUS_OK),
-        ).where(D.trade_date == trade_date)
+        stmt = (
+            select(
+                func.count(),
+                func.count().filter(D.pattern_metrics_status == PATTERN_STATUS_OK),
+            )
+            .select_from(D)
+            .join(StockMaster, StockMaster.stock_code == D.stock_code)
+            .where(D.trade_date == trade_date)
+        )
+        if thresholds.exclude_special_stocks:
+            stmt = stmt.where(not_(special_stock_expr()))
         if market != "ALL":
             stmt = stmt.where(D.market == market)
         total, ok = self._session.execute(stmt).one()
@@ -209,6 +235,8 @@ class SqlPatternScreenRepository:
     def _where(self, filters: PatternFilters, th: PatternThresholds) -> list[ColumnElement]:
         exprs = build_condition_exprs(th)
         where: list[ColumnElement] = [D.trade_date == filters.trade_date]
+        if th.exclude_special_stocks:
+            where.append(not_(special_stock_expr()))
         if filters.market != "ALL":
             where.append(D.market == filters.market)
         if filters.market_cap_min is not None:

@@ -36,7 +36,7 @@ flowchart LR
 | 수정 | `shared/db_models/public_serving.py` | `DerivedMetricsDaily`에 11개 `Mapped` 컬럼 |
 | 신규 | `db/alembic/versions/0011_add_pattern_metrics_to_derived_metrics_daily.py` | 컬럼 11개 추가(+CHECK). 현재 head는 0010 |
 | 신규 | `services/public_api/core/pattern_config.py` | 판정 임계값 로더(`PATTERN_*`, 범위 검증, fail-fast) |
-| 신규 | `services/public_api/db/pattern_repository.py` | `build_condition_exprs()`, `SqlPatternScreenRepository` |
+| 신규 | `services/public_api/db/pattern_repository.py` | `build_condition_exprs()`·`ma60_stage_expr()`(**UNIT-15에서 구현** — 보정 리포트가 같은 식을 써야 하므로 앞당김, DEC-035), `SqlPatternScreenRepository`·`PatternFilters/Row/QueryResult`·`SORT_COLUMN_MAP`·`METRIC_KEYS`(UNIT-16) |
 | 신규 | `services/public_api/schemas/pattern.py` | 응답 Pydantic 모델(화이트리스트) |
 | 신규 | `services/public_api/api/pattern.py` | `GET /screen/pattern` |
 | 수정 | `services/public_api/main.py` | `include_router(pattern.router, prefix="/api/v1")` 1줄 + 기능 스위치 |
@@ -81,15 +81,17 @@ flowchart LR
 | `PATTERN_WINDOW_ROWS` | 100 | 종목당 일봉 조회 행 수(여유 20). 기존 41 대체 |
 | `MA60_WINDOW` / `MA60_SLOPE_DAYS` / `CROSS_LOOKBACK_DAYS` | 60 / 10 / 10 | 60일선·기울기·돌파 관찰 |
 | `VOL_SHORT` / `VOL_LONG` | 10 / 60 | 변동성 수축비 |
+| `CONVERGENCE_MA_WINDOWS` | (5, 10, 20) | 이평선 수렴 폭에 쓰는 이동평균 일수(구현 중 상수로 명명) |
 | `VR_SHORT` / `VR_LONG` | 5 / 60 | 거래량비 |
 | `SURGE_LOOKBACK_DAYS` / `SURGE_RETURN_PCT` / `SURGE_VOLUME_MULT` | 20 / 10.0 / 3.0 | c9 대리 지표 |
+| `SURGE_BASELINE_DAYS` | 20 | c9 거래량 기준: 해당 일 직전 20일 평균(구현 중 상수로 명명) |
 | `PRICE_JUMP_LIMIT_PCT` | 31.0 | 일 변동 ±30% 초과 단절 = 수정주가 미반영 의심 |
 
 필요 행 수 검산: MA60 상향돌파 탐지는 MA60(오프셋 k+1, k≤9)까지 → 70행, 수익률 표준편차 60일 → 61행, 급등 관찰 → 1+20+20=41행, 횡보 L=80행 → **최대 80 = `PATTERN_MIN_ROWS`**. 조회는 여유 포함 100.
 
 ### 3-3. 판정 임계값 (설정값, 조회 시 적용 — 기본값은 **사용자 확정 대기**)
 
-| 환경변수 | 기본값 | 허용 범위(범위 밖이면 기동 실패) | 쓰임 |
+| 환경변수 | 기본값 | 허용 범위(범위 밖이면 기동 실패 — 단일 출처 `core/pattern_config.THRESHOLD_RANGES`) | 쓰임 |
 |---|---|---|---|
 | `PATTERN_RANGE_MAX_PCT` | 40.0 | 5 ~ 100 | c1 횡보 폭 상한 |
 | `PATTERN_NET_CHANGE_MAX_PCT` | 15.0 | 1 ~ 50 | c1 순변화율 절댓값 상한 |
