@@ -448,9 +448,11 @@ def test_s04_threshold_bypass_parameters_do_not_change_results(client):
 
 
 # ── A35: 기존 /screen 계약 불변(골든 비교) ──────────────────────────────────────────
+# screen.py 해시는 DEC-046(R2)에서 400 메시지의 입력값 반사를 제거하며 1회 갱신했다
+# (에러 코드·상태·성공 응답 계약은 불변).
 FROZEN_SHA256 = {
     "services/public_api/api/screen.py": (
-        "9e3e91cac8349700b032189280c188f0bfd32abd5004bbc57ae1939c22e7b8f0"
+        "a905eae0be40791bdaeb20a8a58f8e1513ef2180c6e0565441e516c8e83beac7"
     ),
     "services/public_api/db/screen_repository.py": (
         "ca04b7bc69e672d107c19c720ed5c7c402e0b8187f73e8195f9d93d06f1e68a4"

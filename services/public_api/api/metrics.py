@@ -54,7 +54,7 @@ def get_stock_metrics(
         raise ApiError(
             status_code=404,
             code="STOCK_NOT_FOUND",
-            message=f"종목코드 {code!r}를 찾을 수 없습니다.",
+            message="해당 종목을 찾을 수 없습니다.",
         )
 
     now = datetime.now(KST)

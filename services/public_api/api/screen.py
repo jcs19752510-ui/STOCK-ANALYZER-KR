@@ -140,25 +140,25 @@ def screen_stocks(
         raise ApiError(
             status_code=400,
             code="INVALID_PARAMETER",
-            message=f"market은 {VALID_LISTED_MARKET_FILTERS} 중 하나여야 합니다: {market!r}",
+            message=f"market은 {VALID_LISTED_MARKET_FILTERS} 중 하나여야 합니다.",
         )
     if sort_by not in SORT_BY_VALUES:
         raise ApiError(
             status_code=400,
             code="INVALID_PARAMETER",
-            message=f"sort_by는 {SORT_BY_VALUES} 중 하나여야 합니다: {sort_by!r}",
+            message=f"sort_by는 {SORT_BY_VALUES} 중 하나여야 합니다.",
         )
     if sort_dir not in SORT_DIR_VALUES:
         raise ApiError(
             status_code=400,
             code="INVALID_PARAMETER",
-            message=f"sort_dir은 {SORT_DIR_VALUES} 중 하나여야 합니다: {sort_dir!r}",
+            message=f"sort_dir은 {SORT_DIR_VALUES} 중 하나여야 합니다.",
         )
     if page_size > MAX_PAGE_SIZE:
         raise ApiError(
             status_code=400,
             code="INVALID_PARAMETER",
-            message=f"page_size는 {MAX_PAGE_SIZE}를 초과할 수 없습니다: {page_size}",
+            message=f"page_size는 {MAX_PAGE_SIZE}를 초과할 수 없습니다.",
         )
     _require_range_order(market_cap_min, market_cap_max, field_name="market_cap")
     _require_range_order(return_pct_min, return_pct_max, field_name="return_pct")
