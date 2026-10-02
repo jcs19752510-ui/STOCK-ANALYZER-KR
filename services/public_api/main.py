@@ -11,7 +11,15 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.exc import TimeoutError as SATimeoutError
 
-from services.public_api.api import calendar, health, market_summary, metrics, screen, stocks
+from services.public_api.api import (
+    calendar,
+    health,
+    market_summary,
+    metrics,
+    pattern,
+    screen,
+    stocks,
+)
 from services.public_api.core.config import get_cors_allowed_origins
 from services.public_api.errors import ApiError
 from services.public_api.middleware import (
@@ -78,6 +86,9 @@ app.include_router(calendar.router, prefix="/api/v1")
 app.include_router(stocks.router, prefix="/api/v1")
 app.include_router(metrics.router, prefix="/api/v1")
 app.include_router(screen.router, prefix="/api/v1")
+# 패턴 스크리닝 "급등 전 압축주"(REQ-032). 기능 스위치 `PATTERN_SCREEN_ENABLED=false`면 이 경로는
+# 404 FEATURE_DISABLED를 반환한다. `PATTERN_*` 설정 오류는 위 import 시점에 기동 실패로 드러난다.
+app.include_router(pattern.router, prefix="/api/v1")
 app.include_router(market_summary.router, prefix="/api/v1")
 
 

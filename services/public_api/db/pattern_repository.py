@@ -19,10 +19,18 @@
 
 from __future__ import annotations
 
-from sqlalchemy import ColumnElement, and_, case, func, not_, or_
+from dataclasses import dataclass
+from datetime import date
+from decimal import Decimal
+from typing import Protocol
+
+from sqlalchemy import ColumnElement, Select, and_, case, func, not_, or_, select
+from sqlalchemy.orm import Session
 
 from services.public_api.core.pattern_config import PatternThresholds
+from shared.db_models.public_serving import CurrentPublishedBatch, StockMaster
 from shared.db_models.public_serving import DerivedMetricsDaily as D
+from shared.market_types import ListedMarketFilter
 from shared.pattern_params import PATTERN_STATUS_OK
 
 CONDITION_IDS: tuple[str, ...] = ("c1", "c2", "c3", "c4", "c5", "c9")
@@ -102,3 +110,162 @@ def ma60_stage_expr(th: PatternThresholds) -> ColumnElement:
         (and_(D.pattern_metrics_status == PATTERN_STATUS_OK, gap.is_not(None)), stage),
         else_=None,
     )
+
+
+# ── 조회 리포지토리 (REQ-032, 설계서 §5-4) ─────────────────────────────────────────────
+
+# `sort_by` 허용값 → 정렬 컬럼. 문자열 연결 없이 화이트리스트 매핑으로만 선택한다(SQL 인젝션 차단).
+# 점수·순위·충족 개수 정렬은 제공하지 않는다(REQ-034).
+SORT_COLUMN_MAP = {
+    "market_cap": D.market_cap_raw_krw,  # 필터·정렬 전용 — 응답에는 노출하지 않는다
+    "ma60_gap_pct": D.ma60_gap_pct,
+    "sideways_range_pct": D.sideways_range_pct,
+    "ma_convergence_pct": D.ma_convergence_pct,
+}
+
+# 응답 `metrics`로 노출하는 11개 지표(설계서 §5-2). 가격·거래량 원값·`*_raw`·시가총액 원값은 없다.
+METRIC_KEYS: tuple[str, ...] = (
+    "sideways_range_pct",
+    "sideways_net_change_pct",
+    "ma_convergence_pct",
+    "volatility_contraction_ratio",
+    "ma60_gap_pct",
+    "ma20_vs_ma60_gap_pct",
+    "ma60_slope_pct",
+    "ma60_cross_up_days",
+    "volume_ratio_5_60",
+    "volume_anomaly_score",
+    "recent_surge_flag",
+)
+
+
+@dataclass(frozen=True)
+class PatternFilters:
+    trade_date: date
+    market: ListedMarketFilter
+    required: tuple[str, ...]  # 필수 조건 ID(정규 순서). 각 식이 TRUE인 종목만 통과
+    market_cap_min: int | None
+    volume_min: int | None
+    sort_by: str
+    sort_dir: str
+    page: int
+    page_size: int
+
+
+@dataclass(frozen=True)
+class PatternRow:
+    stock_code: str
+    name: str
+    market: str
+    status: str | None  # pattern_metrics_status(구 배치 행이면 None)
+    stage: str | None  # ma60_stage(SQL CASE), 산정 불가면 None
+    conds: dict[str, bool | None]  # c1..c9 → True/False/None(산정 불가)
+    metrics: dict[str, Decimal | int | bool | None]
+
+
+@dataclass(frozen=True)
+class PatternQueryResult:
+    items: list[PatternRow]
+    total_count: int
+
+
+class PatternScreenRepository(Protocol):
+    def get_current_published_trade_date(self, market: str) -> date | None: ...
+
+    def readiness(self, trade_date: date, market: ListedMarketFilter) -> tuple[int, int]: ...
+
+    def search(
+        self, filters: PatternFilters, thresholds: PatternThresholds
+    ) -> PatternQueryResult: ...
+
+
+class SqlPatternScreenRepository:
+    """`public_serving.derived_metrics_daily` 패턴 조회.
+
+    `api_service`는 SELECT만 가능하다(DEC-006).
+    """
+
+    def __init__(self, session: Session):
+        self._session = session
+
+    def get_current_published_trade_date(self, market: str) -> date | None:
+        row = self._session.get(CurrentPublishedBatch, market)
+        return row.trade_date if row is not None else None
+
+    def readiness(self, trade_date: date, market: ListedMarketFilter) -> tuple[int, int]:
+        """(발행 거래일의 행 수, 산정 가능(`OK`) 행 수).
+
+        `market` 필터 적용 후 집합 기준이다(설계서 §5-4).
+        """
+        stmt = select(
+            func.count(),
+            func.count().filter(D.pattern_metrics_status == PATTERN_STATUS_OK),
+        ).where(D.trade_date == trade_date)
+        if market != "ALL":
+            stmt = stmt.where(D.market == market)
+        total, ok = self._session.execute(stmt).one()
+        return int(total), int(ok)
+
+    def _where(self, filters: PatternFilters, th: PatternThresholds) -> list[ColumnElement]:
+        exprs = build_condition_exprs(th)
+        where: list[ColumnElement] = [D.trade_date == filters.trade_date]
+        if filters.market != "ALL":
+            where.append(D.market == filters.market)
+        if filters.market_cap_min is not None:
+            where.append(D.market_cap_raw_krw >= filters.market_cap_min)
+        if filters.volume_min is not None:
+            where.append(D.volume_raw >= filters.volume_min)
+        # 필수 조건은 `IS TRUE`로 건다(FALSE·NULL 모두 제외).
+        # 응답의 met는 같은 식을 SELECT한 값이다.
+        where.extend(exprs[cid].is_(True) for cid in filters.required)
+        return where
+
+    def search_statement(self, filters: PatternFilters, th: PatternThresholds) -> Select:
+        """페이지 조회 SELECT(실행 계획 점검용으로 공개).
+
+        조건식은 `build_condition_exprs` 한 곳에서만 만든다.
+        """
+        exprs = build_condition_exprs(th)
+        sort_column = SORT_COLUMN_MAP[filters.sort_by]
+        order = sort_column.desc() if filters.sort_dir == "desc" else sort_column.asc()
+        return (
+            select(
+                D.stock_code,
+                StockMaster.name,
+                D.market,
+                D.pattern_metrics_status.label("status"),
+                ma60_stage_expr(th).label("stage"),
+                *[exprs[cid].label(cid) for cid in CONDITION_IDS],
+                *[getattr(D, key) for key in METRIC_KEYS],
+            )
+            .join(StockMaster, StockMaster.stock_code == D.stock_code)
+            .where(*self._where(filters, th))
+            # 산정 불가(NULL) 값은 방향과 무관하게 뒤로,
+            # 동률은 stock_code 오름차순(결정론적 페이지네이션)
+            .order_by(order.nulls_last(), D.stock_code.asc())
+            .offset((filters.page - 1) * filters.page_size)
+            .limit(filters.page_size)
+        )
+
+    def search(self, filters: PatternFilters, thresholds: PatternThresholds) -> PatternQueryResult:
+        count_stmt = (
+            select(func.count())
+            .select_from(D)
+            .join(StockMaster, StockMaster.stock_code == D.stock_code)
+            .where(*self._where(filters, thresholds))
+        )
+        total = self._session.execute(count_stmt).scalar_one()
+        rows = self._session.execute(self.search_statement(filters, thresholds)).mappings().all()
+        items = [
+            PatternRow(
+                stock_code=r["stock_code"],
+                name=r["name"],
+                market=r["market"],
+                status=r["status"],
+                stage=r["stage"],
+                conds={cid: r[cid] for cid in CONDITION_IDS},
+                metrics={key: r[key] for key in METRIC_KEYS},
+            )
+            for r in rows
+        ]
+        return PatternQueryResult(items=items, total_count=int(total))

@@ -1,0 +1,287 @@
+{
+ "g1_default": {
+  "data": {
+   "items": [
+    {
+     "market": "KOSPI",
+     "matched_metrics": {
+      "return_pct": 1.7062
+     },
+     "name": "픽스처05",
+     "stock_code": "T00005"
+    },
+    {
+     "market": "KOSPI",
+     "matched_metrics": {
+      "return_pct": 1.5775
+     },
+     "name": "픽스처03",
+     "stock_code": "T00003"
+    },
+    {
+     "market": "KOSDAQ",
+     "matched_metrics": {
+      "return_pct": 1.1895
+     },
+     "name": "픽스처08",
+     "stock_code": "T00008"
+    },
+    {
+     "market": "KOSDAQ",
+     "matched_metrics": {
+      "return_pct": 1.0587
+     },
+     "name": "픽스처04",
+     "stock_code": "T00004"
+    },
+    {
+     "market": "KOSPI",
+     "matched_metrics": {
+      "return_pct": 0.7084
+     },
+     "name": "픽스처09",
+     "stock_code": "T00009"
+    },
+    {
+     "market": "KOSDAQ",
+     "matched_metrics": {
+      "return_pct": 0.3244
+     },
+     "name": "픽스처06",
+     "stock_code": "T00006"
+    },
+    {
+     "market": "KOSDAQ",
+     "matched_metrics": {
+      "return_pct": 0.2716
+     },
+     "name": "픽스처02",
+     "stock_code": "T00002"
+    },
+    {
+     "market": "KOSPI",
+     "matched_metrics": {
+      "return_pct": 0.1824
+     },
+     "name": "픽스처01",
+     "stock_code": "T00001"
+    },
+    {
+     "market": "KOSDAQ",
+     "matched_metrics": {
+      "return_pct": 0.0
+     },
+     "name": "픽스처10",
+     "stock_code": "T00010"
+    },
+    {
+     "market": "KOSPI",
+     "matched_metrics": {
+      "return_pct": -0.2891
+     },
+     "name": "픽스처07",
+     "stock_code": "T00007"
+    }
+   ],
+   "page": 1,
+   "total_count": 10
+  },
+  "url": "/api/v1/screen?page_size=200"
+ },
+ "g2_kospi_cap_asc": {
+  "data": {
+   "items": [
+    {
+     "market": "KOSPI",
+     "matched_metrics": {
+      "market_cap": 80.0
+     },
+     "name": "픽스처03",
+     "stock_code": "T00003"
+    },
+    {
+     "market": "KOSPI",
+     "matched_metrics": {
+      "market_cap": 60.0
+     },
+     "name": "픽스처05",
+     "stock_code": "T00005"
+    },
+    {
+     "market": "KOSPI",
+     "matched_metrics": {
+      "market_cap": 40.0
+     },
+     "name": "픽스처07",
+     "stock_code": "T00007"
+    },
+    {
+     "market": "KOSPI",
+     "matched_metrics": {
+      "market_cap": 20.0
+     },
+     "name": "픽스처09",
+     "stock_code": "T00009"
+    }
+   ],
+   "page": 1,
+   "total_count": 4
+  },
+  "url": "/api/v1/screen?market=KOSPI&market_cap_min=300000000000&sort_by=market_cap&sort_dir=asc&page_size=200"
+ },
+ "g3_ma20_band": {
+  "data": {
+   "items": [
+    {
+     "market": "KOSDAQ",
+     "matched_metrics": {
+      "ma20_gap_pct": 4.0669
+     },
+     "name": "픽스처02",
+     "stock_code": "T00002"
+    },
+    {
+     "market": "KOSPI",
+     "matched_metrics": {
+      "ma20_gap_pct": 3.7862
+     },
+     "name": "픽스처07",
+     "stock_code": "T00007"
+    },
+    {
+     "market": "KOSPI",
+     "matched_metrics": {
+      "ma20_gap_pct": 0.9371
+     },
+     "name": "픽스처09",
+     "stock_code": "T00009"
+    },
+    {
+     "market": "KOSDAQ",
+     "matched_metrics": {
+      "ma20_gap_pct": 0.2988
+     },
+     "name": "픽스처08",
+     "stock_code": "T00008"
+    },
+    {
+     "market": "KOSDAQ",
+     "matched_metrics": {
+      "ma20_gap_pct": 0.0
+     },
+     "name": "픽스처10",
+     "stock_code": "T00010"
+    },
+    {
+     "market": "KOSDAQ",
+     "matched_metrics": {
+      "ma20_gap_pct": -0.7562
+     },
+     "name": "픽스처06",
+     "stock_code": "T00006"
+    },
+    {
+     "market": "KOSPI",
+     "matched_metrics": {
+      "ma20_gap_pct": -0.7967
+     },
+     "name": "픽스처01",
+     "stock_code": "T00001"
+    }
+   ],
+   "page": 1,
+   "total_count": 7
+  },
+  "url": "/api/v1/screen?ma20_gap_pct_min=-5&ma20_gap_pct_max=5&sort_by=ma20_gap_pct&page_size=200"
+ },
+ "g4_volume_anomaly": {
+  "data": {
+   "items": [
+    {
+     "market": "KOSDAQ",
+     "matched_metrics": {
+      "volume_anomaly_score": null
+     },
+     "name": "픽스처10",
+     "stock_code": "T00010"
+    },
+    {
+     "market": "KOSDAQ",
+     "matched_metrics": {
+      "volume_anomaly_score": 49.2857
+     },
+     "name": "픽스처06",
+     "stock_code": "T00006"
+    },
+    {
+     "market": "KOSDAQ",
+     "matched_metrics": {
+      "volume_anomaly_score": 1.203
+     },
+     "name": "픽스처04",
+     "stock_code": "T00004"
+    },
+    {
+     "market": "KOSPI",
+     "matched_metrics": {
+      "volume_anomaly_score": 1.1654
+     },
+     "name": "픽스처05",
+     "stock_code": "T00005"
+    },
+    {
+     "market": "KOSPI",
+     "matched_metrics": {
+      "volume_anomaly_score": 0.0155
+     },
+     "name": "픽스처01",
+     "stock_code": "T00001"
+    },
+    {
+     "market": "KOSPI",
+     "matched_metrics": {
+      "volume_anomaly_score": -0.0319
+     },
+     "name": "픽스처07",
+     "stock_code": "T00007"
+    }
+   ],
+   "page": 1,
+   "total_count": 6
+  },
+  "url": "/api/v1/screen?volume_min=100000&sort_by=volume_anomaly_score&sort_dir=desc&page_size=200"
+ },
+ "g5_return_range": {
+  "data": {
+   "items": [
+    {
+     "market": "KOSDAQ",
+     "matched_metrics": {
+      "return_pct": 0.2716
+     },
+     "name": "픽스처02",
+     "stock_code": "T00002"
+    },
+    {
+     "market": "KOSDAQ",
+     "matched_metrics": {
+      "return_pct": 0.3244
+     },
+     "name": "픽스처06",
+     "stock_code": "T00006"
+    },
+    {
+     "market": "KOSPI",
+     "matched_metrics": {
+      "return_pct": 0.7084
+     },
+     "name": "픽스처09",
+     "stock_code": "T00009"
+    }
+   ],
+   "page": 2,
+   "total_count": 10
+  },
+  "url": "/api/v1/screen?return_pct_min=-50&return_pct_max=50&sort_by=return_pct&sort_dir=asc&page_size=3&page=2"
+ }
+}

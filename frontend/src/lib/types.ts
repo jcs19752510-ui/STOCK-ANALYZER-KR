@@ -91,6 +91,82 @@ export interface MarketSummaryData extends MarketSummaryItem {
   by_market: MarketSummaryItem[] | null;
 }
 
+/**
+ * `GET /api/v1/screen/pattern` 응답(REQ-032, docs/pattern-screening/02-system-design.md §5-2).
+ * 서버 응답 화이트리스트와 **같은 필드만** 선언한다 — 가격·거래량 원값·`*_raw`·시가총액 원값은
+ * 서버 응답에 없으므로 이 타입에도 없다(§4-3). 점수·순위 필드도 없다(REQ-034).
+ */
+export type PatternConditionId = "c1" | "c2" | "c3" | "c4" | "c5" | "c9";
+
+export interface PatternConditionResult {
+  /** true=충족, false=미충족, null=산정 불가 */
+  met: boolean | null;
+  /** met=null일 때만: INSUFFICIENT_HISTORY | SUSPECT_PRICE_JUMP | METRIC_UNAVAILABLE */
+  reason: string | null;
+}
+
+export interface PatternMetrics {
+  sideways_range_pct: number | null;
+  sideways_net_change_pct: number | null;
+  ma_convergence_pct: number | null;
+  volatility_contraction_ratio: number | null;
+  ma60_gap_pct: number | null;
+  ma20_vs_ma60_gap_pct: number | null;
+  ma60_slope_pct: number | null;
+  ma60_cross_up_days: number | null;
+  volume_ratio_5_60: number | null;
+  volume_anomaly_score: number | null;
+  recent_surge_flag: boolean | null;
+}
+
+export interface PatternItem {
+  stock_code: string;
+  name: string;
+  market: string;
+  conditions: Record<PatternConditionId, PatternConditionResult>;
+  metrics: PatternMetrics;
+  /** c4 화면 문구용 단계(서버가 c4와 같은 경계로 산출 — 프런트는 재계산하지 않는다) */
+  ma60_stage: string | null;
+}
+
+export interface PatternDefinition {
+  version: string;
+  thresholds: {
+    range_max_pct: number;
+    net_change_max_pct: number;
+    convergence_max_pct: number;
+    volatility_contraction_max: number;
+    ma60_approach_band_pct: number;
+    ma60_early_max_gap_pct: number;
+    cross_early_max_days: number;
+    volume_ratio_min: number;
+    volume_ratio_max: number;
+    volume_anomaly_max: number;
+  };
+  calc: {
+    lookback_days: number;
+    ma60_window: number;
+    cross_lookback_days: number;
+    surge_lookback_days: number;
+    surge_return_pct: number;
+    surge_volume_mult: number;
+  };
+}
+
+export interface PatternReadiness {
+  evaluated_count: number;
+  total_count: number;
+  ready_ratio: number;
+}
+
+export interface PatternScreenData {
+  items: PatternItem[];
+  total_count: number;
+  page: number;
+  definition: PatternDefinition;
+  readiness: PatternReadiness;
+}
+
 export interface ApiErrorDetail {
   code: string;
   message: string;

@@ -134,5 +134,75 @@
     "dataSourceBody": "공공데이터포털 금융위원회_주식시세정보(가공 후 제공)",
     "contactHeading": "문의",
     "contactBody": "서비스 관련 문의 채널은 준비 중입니다."
+  },
+  "pattern": {
+    "label": "급등 전 압축주",
+    "pageTitleSuffix": " | 국내주식 조건 스크리닝 정보 서비스",
+    "modeNavAriaLabel": "스크리닝 방식",
+    "modeManualLabel": "직접 조건 설정",
+    "notice": "이 목록은 가격·거래량 흐름이 아래 수치 조건에 해당하는 종목을 기계적으로 표시한 것입니다. 이후의 주가 움직임을 예측하거나 매수·매도를 권유하는 정보가 아닙니다.",
+    "resultsHeading": "조건 충족 종목 목록 (총 {total_count}건)",
+    "readinessNote": "시세 기간이 충분한 {evaluated}/{total}종목을 평가했습니다. 나머지는 '산정 불가'로 표시됩니다.",
+    "status": {
+      "met": "충족",
+      "unmet": "미충족",
+      "unavailable": "산정 불가"
+    },
+    "reasonLabel": "사유:",
+    "reason": {
+      "INSUFFICIENT_HISTORY": "시세 기간 부족",
+      "SUSPECT_PRICE_JUMP": "시세 단절 의심(액면분할 등)",
+      "METRIC_UNAVAILABLE": "지표 산출 불가"
+    },
+    "requiredHeading": "필수로 적용할 조건",
+    "requiredError": "필수로 적용할 조건을 하나 이상 선택해 주세요.",
+    "numberError": "0 이상의 숫자를 입력해 주세요.",
+    "emptyResult": "조건을 모두 충족하는 종목이 없습니다. 필수 조건을 줄이거나 시장·기준 범위를 바꿔 다시 확인해 보세요.",
+    "notReady": "패턴 지표 산출에 필요한 시세 기간이 아직 부족합니다. 데이터가 준비되면 이용할 수 있습니다.",
+    "definitionHeading": "조건 정의와 기준값",
+    "proxyFootnote": "거래량·급등 이력은 '바닥권 거래량'과 '뉴스 반영 여부'를 직접 확인하는 것이 아니라, 가격·거래량 기록으로 대신 점검하는 대리 지표입니다.",
+    "scopeFootnote": "외국인·기관 수급과 실적 조건은 아직 반영되지 않았습니다.",
+    "filterMarketCapLabel": "최소 시가총액",
+    "filterMarketCapSuffix": "억원 이상",
+    "filterVolumeLabel": "최소 거래량",
+    "filterVolumeSuffix": "주 이상",
+    "mobileOpenFilterLabel": "조건 설정",
+    "tableCaption": "패턴 조건 충족 여부",
+    "stockColumnLabel": "종목",
+    "emptyValue": "—",
+    "conditions": {
+      "c1": "긴 횡보",
+      "c2": "이평선 수렴",
+      "c3": "60일선 접근",
+      "c4": "60일선 돌파 단계",
+      "c5": "거래량",
+      "c9": "급등 이력"
+    },
+    "evidence": {
+      "c1": "횡보 폭 {range} · {lookback}거래일 변화 {net}",
+      "c2": "이평선 간격 {conv} · 변동성 수축비 {ratio}",
+      "c3": "60일선 대비 {gap} · 20일선과 60일선 간격 {gap2}",
+      "c5": "최근 5일 거래량이 60일 평균의 {vr}배",
+      "c9": "최근 {days}거래일 내 급등·거래량 급증 이력 {state}",
+      "c9None": "없음",
+      "c9Has": "있음"
+    },
+    "stage": {
+      "BELOW_NEAR": "돌파 직전",
+      "CROSS_EARLY": "돌파 초입({days}일 전 상향 돌파)",
+      "CROSS_EARLY_NO_DAYS": "돌파 초입",
+      "EXTENDED": "이미 60일선을 크게 상회",
+      "BELOW_FAR": "60일선 한참 아래",
+      "ABOVE_SETTLED": "60일선 위에 안착"
+    },
+    "definitionRules": {
+      "c1": "최근 {lookback}거래일 종가의 최고·최저 폭이 평균의 {range}% 이하이고, 기간 시작 대비 변화가 ±{net}% 이내입니다.",
+      "c2": "5·10·20일선의 간격이 20일선의 {conv}% 이하이고, 최근 10일 변동성이 {window}일 변동성의 {vc}배 이하입니다.",
+      "c3": "종가와 20일선이 모두 {window}일선 대비 ±{band}% 이내에 있습니다.",
+      "c4": "종가가 {window}일선 아래 {band}% 이내(돌파 직전)이거나, {window}일선 위 {early}% 이내이면서 최근 {days}거래일 안에 상향 돌파한 경우(돌파 초입)입니다.",
+      "c5": "최근 5일 평균 거래량이 {window}일 평균의 {vmin}~{vmax}배이고, 오늘 거래량 이상치 스코어가 {anom} 미만입니다.",
+      "c9": "최근 {days}거래일 안에 하루 등락률이 +{ret}% 이상이면서 거래량이 직전 {days}일 평균의 {mult}배 이상인 날이 없습니다."
+    },
+    "definitionBasis": "계산 기준: 종가·거래량 일봉 기준"
   }
 }
