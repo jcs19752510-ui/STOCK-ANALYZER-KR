@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+from datetime import date as date_type
 
 from pydantic import BaseModel
 
@@ -60,6 +61,24 @@ class OrderBookData(BaseModel):
     total_ask_quantity: int
     total_bid_quantity: int
     expected: ExpectedExecution | None  # 장 시작 전·마감 동시호가 예상체결
+    source: str = "KIS"
+
+
+class InvestorDay(BaseModel):
+    """하루치 투자자별 순매수(개인 로컬 모드). 값이 없으면 None, 순매도는 음수."""
+
+    date: date_type  # 거래일
+    personal_quantity: int | None  # 개인 순매수 수량(주)
+    foreign_quantity: int | None  # 외국인 순매수 수량(주)
+    institution_quantity: int | None  # 기관계 순매수 수량(주)
+    personal_amount_million: int | None  # 개인 순매수 거래대금(백만원, 증권사 단위)
+    foreign_amount_million: int | None
+    institution_amount_million: int | None
+
+
+class InvestorData(BaseModel):
+    stock_code: str
+    rows: list[InvestorDay]  # 최근 거래일이 앞
     source: str = "KIS"
 
 

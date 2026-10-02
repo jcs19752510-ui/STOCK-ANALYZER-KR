@@ -3,6 +3,7 @@
 import { useEffect, useId, useState, useSyncExternalStore } from "react";
 import type { KeyboardEvent } from "react";
 import { ConditionStatusBadge } from "@/components/ConditionStatusBadge";
+import { InvestorPanel } from "@/components/InvestorPanel";
 import { OrderBookPanel } from "@/components/OrderBookPanel";
 import { StockChart } from "@/components/StockChart";
 import { TickPanel } from "@/components/TickPanel";
@@ -15,7 +16,7 @@ import { formatEok } from "@/lib/formatEok";
 import type { PatternCheckData, StockEarningsData, StockPricePoint } from "@/lib/types";
 
 /**
- * 종목 상세 탭(DEC-041): 차트 · 일자별 시세 · 투자자(준비 중) · 조건 체크.
+ * 종목 상세 탭(DEC-041): 차트 · 일자별 시세 · 투자자(공개 화면은 준비 중, 개인 로컬 모드에서만 증권사 순매수) · 조건 체크.
  * 호가·체결은 실시간 데이터라 만들지 않고, 체결현황 자리는 **일 단위 종가 기준 일자별 시세 표**로 대체한다.
  * 점수·순위·충족 개수는 어디에도 두지 않는다.
  */
@@ -237,7 +238,9 @@ export function StockDetailTabs({
 
           {t.id === "earnings" && tab === "earnings" && <EarningsPanel state={earnings} />}
 
-          {t.id === "investor" && tab === "investor" && (
+          {t.id === "investor" && tab === "investor" && localMode && <InvestorPanel stockCode={stockCode} />}
+
+          {t.id === "investor" && tab === "investor" && !localMode && (
             <div className="stock-tabs__pending">
               <h2 className="stock-tabs__pending-title">{copy.stockDetail.investorPendingTitle}</h2>
               <p>{copy.stockDetail.investorPendingBody}</p>

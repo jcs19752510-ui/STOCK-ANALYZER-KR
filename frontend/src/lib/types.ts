@@ -289,3 +289,19 @@ export interface IntradayOrderBookData {
   expected: { price: number; change: number | null; change_pct: number | null; volume: number | null } | null;
   source: string;
 }
+
+export interface IntradayInvestorDay {
+  date: string; // "YYYY-MM-DD"
+  personal_quantity: number | null; // 순매수 수량(주), 순매도는 음수
+  foreign_quantity: number | null;
+  institution_quantity: number | null;
+  personal_amount_million: number | null; // 순매수 거래대금(백만원, 증권사 단위)
+  foreign_amount_million: number | null;
+  institution_amount_million: number | null;
+}
+
+export interface IntradayInvestorData {
+  stock_code: string;
+  rows: IntradayInvestorDay[]; // 최근 거래일이 앞
+  source: string;
+}

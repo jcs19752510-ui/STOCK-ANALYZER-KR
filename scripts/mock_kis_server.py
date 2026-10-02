@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """모의 KIS Open API 서버 (DEC-052) — 앱키 없이 개인 로컬 모드 화면·연동을 시험하는 개발 도구.
 
-실제 증권사 서버가 아니다. 한국투자증권 시세 조회 엔드포인트(토큰·분봉(당일/과거)·호가·체결)와 같은 모양의 응답을
+실제 증권사 서버가 아니다. 한국투자증권 시세 조회 엔드포인트(토큰·분봉(당일/과거)·호가·체결·투자자별 순매수)와 같은 모양의 응답을
 종목코드·날짜로 결정되는 가짜 값으로 돌려준다. **실제 시세가 아니므로** 화면 동작 확인용으로만 쓴다.
 
 사용:
@@ -117,6 +117,31 @@ def orderbook(code: str, now: datetime) -> dict:
     return {"output1": o1, "output2": {"antc_cnpr": "0"}}
 
 
+def investor_rows(code: str, now: datetime) -> list[dict]:
+    """최근 30거래일(평일) 투자자별 순매수(최근이 앞). 장중에는 당일 행이 비어 있다(미확정) — 빈 값 처리 시험용."""
+    rows: list[dict] = []
+    day = now.date()
+    if now.weekday() < 5 and now.hour < 18:
+        rows.append({"stck_bsop_date": day.strftime("%Y%m%d"), "prsn_ntby_qty": "", "frgn_ntby_qty": "",
+                     "orgn_ntby_qty": "", "prsn_ntby_tr_pbmn": "", "frgn_ntby_tr_pbmn": "", "orgn_ntby_tr_pbmn": ""})
+        day -= timedelta(days=1)
+    while len(rows) < 30:
+        if day.weekday() < 5:
+            rng = _rng(code, day.strftime("%Y%m%d"), "investor")
+            price = _base_price(code)
+            p_q, f_q = rng.randint(-50_000, 50_000), rng.randint(-50_000, 50_000)
+            o_q = -(p_q + f_q)  # 합계 0이 되도록(모의 데이터)
+            rows.append({
+                "stck_bsop_date": day.strftime("%Y%m%d"),
+                "prsn_ntby_qty": str(p_q), "frgn_ntby_qty": str(f_q), "orgn_ntby_qty": str(o_q),
+                "prsn_ntby_tr_pbmn": str(round(p_q * price / 1_000_000)),
+                "frgn_ntby_tr_pbmn": str(round(f_q * price / 1_000_000)),
+                "orgn_ntby_tr_pbmn": str(round(o_q * price / 1_000_000)),
+            })
+        day -= timedelta(days=1)
+    return rows
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "MockKIS/1.0"
     fixed_now: datetime | None = None
@@ -165,6 +190,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {**ok, **orderbook(code, now)})
         elif url.path.endswith("inquire-ccnl"):
             self._send(200, {**ok, "output": ticks_today(code, now)[:30]})
+        elif url.path.endswith("inquire-investor"):
+            self._send(200, {**ok, "output": investor_rows(code, now)})
         elif url.path.endswith("inquire-time-itemconclusion"):
             rows = [r for r in ticks_today(code, now) if r["stck_cntg_hour"] <= hour]
             self._send(200, {**ok, "output1": {}, "output2": rows[:30]})

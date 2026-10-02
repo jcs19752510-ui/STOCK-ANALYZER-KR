@@ -237,7 +237,8 @@ def _local(host="127.0.0.1"):
 
 
 PATHS = ("/api/v1/local/status", "/api/v1/local/stocks/005930/minutes",
-         "/api/v1/local/stocks/005930/ticks", "/api/v1/local/stocks/005930/orderbook")  # fmt: skip
+         "/api/v1/local/stocks/005930/ticks", "/api/v1/local/stocks/005930/orderbook",
+         "/api/v1/local/stocks/005930/investor")  # fmt: skip
 
 
 def test_all_endpoints_404_when_disabled_even_from_loopback(api):
@@ -366,3 +367,44 @@ def test_local_paths_use_separate_rate_limit_bucket(api, monkeypatch):
         assert c.get(PATHS[0]).status_code != 429
     # 일반 경로의 한도는 영향받지 않는다
     assert _local().get("/api/v1/health").status_code != 429
+
+
+def test_investor_endpoint_end_to_end_with_blank_today_row_and_error_mapping(api, monkeypatch):
+    monkeypatch.setenv(cfg.ENABLED_ENV, "true")
+    monkeypatch.setenv(cfg.APP_KEY_ENV, APP_KEY)
+    monkeypatch.setenv(cfg.APP_SECRET_ENV, APP_SECRET)
+    seen: list[httpx.Request] = []
+    reject = {"on": False}
+
+    def handler(req):
+        seen.append(req)
+        if req.url.path == "/oauth2/tokenP":
+            return httpx.Response(200, json={"access_token": "t", "expires_in": 86400})
+        if reject["on"]:
+            return httpx.Response(200, json={"rt_cd": "1", "msg_cd": "E", "msg1": "거절"})
+        assert req.url.path.endswith("inquire-investor") and req.headers["tr_id"] == "FHKST01010900"
+        return httpx.Response(200, json={"rt_cd": "0", "output": [
+            {"stck_bsop_date": "20261003", "prsn_ntby_qty": "", "frgn_ntby_qty": "", "orgn_ntby_qty": "",
+             "prsn_ntby_tr_pbmn": "", "frgn_ntby_tr_pbmn": "", "orgn_ntby_tr_pbmn": ""},
+            {"stck_bsop_date": "20261002", "prsn_ntby_qty": "-1,200", "frgn_ntby_qty": "800", "orgn_ntby_qty": "400",
+             "prsn_ntby_tr_pbmn": "-300", "frgn_ntby_tr_pbmn": "200", "orgn_ntby_tr_pbmn": "100"}]})  # fmt: skip
+
+    http = httpx.Client(transport=httpx.MockTransport(handler))
+    monkeypatch.setattr(
+        local_intraday, "KisClient", lambda settings: KisClient(settings, http, min_interval=0)
+    )
+    c = _local()
+    data = c.get(PATHS[4]).json()["data"]
+    assert data["stock_code"] == "005930" and len(data["rows"]) == 1  # 값이 모두 빈 당일 행은 제외
+    row = data["rows"][0]
+    assert row["date"] == "2026-10-02" and row["personal_quantity"] == -1200
+    assert (row["foreign_quantity"], row["institution_quantity"]) == (800, 400)
+    assert (row["personal_amount_million"], row["foreign_amount_million"]) == (-300, 200)
+    assert c.get(PATHS[4]).status_code == 200  # 30초 캐시: 두 번째는 증권사를 다시 부르지 않는다
+    assert sum(1 for q in seen if q.url.path.endswith("inquire-investor")) == 1
+    local_intraday.reset_intraday_service()
+    reject["on"] = True
+    r = c.get(PATHS[4])
+    assert r.status_code == 502 and r.json()["error"]["code"] == "INTRADAY_UPSTREAM_ERROR"
+    for secret in (APP_KEY, APP_SECRET):
+        assert secret not in r.text

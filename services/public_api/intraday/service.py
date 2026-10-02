@@ -17,11 +17,13 @@ from services.public_api.intraday.kis_client import KisError, kst_now
 from services.public_api.intraday.normalize import (
     aggregate_minutes,
     minus_one_minute,
+    normalize_investor_rows,
     normalize_minute_rows,
     normalize_orderbook,
     normalize_ticks,
 )
 from services.public_api.schemas.intraday import (
+    InvestorData,
     MinutesData,
     OrderBookData,
     TickItem,
@@ -37,6 +39,8 @@ MAX_TICK_LIMIT = 300
 TTL_MINUTES = 5.0
 TTL_TICKS = 2.0
 TTL_ORDERBOOK = 1.0
+TTL_INVESTOR = 30.0
+INVESTOR_MAX_DAYS = 30
 LAST_HHMMSS = "153000"
 OPEN_HHMMSS = "090000"
 
@@ -49,6 +53,7 @@ class KisLike(Protocol):
     def orderbook(self, code: str) -> dict[str, Any]: ...
     def recent_ccnl(self, code: str) -> dict[str, Any]: ...
     def conclusion_before(self, code: str, hhmmss: str) -> dict[str, Any]: ...
+    def investor(self, code: str) -> dict[str, Any]: ...
 
 
 class IntradayService:
@@ -177,6 +182,16 @@ class IntradayService:
             return normalize_orderbook(code, data.get("output1"), data.get("output2"))
 
         return self._cached(("book", code), TTL_ORDERBOOK, build)
+
+    # ── 투자자별 순매수 ───────────────────────────────────────────────────────────────────
+    def investor(self, code: str) -> InvestorData:
+        def build() -> InvestorData:
+            data = self._client.investor(code)
+            raw = data.get("output")
+            rows = raw if isinstance(raw, list) else [raw] if isinstance(raw, dict) else []
+            return InvestorData(stock_code=code, rows=normalize_investor_rows(rows)[:INVESTOR_MAX_DAYS])
+
+        return self._cached(("investor", code), TTL_INVESTOR, build)
 
 
 def _merge_older(ticks: list[TickItem], older: list[TickItem]) -> int:

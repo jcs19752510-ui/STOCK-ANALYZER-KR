@@ -5,7 +5,7 @@
 - 호출 제한: 계정 단위 초당 건수 제한을 넘지 않도록 요청 사이 최소 간격을 둔다(기본 0.12초 ≈ 초당 8건). 한도 초과 응답이면
   1회 대기 후 재시도한다.
 - 보안: 앱키·시크릿·토큰은 요청 헤더에만 쓰고 예외 메시지·로그에 싣지 않는다(`KisError.message`는 안전한 문구만).
-- 주문·계좌 API는 호출하지 않는다(시세 조회 엔드포인트 5개만 상수로 둔다).
+- 주문·계좌 API는 호출하지 않는다(시세 조회 엔드포인트 6개만 상수로 둔다).
 """
 
 # ruff: noqa: E501  (한글 설명 주석이 많아 줄 길이 제한은 이 파일에서만 완화)
@@ -37,6 +37,9 @@ PATH_CCNL = "/uapi/domestic-stock/v1/quotations/inquire-ccnl"
 TR_CCNL = "FHKST01010300"
 PATH_CONCLUSION = "/uapi/domestic-stock/v1/quotations/inquire-time-itemconclusion"
 TR_CONCLUSION = "FHPST01060000"
+
+PATH_INVESTOR = "/uapi/domestic-stock/v1/quotations/inquire-investor"
+TR_INVESTOR = "FHKST01010900"
 
 _TOKEN_PATH = "/oauth2/tokenP"
 _TOKEN_SAFETY_SECONDS = 600
@@ -251,6 +254,14 @@ class KisClient:
         return self._get(
             PATH_CCNL,
             TR_CCNL,
+            {"FID_COND_MRKT_DIV_CODE": _MARKET_DIV, "FID_INPUT_ISCD": code},
+        )
+
+    def investor(self, code: str) -> dict[str, Any]:
+        """주식현재가 투자자(최근 거래일부터 일별 투자자별 순매수, 최근 → 과거 순)."""
+        return self._get(
+            PATH_INVESTOR,
+            TR_INVESTOR,
             {"FID_COND_MRKT_DIV_CODE": _MARKET_DIV, "FID_INPUT_ISCD": code},
         )
 

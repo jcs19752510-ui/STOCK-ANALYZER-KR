@@ -1,4 +1,4 @@
-"""개인 로컬 모드 장중 시세 API (DEC-052): 분봉·체결(틱)·호가. **내 PC 전용**, 기본 꺼짐.
+"""개인 로컬 모드 장중 시세 API (DEC-052): 분봉·체결(틱)·호가·투자자별 순매수. **내 PC 전용**, 기본 꺼짐.
 
 접근 통제(모두 만족해야 한다, 하나라도 아니면 존재를 드러내지 않도록 404 FEATURE_DISABLED):
   1) `LOCAL_INTRADAY_ENABLED=true`
@@ -31,6 +31,7 @@ from services.public_api.intraday.service import (
 )
 from services.public_api.schemas.envelope import Envelope, Meta
 from services.public_api.schemas.intraday import (
+    InvestorData,
     LocalStatus,
     MinutesData,
     OrderBookData,
@@ -155,5 +156,17 @@ def get_orderbook(
     code = require_stock_code(code)
     try:
         return _envelope(service.orderbook(code))
+    except KisError as exc:
+        raise _error(exc) from exc
+
+
+@router.get("/stocks/{code}/investor", response_model=Envelope[InvestorData])
+def get_investor(
+    code: str,
+    service: IntradayService = Depends(get_intraday_service),
+) -> Envelope[InvestorData]:
+    code = require_stock_code(code)
+    try:
+        return _envelope(service.investor(code))
     except KisError as exc:
         raise _error(exc) from exc

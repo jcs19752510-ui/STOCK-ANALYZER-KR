@@ -10,11 +10,13 @@ askp_rsqn1~10/bidp_rsqn1~10/total_askp_rsqn/total_bidp_rsqn/aspr_acpt_hour` 와 
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from datetime import date
 from typing import Any
 
 from services.public_api.schemas.intraday import (
     BookLevel,
     ExpectedExecution,
+    InvestorDay,
     MinuteBar,
     OrderBookData,
     TickItem,
@@ -167,3 +169,33 @@ def normalize_orderbook(
         total_bid_quantity=to_int(o1.get("total_bidp_rsqn")) or 0,
         expected=expected,
     )
+
+
+def normalize_investor_rows(rows: Iterable[Mapping[str, Any]]) -> list[InvestorDay]:
+    """투자자별 일별 순매수. 날짜가 올바르지 않거나 여섯 값이 모두 비어 있는 행(장중 미확정 당일 등)은 버린다. 같은 날짜는 첫 행만."""
+    out: list[InvestorDay] = []
+    seen: set[date] = set()
+    for r in rows:
+        raw = str(r.get("stck_bsop_date") or "").strip()
+        if len(raw) != 8 or not raw.isdigit():
+            continue
+        try:
+            day = date(int(raw[:4]), int(raw[4:6]), int(raw[6:]))
+        except ValueError:
+            continue
+        if day in seen:
+            continue
+        item = InvestorDay(
+            date=day,
+            personal_quantity=to_int(r.get("prsn_ntby_qty")),
+            foreign_quantity=to_int(r.get("frgn_ntby_qty")),
+            institution_quantity=to_int(r.get("orgn_ntby_qty")),
+            personal_amount_million=to_int(r.get("prsn_ntby_tr_pbmn")),
+            foreign_amount_million=to_int(r.get("frgn_ntby_tr_pbmn")),
+            institution_amount_million=to_int(r.get("orgn_ntby_tr_pbmn")),
+        )
+        if all(v is None for k, v in item.model_dump().items() if k != "date"):
+            continue
+        seen.add(day)
+        out.append(item)
+    return out

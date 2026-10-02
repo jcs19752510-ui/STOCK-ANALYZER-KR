@@ -107,6 +107,17 @@ def main(argv: list[str]) -> int:
             else:
                 print(f"[확인필요] {interval}분봉: 오늘 데이터가 없습니다(장 시작 전·휴장일이면 정상). 장중에 다시 실행하세요.")
 
+    investor = step("투자자별 순매수", lambda: service.investor(code))
+    if investor:
+        if investor.rows:
+            r0 = investor.rows[0]
+            print(f"[OK] 투자자별 순매수: {len(investor.rows)}일, 최근 {r0.date} "
+                  f"개인 {r0.personal_quantity}주 / 외국인 {r0.foreign_quantity}주 / 기관 {r0.institution_quantity}주 "
+                  f"(대금 백만원: {r0.personal_amount_million} / {r0.foreign_amount_million} / {r0.institution_amount_million})")
+            print("        → 증권사 앱의 같은 종목·같은 날짜 투자자별 순매수와 수량·대금을 대조해 단위(주, 백만원)가 맞는지 확인하세요.")
+        else:
+            print("[확인필요] 투자자별 순매수: 행이 없습니다. 응답 필드가 예상과 다르거나 장중 미확정일 수 있습니다.")
+
     print("완료." if failures == 0 else f"실패 {failures}건 — 위 메시지를 확인하세요.")
     return 0 if failures == 0 else 2
 
