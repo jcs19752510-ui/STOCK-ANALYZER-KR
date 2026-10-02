@@ -1,0 +1,26 @@
+# 배포 전 사용자 확인 체크리스트 (2026-10-02)
+
+개발 쪽에서 끝낸 일은 `docs/stock-detail/02-test-report.md`·`docs/ops/daily-batch-runbook.md` 참조.
+아래는 **사용자만 할 수 있는** 항목이다. 하나라도 미결이면 배포(12단계)를 진행하지 않는다.
+
+## A. 데이터 약관·법률 (R3, REQ-022) — 배포 차단 항목
+- [ ] 공공데이터포털 "금융위원회_주식시세정보" 약관 원문 재확인. 원문은 *"상업적 목적 여부와 상관없이 제3자 무단 제공 및 재배포가 엄격히 금지"* 이며, 상업 이용은 원천 소유자(KRX Data Marketplace) 경유를 안내한다(`docs/harness/02-planning.md` §4-3).
+- [ ] **일봉 시세 원값 공개(DEC-041)**가 위 약관의 "재배포"에 해당하는지 KRX 서면 문의 또는 변호사 검토로 확정. 해당한다면 선택지: ① 원값 비공개(가공 지표만, DEC-041 이전 상태로 복귀) ② KRX Data Marketplace 정식 이용 계약.
+- [ ] DART 재무 수치(공시 정보) 이용 조건 확인(opendart 이용약관, 출처 표기 의무 여부).
+- [ ] 서비스 명칭 "Q4"(DEC-014 관련) 상표·표현 검토.
+- [ ] 면책 문구·금지 표현(추천/수익보장 등) 최종 법률 검수(REQ-007~010).
+
+## B. 실기기·시각 검수 (R4, R8)
+- [ ] iPhone Safari / Android Chrome에서 `/`, `/screener`, `/stocks/005930`: 가로 스크롤 없음, 탭·버튼 터치 44px 이상, 차트 터치 이동·선택 동작.
+- [ ] 종목 상세: 헤더 현재가·전일대비, 차트(캔들·MA·거래량·MACD), 일자별 시세 표, 실적 탭 "-" 표기, 수급 "준비 중".
+- [ ] 라이트/다크, 확대 200%에서 레이아웃 깨짐 없음, 키보드(Tab·←→·Esc)·스크린리더 기본 흐름.
+- [ ] 데이터 지연 안내("N영업일 지연")가 최신일 기준으로 맞게 표시.
+
+## C. 환경 설정 (배포 시)
+- [ ] `PUBLIC_API_INTERNAL_TOKEN`(API·프론트 동일 값, 프론트는 `NEXT_PUBLIC_` 접두어 금지), `FRONTEND_TRUSTED_PROXY_HOPS`, API 앞 프록시가 있으면 `PUBLIC_API_TRUSTED_PROXY_IPS` (DEC-045).
+- [ ] `PUBLIC_API_CORS_ALLOWED_ORIGINS`를 실제 프론트 도메인으로, HTTPS 강제(HSTS).
+- [ ] 사용자 PC에서 `scripts/register_daily_batch_task.ps1` 1회 실행, `DATA_FRESHNESS_WEBHOOK_URL` 설정, 다음 날 `logs/daily_batch.log`로 첫 따라잡기 확인(누락 4거래일 09-22·23·30, 10-01).
+- [ ] 공공데이터 일일 호출 한도(마이페이지 확인)와 실제 공개 시각 확인 후 14:30/18:30 조정.
+
+## D. 기능 범위 결정 (R7)
+- [ ] 수급(투자자별 순매수): 공식 무료 출처 없음. 유료(KRX Data Marketplace)·증권사 OpenAPI 중 선택하거나 계속 "준비 중"으로 둘지 결정. 호가·뉴스는 제외 유지.
