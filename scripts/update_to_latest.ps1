@@ -21,6 +21,9 @@ param(
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 $env:PYTHONUTF8 = "1"
+# Show Korean text correctly: the python output is UTF-8, so read/print it as UTF-8 (PS 5.1 defaults to ANSI).
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 
 $logDir = Join-Path $repoRoot "logs"
 if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }
@@ -69,7 +72,7 @@ if (-not $SkipBackfill) {
     # [1] dry-run: shows the plan and expected number of API calls, makes no API call
     $code = Run-Step "[1] backfill dry-run" "py -3.12 scripts\backfill_ohlcv.py --dry-run --days $Days"
     Write-Host ""
-    Get-Content $logFile -Tail 12
+    Get-Content $logFile -Tail 14 -Encoding UTF8
     if (-not $Yes) {
         $answer = Read-Host "Expected calls shown above. Check your daily API quota. Continue with the real backfill? (y/N)"
         if ($answer -ne "y") { Write-Host "Stopped before backfill."; exit 0 }
@@ -77,8 +80,13 @@ if (-not $SkipBackfill) {
     # [2] backfill (idempotent, resumes where it stopped)
     $code = Run-Step "[2] backfill" "py -3.12 scripts\backfill_ohlcv.py --days $Days --sleep $Sleep --max-calls $MaxCalls"
     if ($code -ne 0) {
-        Write-Host "[ERROR] backfill failed (exit $code). Fix the cause, then run this script again (it resumes)." -ForegroundColor Red
-        exit $code
+        # Most common harmless cause: the plan had only the latest trading day left and the portal has not
+        # published it yet (+1 business day), so the backfill reports 0 rows. The daily batch below handles
+        # that case on its own (exit 2). A real problem (auth, DB) would fail the daily batch as well.
+        Write-Host ""
+        Write-Host "[WARN] backfill exit $code. Last log lines (Korean, UTF-8):" -ForegroundColor Yellow
+        Get-Content $logFile -Tail 25 -Encoding UTF8
+        Write-Host "[WARN] continuing with the daily batch. If the daily batch also fails, send me the lines above." -ForegroundColor Yellow
     }
 }
 
@@ -93,6 +101,6 @@ if ($code -eq 2) {
 
 # [4] freshness
 $code = Run-Step "[4] freshness check" "py -3.12 scripts\check_data_freshness.py"
-Get-Content $logFile -Tail 3
+Get-Content $logFile -Tail 6 -Encoding UTF8
 if ($code -eq 0) { Write-Host "DONE: data is up to date." -ForegroundColor Green } else { Write-Host "Data is still behind (exit $code). See logs\update_to_latest.log" -ForegroundColor Yellow }
 exit $code

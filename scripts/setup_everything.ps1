@@ -15,6 +15,8 @@ param(
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 
 Write-Host "##### STEP 1/4  bring data up to date #####" -ForegroundColor Magenta
 $args1 = @("-ExecutionPolicy", "Bypass", "-File", (Join-Path $PSScriptRoot "update_to_latest.ps1"))
