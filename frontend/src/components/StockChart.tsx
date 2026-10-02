@@ -746,7 +746,7 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
             const top = py(Math.max(c.open, c.close));
             const bottom = py(Math.min(c.open, c.close));
             return (
-              <g key={c.trade_date}>
+              <g key={`${c.trade_date}-${c.time ?? ""}-${i}`}>
                 <line x1={x(i)} x2={x(i)} y1={py(c.high)} y2={py(c.low)} stroke={color} strokeWidth="1" />
                 <rect
                   x={x(i) - bodyW / 2}
@@ -838,7 +838,7 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
           ))}
           {view.map((c, i) => (
             <rect
-              key={c.trade_date}
+              key={`${c.trade_date}-${c.time ?? ""}-${i}`}
               x={x(i) - bodyW / 2}
               y={vy(c.volume)}
               width={bodyW}
