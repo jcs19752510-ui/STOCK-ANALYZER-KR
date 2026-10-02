@@ -194,6 +194,7 @@ main {
   }
 
   .global-nav__link {
+    min-width: 44px;
     min-height: 44px; /* 태블릿 터치 대상 유지(검수 QA-07) */
     padding: var(--space-2) var(--space-3);
   }
@@ -1592,7 +1593,7 @@ main {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  padding: 4px 0;
+  padding: 4px 2px; /* 오른쪽 2px: 도구 버튼 터치 확장 영역이 가로 스크롤을 만들지 않게 */
 }
 
 .chart-seg {
