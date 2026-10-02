@@ -33,6 +33,11 @@ class QuoteRow:
     trade_date: date
     close: Decimal
     prev_close: Decimal | None
+    # 목록 행의 미니 캔들(당일 시가·고가·저가)과 거래량 표시용(DEC-051). 없으면 None.
+    open: Decimal | None = None
+    high: Decimal | None = None
+    low: Decimal | None = None
+    volume: int | None = None
 
 
 class QuoteRepository(Protocol):
@@ -82,6 +87,10 @@ class SqlQuoteRepository:
                 DailyPrice.stock_code,
                 DailyPrice.trade_date,
                 DailyPrice.close,
+                DailyPrice.open,
+                DailyPrice.high,
+                DailyPrice.low,
+                DailyPrice.volume,
                 func.row_number()
                 .over(partition_by=DailyPrice.stock_code, order_by=DailyPrice.trade_date.desc())
                 .label("rn"),
@@ -90,15 +99,27 @@ class SqlQuoteRepository:
             .subquery()
         )
         rows = self._session.execute(
-            select(ranked.c.stock_code, ranked.c.trade_date, ranked.c.close, ranked.c.rn)
+            select(
+                ranked.c.stock_code,
+                ranked.c.trade_date,
+                ranked.c.close,
+                ranked.c.open,
+                ranked.c.high,
+                ranked.c.low,
+                ranked.c.volume,
+                ranked.c.rn,
+            )
             .where(ranked.c.rn <= 2)
             .order_by(ranked.c.stock_code, ranked.c.rn)
         ).all()
         latest: dict[str, QuoteRow] = {}
-        for code, trade_date, close, rn in rows:
+        for code, trade_date, close, open_, high, low, volume, rn in rows:
             if rn == 1:
-                latest[code] = QuoteRow(code, trade_date, close, None)
+                latest[code] = QuoteRow(code, trade_date, close, None, open_, high, low, volume)
             elif code in latest:
                 cur = latest[code]
-                latest[code] = QuoteRow(cur.stock_code, cur.trade_date, cur.close, close)
+                latest[code] = QuoteRow(
+                    cur.stock_code, cur.trade_date, cur.close, close,
+                    cur.open, cur.high, cur.low, cur.volume,
+                )  # fmt: skip
         return list(latest.values())

@@ -133,3 +133,77 @@ export function paddedExtent(
   const pad = (hi - lo) * padRatio;
   return [lo - pad, hi + pad];
 }
+
+export interface VolumeProfileBin {
+  lo: number; // 구간 하한(가격)
+  hi: number; // 구간 상한(가격)
+  volume: number;
+  share: number; // 전체 거래량 대비 비중(%), 구간 합계 = 100(거래량이 0이면 모두 0)
+}
+
+/**
+ * 매물대(가격대별 거래량 분포, 증권사 앱의 "매물대(7)"): 보이는 구간의 최저가~최고가를 `bins`개 같은 폭으로 나누고,
+ * 각 봉의 거래량을 **종가가 속한 구간**에 더한다(봉 안의 체결 가격 분포는 일봉만으로 알 수 없어 종가 기준으로 근사).
+ * 결과는 낮은 가격 구간부터 정렬된다. 가격 범위가 0이면 빈 배열.
+ */
+export function volumeProfile(candles: readonly Candle[], bins = 7): VolumeProfileBin[] {
+  if (candles.length === 0 || !Number.isInteger(bins) || bins < 1) return [];
+  const lo = Math.min(...candles.map((c) => c.low));
+  const hi = Math.max(...candles.map((c) => c.high));
+  if (!(hi > lo)) return [];
+  const width = (hi - lo) / bins;
+  const out: VolumeProfileBin[] = Array.from({ length: bins }, (_, i) => ({
+    lo: lo + width * i,
+    hi: lo + width * (i + 1),
+    volume: 0,
+    share: 0,
+  }));
+  let total = 0;
+  for (const c of candles) {
+    const idx = Math.min(bins - 1, Math.max(0, Math.floor((c.close - lo) / width)));
+    out[idx].volume += c.volume;
+    total += c.volume;
+  }
+  if (total > 0) for (const b of out) b.share = (b.volume / total) * 100;
+  return out;
+}
+
+export interface MacdCross {
+  index: number;
+  kind: "golden" | "dead"; // golden: MACD가 시그널을 아래→위로 돌파, dead: 위→아래
+}
+
+/** MACD선과 시그널선의 교차 지점. 두 값이 같은 봉은 직전의 부호를 이어 받아 한 번만 센다. */
+export function macdCrosses(
+  macdLine: readonly (number | null)[],
+  signal: readonly (number | null)[],
+): MacdCross[] {
+  const out: MacdCross[] = [];
+  let prevSign = 0;
+  for (let i = 0; i < macdLine.length; i++) {
+    const a = macdLine[i];
+    const b = signal[i];
+    if (a === null || b === null || a === undefined || b === undefined) continue;
+    const sign = Math.sign(a - b);
+    if (sign === 0) continue;
+    if (prevSign !== 0 && sign !== prevSign) {
+      out.push({ index: i, kind: sign > 0 ? "golden" : "dead" });
+    }
+    prevSign = sign;
+  }
+  return out;
+}
+
+/** 보기 좋은 눈금값(1·2·2.5·5 × 10^k). [lo, hi] 안의 값만 오름차순으로 반환한다. */
+export function niceTicks(lo: number, hi: number, target = 5): number[] {
+  if (!(hi > lo) || target < 1) return [];
+  const raw = (hi - lo) / target;
+  const mag = 10 ** Math.floor(Math.log10(raw));
+  const norm = raw / mag;
+  const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10) * mag;
+  const out: number[] = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-9; v += step) {
+    out.push(Number((Math.round(v / step) * step).toPrecision(12))); // 부동소수 오차 제거
+  }
+  return out;
+}

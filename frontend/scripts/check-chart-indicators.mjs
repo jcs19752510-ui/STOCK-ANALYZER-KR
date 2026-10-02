@@ -5,7 +5,16 @@
  */
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { aggregate, ema, macd, paddedExtent, sma } from "../src/lib/chartIndicators.ts";
+import {
+  aggregate,
+  ema,
+  macd,
+  macdCrosses,
+  niceTicks,
+  paddedExtent,
+  sma,
+  volumeProfile,
+} from "../src/lib/chartIndicators.ts";
 
 const close = (a, b, eps = 1e-9) => Math.abs(a - b) < eps;
 
@@ -107,4 +116,47 @@ test("paddedExtent: 빈 값·동일 값에서도 0으로 나누지 않음", () =
   assert.ok(lo < 100 && hi > 100);
   const [a, b] = paddedExtent([0, 10], 0.1);
   assert.ok(close(a, -1) && close(b, 11));
+});
+
+const bar = (low, high, close, volume) => ({
+  trade_date: "2026-01-01", open: close, high, low, close, volume,
+});
+
+test("volumeProfile: 7구간 같은 폭, 종가 기준 거래량 합산, 비중 합계 100", () => {
+  // 가격 범위 0~70 → 구간 폭 10. 종가 5(0번), 15(1번), 15(1번), 65(6번), 70(마지막 구간으로 포함)
+  const bars = [bar(0, 6, 5, 100), bar(10, 16, 15, 100), bar(10, 16, 15, 200), bar(60, 66, 65, 100), bar(64, 70, 70, 100)];
+  const p = volumeProfile(bars, 7);
+  assert.equal(p.length, 7);
+  assert.deepEqual(p.map((b) => b.volume), [100, 300, 0, 0, 0, 0, 200]);
+  assert.ok(close(p.reduce((a, b) => a + b.share, 0), 100, 1e-9));
+  assert.ok(close(p[1].share, 50));
+  assert.ok(close(p[0].lo, 0) && close(p[6].hi, 70));
+});
+
+test("volumeProfile: 빈 입력·가격 범위 0·거래량 0 처리", () => {
+  assert.deepEqual(volumeProfile([], 7), []);
+  assert.deepEqual(volumeProfile([bar(10, 10, 10, 5)], 7), []);
+  const zero = volumeProfile([bar(0, 10, 5, 0), bar(0, 10, 9, 0)], 7);
+  assert.equal(zero.every((b) => b.share === 0), true);
+});
+
+test("macdCrosses: 골든·데드 교차 지점(동값은 직전 부호 유지, null 건너뜀)", () => {
+  const macdL = [null, -1, -0.5, 0.5, 1, 0.2, -0.3, -0.3, 0.4];
+  const sig = [null, 0, 0, 0, 0, 0.5, 0, 0, 0];
+  // diff: -, -, +, +, -, -, -, +  → 골든(3), 데드(5), 골든(8)
+  assert.deepEqual(macdCrosses(macdL, sig), [
+    { index: 3, kind: "golden" },
+    { index: 5, kind: "dead" },
+    { index: 8, kind: "golden" },
+  ]);
+  const flat = macdCrosses([1, 1, 1], [1, 1, 1]);
+  assert.deepEqual(flat, []);
+});
+
+test("niceTicks: 범위 안의 보기 좋은 눈금, 범위 밖 제외·퇴화 입력은 빈 배열", () => {
+  assert.deepEqual(niceTicks(6000, 14000, 4), [6000, 8000, 10000, 12000, 14000]);
+  assert.deepEqual(niceTicks(0.0, 1, 5), [0, 0.2, 0.4, 0.6, 0.8, 1]);
+  assert.ok(niceTicks(53500, 124800, 5).every((v) => v >= 53500 && v <= 124800));
+  assert.deepEqual(niceTicks(5, 5), []);
+  assert.deepEqual(niceTicks(10, 1), []);
 });

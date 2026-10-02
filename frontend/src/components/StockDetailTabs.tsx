@@ -57,6 +57,7 @@ export function StockDetailTabs({
 }: StockDetailTabsProps) {
   const TABS = showPrices ? ALL_TABS : ALL_TABS.filter((t) => !PRICE_TAB_IDS.includes(t.id));
   const [tab, setTab] = useState<TabId>(TABS[0].id);
+  const [menuOpen, setMenuOpen] = useState(false);
   const initialId = TABS[0].id;
   // 보조 정보는 해당 탭을 처음 열 때 브라우저가 호출한다(방문자별 rate limit 집계, `useLazyApi` 참조).
   const [opened, setOpened] = useState<Record<string, boolean>>({ [initialId]: true });
@@ -71,6 +72,11 @@ export function StockDetailTabs({
   );
   const baseId = useId();
 
+  const selectTab = (id: TabId) => {
+    setTab(id);
+    setOpened((o) => (o[id] ? o : { ...o, [id]: true }));
+  };
+
   const onKey = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
     if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
     const next = (index + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length;
@@ -84,26 +90,56 @@ export function StockDetailTabs({
 
   return (
     <div className="stock-tabs">
-      <div role="tablist" aria-label={copy.stockDetail.tabsLabel} className="stock-tabs__list">
-        {TABS.map((t, i) => (
-          <button
-            key={t.id}
-            id={`${baseId}-tab-${t.id}`}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            aria-controls={`${baseId}-panel-${t.id}`}
-            tabIndex={tab === t.id ? 0 : -1}
-            className="stock-tabs__tab"
-            onClick={() => {
-              setTab(t.id);
-              setOpened((o) => (o[t.id] ? o : { ...o, [t.id]: true }));
-            }}
-            onKeyDown={(e) => onKey(e, i)}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="stock-tabs__bar">
+        <div role="tablist" aria-label={copy.stockDetail.tabsLabel} className="stock-tabs__list">
+          {TABS.map((t, i) => (
+            <button
+              key={t.id}
+              id={`${baseId}-tab-${t.id}`}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              aria-controls={`${baseId}-panel-${t.id}`}
+              tabIndex={tab === t.id ? 0 : -1}
+              className="stock-tabs__tab"
+              onClick={() => selectTab(t.id)}
+              onKeyDown={(e) => onKey(e, i)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          className="stock-tabs__more"
+          aria-label={copy.stockDetail.moreTabsLabel}
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((v) => !v)}
+        >
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        {menuOpen && (
+          <ul className="stock-tabs__menu">
+            {TABS.map((t) => (
+              <li key={t.id}>
+                <button
+                  type="button"
+                  className="stock-tabs__menu-item"
+                  aria-current={tab === t.id ? "true" : undefined}
+                  onClick={() => {
+                    selectTab(t.id);
+                    setMenuOpen(false);
+                    document.getElementById(`${baseId}-tab-${t.id}`)?.focus();
+                  }}
+                >
+                  {t.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {TABS.map((t) => (

@@ -192,6 +192,10 @@ def get_stock_quotes(
                 close=close,
                 change=None if prev is None else round(close - prev, 4),
                 change_pct=None if not prev else round((close - prev) / prev * 100, 2),
+                open=None if q.open is None else float(q.open),
+                high=None if q.high is None else float(q.high),
+                low=None if q.low is None else float(q.low),
+                volume=q.volume,
             )
         )
     return Envelope[QuotesData](

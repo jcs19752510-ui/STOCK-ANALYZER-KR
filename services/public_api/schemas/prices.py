@@ -37,6 +37,11 @@ class QuoteItem(BaseModel):
     close: float
     change: float | None
     change_pct: float | None
+    # 목록 행의 미니 캔들·거래량 표시용(DEC-051). 일봉에 값이 없으면 null.
+    open: float | None = None
+    high: float | None = None
+    low: float | None = None
+    volume: int | None = None
 
 
 class QuotesData(BaseModel):

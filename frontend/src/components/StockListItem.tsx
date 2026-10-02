@@ -18,9 +18,18 @@ export function StockListItem({ item, quote }: StockListItemProps) {
   return (
     <li className="stock-list__item">
       <Link href={`/stocks/${item.stock_code}`} className="stock-list__link">
-        <span className="stock-list__name">{item.name}</span>
-        <span className="stock-list__code">{item.stock_code}</span>
-        <span className="market-badge">{item.market}</span>
+        <span className="stock-list__head">
+          <span className="stock-list__title">
+            <span className="stock-list__name">{item.name}</span>
+            <span className="stock-list__code">{item.stock_code}</span>
+            <span className="market-badge">{item.market}</span>
+          </span>
+          {quote?.volume != null && (
+            <span className="stock-list__volume" title="거래량">
+              {new Intl.NumberFormat("ko-KR").format(quote.volume)}
+            </span>
+          )}
+        </span>
         <QuoteText quote={quote} />
       </Link>
     </li>

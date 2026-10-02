@@ -189,7 +189,10 @@ def test_quotes_returns_close_change_and_pct_and_skips_unknown_codes():
     assert [x["stock_code"] for x in q] == ["T00001", "T00002"]  # 요청 순서, 없는 종목은 생략
     assert q[0]["close"] == 1100 and q[0]["change"] == 100 and q[0]["change_pct"] == 10.0
     assert q[1]["change"] == -100 and q[1]["change_pct"] == -10.0
-    assert set(q[0]) == {"stock_code", "trade_date", "close", "change", "change_pct"}
+    assert set(q[0]) == {
+        "stock_code", "trade_date", "close", "change", "change_pct",
+        "open", "high", "low", "volume",
+    }  # fmt: skip
 
 
 def test_quotes_change_is_null_without_previous_and_pct_is_null_for_zero_previous():
@@ -245,3 +248,18 @@ def test_price_exposure_is_on_by_default_and_off_only_when_false(monkeypatch):
             assert resp.status_code == 404, (value, url)
             assert resp.json()["error"]["code"] == "FEATURE_DISABLED"
             assert resp.json()["data"] is None
+
+
+def test_quotes_include_day_ohlc_and_volume_for_mini_candle():
+    """DEC-051: 목록 행 미니 캔들·거래량 표시용으로 당일 시가·고가·저가·거래량을 함께 내려준다."""
+    row = QuoteRow("T00001", date(2026, 9, 21), Decimal(1100), Decimal(1000),
+                   Decimal(1010), Decimal(1120), Decimal(990), 424766)  # fmt: skip
+    q = _qclient(FakeQuoteRepo({"T00001": row})).get(QUOTES_URL, params={"codes": "T00001"})
+    item = q.json()["data"]["quotes"][0]
+    assert (item["open"], item["high"], item["low"], item["volume"]) == (1010, 1120, 990, 424766)
+    # 값이 없는 행(구버전 복사본 등)은 null로 내려간다
+    none_row = QuoteRow("T00002", date(2026, 9, 21), Decimal(5), None)
+    item2 = _qclient(FakeQuoteRepo({"T00002": none_row})).get(
+        QUOTES_URL, params={"codes": "T00002"}
+    ).json()["data"]["quotes"][0]
+    assert item2["open"] is None and item2["volume"] is None

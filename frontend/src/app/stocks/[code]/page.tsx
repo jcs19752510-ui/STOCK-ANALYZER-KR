@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
 import { MetricCard } from "@/components/MetricCard";
 import { StockDetailTabs } from "@/components/StockDetailTabs";
+import { StockQuoteHeader } from "@/components/StockQuoteHeader";
 import { ValuationMetricCard } from "@/components/ValuationMetricCard";
 import copy from "@/content/copy.ko.json";
 import { mapApiErrorCodeToDisplay } from "@/lib/errorMapping";
@@ -51,35 +52,32 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
   const { data, freshness } = result;
   const prices = pricesResult?.kind === "success" ? pricesResult.data.prices : [];
   const latest = prices.length > 0 ? prices[prices.length - 1] : null;
-  const changeClass =
-    latest?.change == null || latest.change === 0
-      ? ""
-      : latest.change > 0
-        ? "price-up"
-        : "price-down";
-
   return (
-    <section>
-      <header className="stock-detail-header">
-        <h1 className="stock-detail-header__title">
-          {data.name} <span className="stock-detail-header__code">({data.stock_code})</span>
-        </h1>
-        <span className="market-badge">{data.market}</span>
-      </header>
-
+    <section className="stock-detail-page">
+      {latest ? (
+        <StockQuoteHeader
+          name={data.name}
+          stockCode={data.stock_code}
+          market={data.market}
+          close={latest.close}
+          change={latest.change}
+          changePct={latest.change_pct}
+          tradeDate={latest.trade_date}
+        />
+      ) : (
+        <header className="stock-detail-header">
+          <h1 className="stock-detail-header__title">
+            {data.name} <span className="stock-detail-header__code">({data.stock_code})</span>
+          </h1>
+          <span className="market-badge">{data.market}</span>
+        </header>
+      )}
       {latest && (
-        <div className="stock-quote">
-          <p className="stock-quote__price">{latest.close.toLocaleString("ko-KR")}</p>
-          <p className={`stock-quote__change ${changeClass}`}>
-            {latest.change === null || latest.change_pct === null
-              ? "–"
-              : `${latest.change > 0 ? "▲" : latest.change < 0 ? "▼" : ""}${Math.abs(latest.change).toLocaleString("ko-KR")} (${Math.abs(latest.change_pct).toFixed(2)}%)`}
-          </p>
-          <p className="stock-quote__basis">
-            {copy.stockDetail.priceBasis.replace("{date}", latest.trade_date)} ·{" "}
-            {copy.stockDetail.priceBasisNote}
-          </p>
-        </div>
+        <p className="stock-quote__basis">
+          <span className="market-badge">{data.market}</span> {data.stock_code} ·{" "}
+          {copy.stockDetail.priceBasis.replace("{date}", latest.trade_date)} ·{" "}
+          {copy.stockDetail.priceBasisNote}
+        </p>
       )}
 
       <DataFreshnessBadge freshness={freshness} />

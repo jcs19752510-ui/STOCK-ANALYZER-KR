@@ -233,4 +233,9 @@ export interface StockQuote {
   close: number;
   change: number | null;
   change_pct: number | null;
+  // 목록 행 미니 캔들·거래량 표시용(DEC-051). 값이 없으면 null.
+  open?: number | null;
+  high?: number | null;
+  low?: number | null;
+  volume?: number | null;
 }

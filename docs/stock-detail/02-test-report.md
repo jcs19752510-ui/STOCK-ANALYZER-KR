@@ -128,3 +128,9 @@ py -3.12 -m pytest tests/unit tests/integration -q                    # 770 pass
 cd frontend && node --experimental-strip-types --test scripts/check-chart-indicators.mjs scripts/check-format-eok.mjs   # 14 pass
 cd frontend && npx tsc --noEmit && npx eslint src && node scripts/lint-forbidden-copy.mjs
 ```
+
+## 9. 참고 화면 반영 검증 (DEC-051, 2026-10-02)
+- 단위: `pytest` 전체(시세 요약 시가·고가·저가·거래량 포함), 프론트 지표 테스트(`volumeProfile`·`macdCrosses`·`niceTicks` 추가 포함) 통과.
+- 실DB: 임시 PostgreSQL 16(실제 마이그레이션)에서 `SqlQuoteRepository`가 최신·직전 행과 시가·고가·저가·거래량을 올바르게 반환(직전 거래일 없는 종목은 `prev_close=None`).
+- 화면: 빌드 후 실제 브라우저(360×800, 목 API)로 상세·목록을 캡처해 참고 화면과 대조(`docs/stock-detail/03-reference-ui-spec.md`). 가로 넘침 없음.
+- **한계**: 목 데이터라 실제 종목 모양과 다를 수 있고, 실기기·픽셀 단위 비교는 하지 않았다. 매물대는 근사 계산식이다.
