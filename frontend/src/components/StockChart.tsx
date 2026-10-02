@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { KeyboardEvent, PointerEvent } from "react";
+import { LocalModeNotice } from "@/components/LocalModeNotice";
 import copy from "@/content/copy.ko.json";
+import { buildChartSummary, type SummaryGroup } from "@/lib/chartSummary";
 import {
   aggregate,
   macd,
@@ -14,6 +16,8 @@ import {
   type Candle,
   type Timeframe,
 } from "@/lib/chartIndicators";
+import { useIntradayPoll } from "@/lib/useIntradayPoll";
+import type { IntradayMinutesData, IntradayTicksData } from "@/lib/types";
 
 /**
  * 종목 일봉 차트(DEC-041, DEC-051): 증권사 앱 "차트" 화면 구성을 따른다 — 가격(캔들·이동평균 5/10/20/60·
@@ -90,6 +94,37 @@ function yyMmDd(d: string): string {
 interface StockChartProps {
   candles: Candle[]; // 일봉, 오름차순
   stockName: string;
+  /** 종목코드 — 개인 로컬 모드 분·틱 조회에 쓴다. */
+  stockCode?: string;
+  /** 개인 로컬 모드(DEC-052)가 켜져 있으면 분·틱 버튼이 동작한다. */
+  localMode?: boolean;
+}
+
+type IntraSpec = { mode: "minute" | "tick"; n: number };
+const MINUTE_OPTIONS = [1, 3, 5, 10, 15, 30, 60];
+const TICK_OPTIONS = [1, 3, 5, 10, 30];
+
+/** 최근 체결(최근이 앞)을 n틱씩 묶은 봉으로 바꾼다(오름차순). */
+function ticksToCandles(
+  data: IntradayTicksData,
+  n: number,
+  date: string,
+): Candle[] {
+  const asc = [...data.ticks].reverse();
+  const out: Candle[] = [];
+  for (let i = 0; i < asc.length; i += n) {
+    const g = asc.slice(i, i + n);
+    out.push({
+      trade_date: date,
+      time: g[0].time,
+      open: g[0].price,
+      high: Math.max(...g.map((t) => t.price)),
+      low: Math.min(...g.map((t) => t.price)),
+      close: g[g.length - 1].price,
+      volume: g.reduce((a, t) => a + t.volume, 0),
+    });
+  }
+  return out;
 }
 
 interface Layers {
@@ -104,12 +139,36 @@ const DEFAULT_LAYERS: Layers = {
   volMa: true,
 };
 
-export function StockChart({ candles, stockName }: StockChartProps) {
+export function StockChart({ candles, stockName, stockCode, localMode = false }: StockChartProps) {
   const [timeframe, setTimeframe] = useState<Timeframe>("D");
   const [hover, setHover] = useState<number | null>(null);
   const [layers, setLayers] = useState<Layers>(DEFAULT_LAYERS);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [bubbleDismissed, setBubbleDismissed] = useState(false);
+  const [intra, setIntra] = useState<IntraSpec | null>(null);
+  const [menu, setMenu] = useState<"minute" | "tick" | null>(null);
+  const intraPath =
+    localMode && intra && stockCode
+      ? intra.mode === "minute"
+        ? `/api/v1/local/stocks/${encodeURIComponent(stockCode)}/minutes?interval=${intra.n}`
+        : `/api/v1/local/stocks/${encodeURIComponent(stockCode)}/ticks?limit=300`
+      : null;
+  const poll = useIntradayPoll<IntradayMinutesData | IntradayTicksData>(
+    intraPath,
+    intra?.mode === "tick" ? 5000 : 10000,
+  );
+  const intraCandles = useMemo<Candle[] | null>(() => {
+    if (!intra || !poll.data) return null;
+    if (intra.mode === "minute") {
+      const d = poll.data as IntradayMinutesData;
+      return d.bars.map((b) => ({ ...b, trade_date: d.date }));
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const t = poll.data as IntradayTicksData;
+    return t.ticks.length > 0 ? ticksToCandles(t, intra.n, today) : [];
+  }, [intra, poll.data]);
 
   useEffect(() => {
     if (!expanded) return;
@@ -121,19 +180,290 @@ export function StockChart({ candles, stockName }: StockChartProps) {
   }, [expanded]);
 
   const model = useMemo(() => {
-    const series = aggregate(candles, timeframe);
+    // 분·틱을 골랐으면 일봉으로 대체하지 않는다(불러오는 중에는 빈 차트 + 상태 문구).
+    const series = intra ? (intraCandles ?? []) : aggregate(candles, timeframe);
     const closes = series.map((c) => c.close);
     const volumes = series.map((c) => c.volume);
     const mas = MA_PERIODS.map((p) => ({ period: p, values: sma(closes, p) }));
     const volMas = VOL_MA_PERIODS.map((p) => ({ period: p, values: sma(volumes, p) }));
     const m = macd(closes);
-    const n = Math.min(VISIBLE_BARS[timeframe], series.length);
+    const n = Math.min(VISIBLE_BARS[intra ? "D" : timeframe], series.length);
     const start = series.length - n;
     return { series, mas, volMas, m, start, n };
-  }, [candles, timeframe]);
+  }, [candles, timeframe, intra, intraCandles]);
 
   const { series, mas, volMas, m, start, n } = model;
-  if (n === 0) return null;
+  const summaryFacts = useMemo(
+    () =>
+      summaryOpen
+        ? buildChartSummary(
+            series,
+            copy.stockDetail.summary,
+            intra ? "봉" : timeframe === "D" ? "일" : timeframe === "W" ? "주" : "개월",
+          )
+        : [],
+    [summaryOpen, series, timeframe, intra],
+  );
+  const header = (
+    <>
+      <div className="stock-chart__toolbar">
+        <div role="group" aria-label={copy.stockDetail.chartTimeframeLabel} className="chart-seg">
+          {(["D", "W", "M"] as const).map((tf) => (
+            <button
+              key={tf}
+              type="button"
+              className="chart-seg__btn"
+              aria-pressed={!intra && timeframe === tf}
+              onClick={() => {
+                setTimeframe(tf);
+                setIntra(null);
+                setMenu(null);
+                setHover(null);
+              }}
+            >
+              {tf === "D"
+                ? copy.stockDetail.timeframeDay
+                : tf === "W"
+                  ? copy.stockDetail.timeframeWeek
+                  : copy.stockDetail.timeframeMonth}
+            </button>
+          ))}
+          {(["minute", "tick"] as const).map((mode) => {
+            const label = mode === "minute" ? copy.stockDetail.timeframeMinute : copy.stockDetail.timeframeTick;
+            const opts = mode === "minute" ? MINUTE_OPTIONS : TICK_OPTIONS;
+            const active = intra?.mode === mode;
+            if (!localMode) {
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  className="chart-seg__btn chart-seg__btn--disabled"
+                  disabled
+                  title={mode === "minute" ? copy.stockDetail.minuteDisabled : copy.stockDetail.tickDisabled}
+                >
+                  {label}
+                  <span aria-hidden="true" className="chart-seg__caret" />
+                </button>
+              );
+            }
+            return (
+              <span key={mode} className="chart-seg__wrap">
+                <button
+                  type="button"
+                  className="chart-seg__btn"
+                  aria-pressed={active}
+                  aria-haspopup="menu"
+                  aria-expanded={menu === mode}
+                  aria-label={mode === "minute" ? copy.stockDetail.minuteMenuLabel : copy.stockDetail.tickMenuLabel}
+                  onClick={() => setMenu((m) => (m === mode ? null : mode))}
+                >
+                  {active && intra ? `${intra.n}${label}` : label}
+                  <span aria-hidden="true" className="chart-seg__caret" />
+                </button>
+                {menu === mode && (
+                  <ul className="chart-seg__menu" role="menu">
+                    {opts.map((n) => (
+                      <li key={n} role="none">
+                        <button
+                          type="button"
+                          role="menuitem"
+                          aria-current={active && intra?.n === n ? "true" : undefined}
+                          onClick={() => {
+                            setIntra({ mode, n });
+                            setMenu(null);
+                            setHover(null);
+                          }}
+                        >
+                          {(mode === "minute" ? copy.stockDetail.minuteOption : copy.stockDetail.tickOption).replace(
+                            "{n}",
+                            String(n),
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </span>
+            );
+          })}
+        </div>
+        <div className="chart-tools">
+          <button
+            type="button"
+            className="chart-tools__btn chart-tools__btn--summary"
+            aria-label={copy.stockDetail.summaryButton}
+            aria-expanded={summaryOpen}
+            aria-controls="chart-summary-panel"
+            onClick={() => {
+              setSummaryOpen((v) => !v);
+              setBubbleDismissed(true);
+            }}
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M12 2.500c.5 4.600 2.400 6.500 7 7-4.600.5-6.500 2.400-7 7-.5-4.600-2.400-6.500-7-7 4.600-.5 6.500-2.400 7-7Zm6.500 11c.3 2.300 1.200 3.200 3.500 3.500-2.300.3-3.200 1.200-3.500 3.500-.3-2.300-1.200-3.200-3.500-3.500 2.300-.3 3.200-1.200 3.500-3.500Z"
+              />
+            </svg>
+          </button>
+          {!bubbleDismissed && !summaryOpen && (
+            <span className="chart-bubble" role="note">
+              {copy.stockDetail.summaryBubble}
+            </span>
+          )}
+          <button
+            type="button"
+            className="chart-tools__btn"
+            aria-label={copy.stockDetail.settingsLabel}
+            aria-expanded={settingsOpen}
+            aria-controls="chart-settings-panel"
+            onClick={() => setSettingsOpen((v) => !v)}
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm8 4.6v-2.2l-2-.6a6.6 6.6 0 0 0-.6-1.4l1-1.8-1.6-1.6-1.8 1a6.600 6.600 0 0 0-1.4-.6l-.6-2h-2.2l-.6 2c-.5.1-1 .3-1.400.6l-1.800-1-1.600 1.600 1 1.800c-.3.4-.5.900-.6 1.400l-2 .6v2.200l2 .6c.1.500.3 1 .6 1.400l-1 1.800 1.600 1.600 1.800-1c.4.300.9.500 1.400.6l.6 2h2.200l.6-2c.5-.1 1-.3 1.400-.6l1.800 1 1.600-1.600-1-1.800c.3-.4.500-.9.600-1.400l2-.6Z"
+              />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="chart-tools__btn"
+            disabled
+            aria-label={copy.stockDetail.drawDisabled}
+            title={copy.stockDetail.drawDisabled}
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                d="m14.500 6.500 3 3M4 20l1-4 10.500-10.500a2.100 2.100 0 0 1 3 3L8 19l-4 1Z"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {settingsOpen && (
+        <fieldset id="chart-settings-panel" className="chart-settings">
+          <legend>{copy.stockDetail.settingsLabel}</legend>
+          {MA_PERIODS.map((p) => (
+            <label key={p} className="chart-settings__item">
+              <input
+                type="checkbox"
+                checked={layers.ma[p]}
+                onChange={(e) =>
+                  setLayers((l) => ({ ...l, ma: { ...l.ma, [p]: e.target.checked } }))
+                }
+              />
+              {copy.stockDetail.settingsMa.replace("{n}", String(p))}
+            </label>
+          ))}
+          <label className="chart-settings__item">
+            <input
+              type="checkbox"
+              checked={layers.profile}
+              onChange={(e) => setLayers((l) => ({ ...l, profile: e.target.checked }))}
+            />
+            {copy.stockDetail.profileLabel}
+          </label>
+          <label className="chart-settings__item">
+            <input
+              type="checkbox"
+              checked={layers.volMa}
+              onChange={(e) => setLayers((l) => ({ ...l, volMa: e.target.checked }))}
+            />
+            {copy.stockDetail.settingsVolMa}
+          </label>
+        </fieldset>
+      )}
+
+      {summaryOpen && (
+        <section
+          id="chart-summary-panel"
+          className="chart-summary"
+          aria-label={copy.stockDetail.summaryTitle}
+        >
+          <div className="chart-summary__head">
+            <h2 className="chart-summary__title">{copy.stockDetail.summaryTitle}</h2>
+            <button
+              type="button"
+              className="chart-summary__close"
+              aria-label={copy.stockDetail.summaryClose}
+              onClick={() => setSummaryOpen(false)}
+            >
+              ×
+            </button>
+          </div>
+          <p className="chart-summary__basis">
+            {copy.stockDetail.summaryBasis
+              .replace(
+                "{unit}",
+                intra
+                  ? `${intra.n}${intra.mode === "minute" ? "분" : "틱"}`
+                  : timeframe === "D"
+                    ? "일"
+                    : timeframe === "W"
+                      ? "주"
+                      : "월",
+              )
+              .replace(
+                "{date}",
+                series.length > 0
+                  ? (series[series.length - 1].time ?? series[series.length - 1].trade_date)
+                  : "-",
+              )}
+          </p>
+          {summaryFacts.length === 0 ? (
+            <p>{copy.stockDetail.summaryEmpty}</p>
+          ) : (
+            (["ma", "momentum", "range", "volume", "profile"] as SummaryGroup[]).map((g) => {
+              const items = summaryFacts.filter((f) => f.group === g);
+              if (items.length === 0) return null;
+              return (
+                <div key={g} className="chart-summary__group">
+                  <h3 className="chart-summary__group-title">{copy.stockDetail.summaryGroups[g]}</h3>
+                  <ul>
+                    {items.map((f) => (
+                      <li key={f.id}>{f.text}</li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })
+          )}
+          <p className="chart-summary__notice">{copy.stockDetail.summaryNotice}</p>
+        </section>
+      )}
+      {intra && (
+        <>
+          <LocalModeNotice />
+          {poll.error && poll.data && (
+            <p className="stock-chart__status" role="status">
+              {copy.stockDetail.intradayStale} {poll.error.message}
+            </p>
+          )}
+        </>
+      )}
+    </>
+  );
+
+  if (n === 0) {
+    if (!intra) return null;
+    // 분·틱을 막 골랐거나 불러오는 중/실패: 도구 줄은 유지하고 상태만 보여 준다.
+    return (
+      <div className="stock-chart">
+        {header}
+        <p className="stock-chart__status" role="status">
+          {poll.error ? poll.error.message : copy.stockDetail.intradayLoading}
+        </p>
+      </div>
+    );
+  }
 
   const view = series.slice(start);
   const step = PLOT_W / n;
@@ -169,7 +499,7 @@ export function StockChart({ candles, stockName }: StockChartProps) {
   const lastPct = lastPrev ? ((lastBar.close - lastPrev) / lastPrev) * 100 : null;
   const lastUp = lastChange === null ? lastBar.close >= lastBar.open : lastChange >= 0;
   const extremeText = (price: number, i: number) =>
-    `${fmtPrice(price)}(${yyMmDd(view[i].trade_date)}), ${(
+    `${fmtPrice(price)}(${view[i].time ?? yyMmDd(view[i].trade_date)}), ${(
       ((price - lastBar.close) / (lastBar.close || 1)) *
       100
     ).toFixed(2)}%`;
@@ -262,116 +592,7 @@ export function StockChart({ candles, stockName }: StockChartProps) {
 
   return (
     <div className={`stock-chart${expanded ? " stock-chart--expanded" : ""}`}>
-      <div className="stock-chart__toolbar">
-        <div role="group" aria-label={copy.stockDetail.chartTimeframeLabel} className="chart-seg">
-          {(["D", "W", "M"] as const).map((tf) => (
-            <button
-              key={tf}
-              type="button"
-              className="chart-seg__btn"
-              aria-pressed={timeframe === tf}
-              onClick={() => {
-                setTimeframe(tf);
-                setHover(null);
-              }}
-            >
-              {tf === "D"
-                ? copy.stockDetail.timeframeDay
-                : tf === "W"
-                  ? copy.stockDetail.timeframeWeek
-                  : copy.stockDetail.timeframeMonth}
-            </button>
-          ))}
-          <button
-            type="button"
-            className="chart-seg__btn chart-seg__btn--disabled"
-            disabled
-            title={copy.stockDetail.minuteDisabled}
-          >
-            {copy.stockDetail.timeframeMinute}
-            <span aria-hidden="true" className="chart-seg__caret" />
-          </button>
-          <button
-            type="button"
-            className="chart-seg__btn chart-seg__btn--disabled"
-            disabled
-            title={copy.stockDetail.tickDisabled}
-          >
-            {copy.stockDetail.timeframeTick}
-            <span aria-hidden="true" className="chart-seg__caret" />
-          </button>
-        </div>
-        <div className="chart-tools">
-          <button
-            type="button"
-            className="chart-tools__btn"
-            aria-label={copy.stockDetail.settingsLabel}
-            aria-expanded={settingsOpen}
-            aria-controls="chart-settings-panel"
-            onClick={() => setSettingsOpen((v) => !v)}
-          >
-            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-              <path
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm8 4.6v-2.2l-2-.6a6.6 6.6 0 0 0-.6-1.4l1-1.8-1.6-1.6-1.8 1a6.600 6.600 0 0 0-1.4-.6l-.6-2h-2.2l-.6 2c-.5.1-1 .3-1.400.6l-1.800-1-1.600 1.600 1 1.800c-.3.4-.5.900-.6 1.400l-2 .6v2.200l2 .6c.1.500.3 1 .6 1.400l-1 1.800 1.600 1.600 1.800-1c.4.300.9.500 1.400.6l.6 2h2.200l.6-2c.5-.1 1-.3 1.400-.6l1.800 1 1.600-1.600-1-1.800c.3-.4.500-.9.600-1.400l2-.6Z"
-              />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="chart-tools__btn"
-            disabled
-            aria-label={copy.stockDetail.drawDisabled}
-            title={copy.stockDetail.drawDisabled}
-          >
-            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-              <path
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                d="m14.500 6.500 3 3M4 20l1-4 10.500-10.500a2.100 2.100 0 0 1 3 3L8 19l-4 1Z"
-              />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      {settingsOpen && (
-        <fieldset id="chart-settings-panel" className="chart-settings">
-          <legend>{copy.stockDetail.settingsLabel}</legend>
-          {MA_PERIODS.map((p) => (
-            <label key={p} className="chart-settings__item">
-              <input
-                type="checkbox"
-                checked={layers.ma[p]}
-                onChange={(e) =>
-                  setLayers((l) => ({ ...l, ma: { ...l.ma, [p]: e.target.checked } }))
-                }
-              />
-              {copy.stockDetail.settingsMa.replace("{n}", String(p))}
-            </label>
-          ))}
-          <label className="chart-settings__item">
-            <input
-              type="checkbox"
-              checked={layers.profile}
-              onChange={(e) => setLayers((l) => ({ ...l, profile: e.target.checked }))}
-            />
-            {copy.stockDetail.profileLabel}
-          </label>
-          <label className="chart-settings__item">
-            <input
-              type="checkbox"
-              checked={layers.volMa}
-              onChange={(e) => setLayers((l) => ({ ...l, volMa: e.target.checked }))}
-            />
-            {copy.stockDetail.settingsVolMa}
-          </label>
-        </fieldset>
-      )}
+      {header}
 
       <div
         className="stock-chart__frame"
@@ -679,7 +900,7 @@ export function StockChart({ candles, stockName }: StockChartProps) {
               fill={AXIS_TEXT}
               textAnchor="middle"
             >
-              {shortDate(view[i].trade_date)}
+              {view[i].time ?? shortDate(view[i].trade_date)}
             </text>
           ))}
 
@@ -717,7 +938,8 @@ export function StockChart({ candles, stockName }: StockChartProps) {
       </div>
 
       <p className="stock-chart__readout" aria-live="polite">
-        <strong>{sel.trade_date}</strong> {copy.stockDetail.readoutOpen} {fmtPrice(sel.open)} ·{" "}
+        <strong>{sel.time ? `${sel.trade_date} ${sel.time}` : sel.trade_date}</strong>{" "}
+        {copy.stockDetail.readoutOpen} {fmtPrice(sel.open)} ·{" "}
         {copy.stockDetail.readoutHigh} {fmtPrice(sel.high)} · {copy.stockDetail.readoutLow}{" "}
         {fmtPrice(sel.low)} · {copy.stockDetail.readoutClose} {fmtPrice(sel.close)}
         {selChange !== null && (

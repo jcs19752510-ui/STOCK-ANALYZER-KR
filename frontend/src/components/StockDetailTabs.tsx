@@ -1,10 +1,13 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, useSyncExternalStore } from "react";
 import type { KeyboardEvent } from "react";
 import { ConditionStatusBadge } from "@/components/ConditionStatusBadge";
+import { OrderBookPanel } from "@/components/OrderBookPanel";
 import { StockChart } from "@/components/StockChart";
+import { TickPanel } from "@/components/TickPanel";
 import copy from "@/content/copy.ko.json";
+import { localIntradayAvailable } from "@/lib/localIntraday";
 import { PATTERN_CONDITION_IDS } from "@/lib/patternApi";
 import { conditionTitle, evidenceText } from "@/lib/patternFormat";
 import { useLazyApi, type LazyState } from "@/lib/useLazyApi";
@@ -16,9 +19,11 @@ import type { PatternCheckData, StockEarningsData, StockPricePoint } from "@/lib
  * 호가·체결은 실시간 데이터라 만들지 않고, 체결현황 자리는 **일 단위 종가 기준 일자별 시세 표**로 대체한다.
  * 점수·순위·충족 개수는 어디에도 두지 않는다.
  */
-type TabId = "chart" | "daily" | "earnings" | "investor" | "check";
+type TabId = "book" | "chart" | "ticks" | "daily" | "earnings" | "investor" | "check";
 const ALL_TABS: { id: TabId; label: string }[] = [
+  { id: "book", label: copy.stockDetail.tabBook },
   { id: "chart", label: copy.stockDetail.tabChart },
+  { id: "ticks", label: copy.stockDetail.tabTicks },
   { id: "daily", label: copy.stockDetail.tabDaily },
   { id: "earnings", label: copy.stockDetail.tabEarnings },
   { id: "investor", label: copy.stockDetail.tabInvestor },
@@ -27,6 +32,10 @@ const ALL_TABS: { id: TabId; label: string }[] = [
 
 // 시세 원값 비공개(DEC-048)일 때는 차트·일자별 시세 탭을 뺀다.
 const PRICE_TAB_IDS: TabId[] = ["chart", "daily"];
+// 호가·체결은 개인 로컬 모드(DEC-052)에서만 보인다.
+const LOCAL_TAB_IDS: TabId[] = ["book", "ticks"];
+
+const noopSubscribe = () => () => {};
 
 const nf = new Intl.NumberFormat("ko-KR");
 
@@ -55,10 +64,15 @@ export function StockDetailTabs({
   prices,
   showPrices = true,
 }: StockDetailTabsProps) {
-  const TABS = showPrices ? ALL_TABS : ALL_TABS.filter((t) => !PRICE_TAB_IDS.includes(t.id));
-  const [tab, setTab] = useState<TabId>(TABS[0].id);
+  // 브라우저 주소가 내 PC/사설망이고 스위치가 켜졌을 때만 true(서버 렌더·공개 도메인에서는 false).
+  const localMode = useSyncExternalStore(noopSubscribe, localIntradayAvailable, () => false);
+  const TABS = ALL_TABS.filter(
+    (t) => (showPrices || !PRICE_TAB_IDS.includes(t.id)) && (localMode || !LOCAL_TAB_IDS.includes(t.id)),
+  );
+  const initialTab: TabId = TABS.some((t) => t.id === "chart") ? "chart" : TABS[0].id;
+  const [tab, setTab] = useState<TabId>(initialTab);
   const [menuOpen, setMenuOpen] = useState(false);
-  const initialId = TABS[0].id;
+  const initialId = initialTab;
   // 보조 정보는 해당 탭을 처음 열 때 브라우저가 호출한다(방문자별 rate limit 집계, `useLazyApi` 참조).
   const [opened, setOpened] = useState<Record<string, boolean>>({ [initialId]: true });
   const codePath = encodeURIComponent(stockCode);
@@ -152,8 +166,17 @@ export function StockDetailTabs({
           className="stock-tabs__panel"
         >
           {t.id === "chart" && tab === "chart" && (
-            <StockChart candles={prices} stockName={stockName} />
+            <StockChart
+              candles={prices}
+              stockName={stockName}
+              stockCode={stockCode}
+              localMode={localMode}
+            />
           )}
+
+          {t.id === "book" && tab === "book" && <OrderBookPanel stockCode={stockCode} />}
+
+          {t.id === "ticks" && tab === "ticks" && <TickPanel stockCode={stockCode} />}
 
           {t.id === "daily" && tab === "daily" && (
             <div className="daily-table-wrap" role="region" tabIndex={0} aria-label={copy.stockDetail.dailyTableLabel}>

@@ -86,10 +86,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+        if request.url.path.startswith(LOCAL_INTRADAY_PREFIX):
+            # 개인 로컬 모드 증권사 시세(DEC-052)는 어디에도 캐시되지 않게 한다.
+            response.headers["Cache-Control"] = "no-store"
         return response
 
 
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 4.5
+# 개인 로컬 모드 분봉은 증권사를 여러 쪽(최대 14회) 호출해 모으므로
+# 일반 한도(4.5초)로는 부족하다. 허용 IP에서만 응답하는 경로에 한해
+# 넉넉한 한도를 준다(다른 경로는 그대로 4.5초).
+LOCAL_INTRADAY_PREFIX = "/api/v1/local/"
+LOCAL_INTRADAY_TIMEOUT_SECONDS = 30.0
 
 
 class RequestTimeoutMiddleware(BaseHTTPMiddleware):
@@ -121,12 +129,17 @@ class RequestTimeoutMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
+        timeout = (
+            max(self._timeout_seconds, LOCAL_INTRADAY_TIMEOUT_SECONDS)
+            if request.url.path.startswith(LOCAL_INTRADAY_PREFIX)
+            else self._timeout_seconds
+        )
         try:
-            return await asyncio.wait_for(call_next(request), timeout=self._timeout_seconds)
+            return await asyncio.wait_for(call_next(request), timeout=timeout)
         except TimeoutError:
             logger.warning(
                 "요청 처리 시간이 %s초를 초과해 타임아웃 처리했습니다: %s",
-                self._timeout_seconds,
+                timeout,
                 request.url.path,
             )
             return _service_unavailable_response()

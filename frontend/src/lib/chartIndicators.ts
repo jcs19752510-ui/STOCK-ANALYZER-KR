@@ -12,6 +12,8 @@ export interface Candle {
   low: number;
   close: number;
   volume: number;
+  /** 분·틱 봉의 표시 시각("HH:MM" 또는 "HH:MM:SS"). 일·주·월 봉에는 없다. */
+  time?: string;
 }
 
 export type Timeframe = "D" | "W" | "M";

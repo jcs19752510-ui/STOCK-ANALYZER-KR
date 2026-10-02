@@ -1820,3 +1820,280 @@ main {
 .stock-list__link .quote-text {
   flex: none;
 }
+
+/* ── 사실 서술형 차트 요약(DEC-052) ─────────────────────────────────────────────────── */
+.chart-tools {
+  position: relative;
+}
+
+.chart-tools__btn--summary {
+  border-color: #111827;
+  background: #111827;
+  color: #ffffff;
+}
+
+.chart-bubble {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 5;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+.chart-bubble::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: 70px;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid #111827;
+  border-left: 6px solid transparent;
+}
+
+.chart-summary {
+  margin: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+  background: var(--color-surface-bg);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.chart-summary__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chart-summary__title {
+  margin: 0;
+  font-size: 16px;
+}
+
+.chart-summary__close {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.chart-summary__basis,
+.chart-summary__notice {
+  margin: var(--space-1) 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.chart-summary__group-title {
+  margin: var(--space-3) 0 var(--space-1);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.chart-summary ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+/* ── 개인 로컬 모드: 호가·체결(DEC-052) ───────────────────────────────────────────────── */
+.local-notice {
+  margin: var(--space-2) 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: 8px;
+  background: #fff7e6;
+  color: #7a4b00;
+  font-size: 12px;
+}
+
+.local-error {
+  margin: var(--space-2) 0;
+  color: #b45309;
+  font-size: 13px;
+}
+
+.orderbook__table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-variant-numeric: tabular-nums;
+}
+
+.orderbook__table th,
+.orderbook__table td {
+  padding: 0;
+  height: 30px;
+}
+
+.orderbook__table thead th {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.orderbook__qty {
+  position: relative;
+  text-align: right;
+}
+
+.orderbook__qty--bid {
+  text-align: left;
+}
+
+.orderbook__num {
+  position: relative;
+  padding: 0 8px;
+  font-size: 13px;
+}
+
+.book-bar {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  right: 0;
+  border-radius: 2px;
+  opacity: 0.35;
+}
+
+.orderbook__qty--bid .book-bar {
+  right: auto;
+  left: 0;
+}
+
+.book-bar--ask {
+  background: #1a6fc9;
+}
+
+.book-bar--bid {
+  background: #d9342b;
+}
+
+.orderbook__price {
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.orderbook__row--ask {
+  background: rgba(26, 111, 201, 0.06);
+}
+
+.orderbook__row--bid {
+  background: rgba(217, 52, 43, 0.06);
+}
+
+.orderbook__price--ask {
+  color: #1a6fc9;
+}
+
+.orderbook__price--bid {
+  color: #d9342b;
+}
+
+.orderbook__total {
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.orderbook__total--ask {
+  color: #1a6fc9;
+}
+
+.orderbook__total--bid {
+  color: #d9342b;
+}
+
+.orderbook__table tfoot th {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.orderbook__ratio {
+  display: flex;
+  height: 6px;
+  margin: var(--space-2) 0;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+.orderbook__ratio-ask {
+  background: #1a6fc9;
+}
+
+.orderbook__ratio-bid {
+  background: #d9342b;
+}
+
+.orderbook__expected {
+  margin: var(--space-2) 0 0;
+  font-size: 14px;
+}
+
+/* 분·틱 선택 메뉴 */
+.chart-seg__menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 20;
+  min-width: 96px;
+  margin: 0;
+  padding: var(--space-1) 0;
+  list-style: none;
+  background: var(--color-surface-bg);
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+.chart-seg__menu button {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--color-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chart-seg__menu button[aria-current="true"] {
+  font-weight: 800;
+}
+
+.chart-seg__wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.stock-chart__status {
+  margin: var(--space-1) var(--space-3);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+/* 도구 줄이 360px 폭에서 한 줄에 들어가도록(분·틱 선택 + 요약·설정·도구 아이콘) */
+.chart-seg__btn {
+  min-width: 36px;
+  padding: 0 6px;
+}
+
+.chart-tools {
+  gap: 6px;
+}
+
+.chart-tools__btn {
+  width: 36px;
+  height: 36px;
+}

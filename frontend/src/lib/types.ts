@@ -239,3 +239,53 @@ export interface StockQuote {
   low?: number | null;
   volume?: number | null;
 }
+
+// ── 개인 로컬 모드 장중 시세(DEC-052): 분봉·체결·호가 ─────────────────────────────────────────
+export interface IntradayMinuteBar {
+  time: string; // "HH:MM"
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export interface IntradayMinutesData {
+  stock_code: string;
+  date: string;
+  interval: number;
+  bars: IntradayMinuteBar[];
+  source: string;
+}
+
+export interface IntradayTick {
+  time: string; // "HH:MM:SS"
+  price: number;
+  change: number | null;
+  change_pct: number | null;
+  volume: number;
+  strength: number | null;
+}
+
+export interface IntradayTicksData {
+  stock_code: string;
+  ticks: IntradayTick[]; // 최근 체결이 앞
+  truncated: boolean;
+  source: string;
+}
+
+export interface IntradayBookLevel {
+  price: number;
+  quantity: number;
+}
+
+export interface IntradayOrderBookData {
+  stock_code: string;
+  time: string | null;
+  asks: IntradayBookLevel[]; // 매도 1단계(가장 낮은 가격)부터
+  bids: IntradayBookLevel[]; // 매수 1단계(가장 높은 가격)부터
+  total_ask_quantity: number;
+  total_bid_quantity: number;
+  expected: { price: number; change: number | null; change_pct: number | null; volume: number | null } | null;
+  source: string;
+}

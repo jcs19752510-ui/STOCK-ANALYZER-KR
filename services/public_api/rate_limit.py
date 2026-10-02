@@ -86,6 +86,14 @@ def reset_rate_limit_state() -> None:
     _counters.clear()
 
 
+# 개인 로컬 모드 장중 시세(DEC-052)는 화면이 호가·체결을 몇 초마다
+# 다시 불러오므로 분당 60회로는 부족하다. 허용 IP(기본 loopback)에서만
+# 응답하는 경로라 별도 버킷·넉넉한 한도(분당 600)를 쓰고, 다른 경로의
+# 한도에는 영향을 주지 않는다.
+LOCAL_PATH_PREFIX = "/api/v1/local/"
+DEFAULT_LOCAL_LIMIT = int(os.environ.get("LOCAL_INTRADAY_RATE_LIMIT_PER_MINUTE", "600"))
+
+
 def _internal_token() -> str:
     return os.environ.get("PUBLIC_API_INTERNAL_TOKEN", "").strip()
 
@@ -152,6 +160,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         client_ip, limit = _resolve_client(request, self._limit, self._internal_limit)
+        if request.url.path.startswith(LOCAL_PATH_PREFIX):
+            client_ip, limit = f"local:{client_ip}", DEFAULT_LOCAL_LIMIT
         now = time.monotonic()
 
         if len(_counters) > _MAX_TRACKED_CLIENTS:

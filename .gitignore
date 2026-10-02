@@ -31,3 +31,6 @@ frontend/out/
 frontend/next-env.d.ts
 frontend/*.tsbuildinfo
 frontend/.env.local
+
+# 개인 로컬 모드(증권사 앱키 토큰 캐시 등) — 로컬 전용, 커밋 금지
+.local/

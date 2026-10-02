@@ -16,6 +16,7 @@ from services.public_api.api import (
     calendar,
     earnings,
     health,
+    local_intraday,
     market_summary,
     metrics,
     pattern,
@@ -95,6 +96,8 @@ app.include_router(pattern.router, prefix="/api/v1")
 app.include_router(prices.router, prefix="/api/v1")  # DEC-041 종목 상세 일봉
 app.include_router(earnings.router, prefix="/api/v1")  # DEC-041 종목 상세 실적
 app.include_router(market_summary.router, prefix="/api/v1")
+# 개인 로컬 모드 장중 시세(DEC-052): 기본 꺼짐, 허용 IP(기본 loopback)에서만 응답.
+app.include_router(local_intraday.router, prefix="/api/v1")
 
 
 def _error_envelope(status_code: int, code: str, message: str) -> JSONResponse:

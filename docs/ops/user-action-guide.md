@@ -90,3 +90,7 @@ py -3.12 scripts\run_daily_batch.py
 ## 한눈에 보는 우선순위
 1. (오늘) 법률 문의 메일 3곳 발송 → 2. (오늘) 1-1~1-3 설정·스케줄러 등록 → 3. (오늘~내일) 2-1 화면 검수 → 4. 답변 오면 3의 표대로 진행.
 막히면 에러 메시지나 화면 캡처를 그대로 보내 주세요.
+
+---
+## 부록. 분봉·틱·호가·체결(개인 로컬 모드)을 쓰려면
+`docs/ops/local-intraday-guide.md`를 따라 하세요(한국투자증권 실전 앱키 필요). 핵심만: ① `.env`에 `LOCAL_INTRADAY_ENABLED=true`·`KIS_APP_KEY`·`KIS_APP_SECRET` ② `frontend\.env.local`에 `NEXT_PUBLIC_LOCAL_INTRADAY_ENABLED=true` ③ API·프론트 재시작 ④ 장중에 `py -3.12 scripts\kis_smoke_test.py` 1회 실행. **인터넷에 공개하는 서버에서는 켜지 마세요.**

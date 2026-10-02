@@ -24,5 +24,10 @@
 - [ ] 사용자 PC에서 `scripts/register_daily_batch_task.ps1` 1회 실행, `DATA_FRESHNESS_WEBHOOK_URL` 설정, 다음 날 `logs/daily_batch.log`로 첫 따라잡기 확인(누락 4거래일 09-22·23·30, 10-01).
 - [ ] 공공데이터 일일 호출 한도(마이페이지 확인)와 실제 공개 시각 확인 후 14:30/18:30 조정.
 
+## C-2. 개인 로컬 모드(증권사 시세, DEC-052) — 외부 공개 배포 시 반드시 꺼짐
+- [ ] API 환경에 `LOCAL_INTRADAY_ENABLED`, `KIS_APP_KEY`, `KIS_APP_SECRET`이 **없다**(또는 false). 프론트 빌드에 `NEXT_PUBLIC_LOCAL_INTRADAY_ENABLED`가 **없다**.
+- [ ] 서버/컨테이너에 `.env`·`.local/kis_token.json`이 올라가지 않았다.
+- [ ] 개인 PC에서 켜 쓸 때는 `docs/ops/local-intraday-guide.md` §8 안전 수칙을 지킨다. 사용자 PC에서 `scripts/kis_smoke_test.py`를 장중에 1회 실행해 실제 응답을 확인했다(미확인 항목: 테스트 결과서 §8-1).
+
 ## D. 기능 범위 (R7)
 - [x] 수급(투자자별): **미제공 유지로 결정(DEC-049)**. 호가·뉴스도 제외 유지. 재개는 R3 법률 검토 이후 KRX Data Marketplace 비용·약관 확인부터.
