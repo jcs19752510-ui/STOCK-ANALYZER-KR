@@ -104,3 +104,15 @@ py -3.12 scripts/kis_smoke_test.py          # 실제 앱키 확인(사용자 PC)
 - 백엔드: `services/public_api/intraday/{config,kis_client,normalize,service}.py`, `api/local_intraday.py`, `schemas/intraday.py`, `main.py`(라우터), `middleware.py`(no-store·타임아웃), `rate_limit.py`(로컬 버킷)
 - 프론트: `lib/{chartSummary,localIntraday,privateHost,useIntradayPoll}.ts`, `components/{OrderBookPanel,TickPanel,LocalModeNotice}.tsx`, `StockChart.tsx`·`StockDetailTabs.tsx`, `copy.ko.json`, `globals.css`, `chartIndicators.ts`(Candle.time), `types.ts`, `tsconfig.json`(`allowImportingTsExtensions`)
 - 도구·문서: `scripts/{mock_kis_server,kis_smoke_test}.py`, `.env.example`(2종), `.gitignore`(`.local/`), `docs/ops/local-intraday-guide.md`, `docs/stock-detail/04-intraday-options.md`
+
+## 11. 추가 검증 — DB 통합 테스트 전체 실행 (2026-10-02)
+이전 결과의 "194건 건너뜀·1건 실패"는 실제 PostgreSQL이 없어 DB 통합 테스트를 못 돌린 것이었다. 테스트 인프라(`tests/integration/pg_temp_db.py`)에 **Docker 대신 직접 접속 가능한 PostgreSQL을 쓰는 선택 경로**(`TEST_PG_ADMIN_PSQL`, 미설정이면 기존 동작 불변)를 추가해 임시 PostgreSQL 16(UTF-8)에서 전부 실행했다.
+| 항목 | 결과 |
+|---|---|
+| `pytest tests/integration` | **199 통과** (기존 건너뜀 194건 + 기존 실패 1건 포함) |
+| `pytest tests` 전체 | **848 통과 / 0 실패 / 0 건너뜀** |
+| 임시 DB 정리 | 실행 후 `stock_screener_test_*` 0개 |
+| 이전 "실패 1건"(`test_d01_d03_migration_is_reversible…`) | DB 설정 부재가 원인이었음이 확인됨 — 실제 DB에서 통과 |
+이로써 종목 상세(일봉·실적·시세 요약 확장)의 DB·보안 통합 테스트(`test_stock_detail_security_db.py`, `test_daily_prices_db.py` 등), 마이그레이션 가역성, 패턴 API 실DB 테스트도 실제로 검증되었다.
+재현: `psql`이 접속 가능한 PostgreSQL을 띄우고 `batch_worker`·`api_service` 역할을 만든 뒤
+`TEST_PG_ADMIN_PSQL="psql -h <호스트> -p <포트> -U postgres"`, `ALEMBIC_DATABASE_URL`·`BATCH_DATABASE_URL`·`PUBLIC_API_DATABASE_URL`을 설정하고 `pytest tests`.

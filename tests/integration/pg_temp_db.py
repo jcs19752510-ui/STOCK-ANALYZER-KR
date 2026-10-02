@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import os
+import shlex
 import subprocess
 import sys
 import uuid
@@ -61,9 +62,32 @@ def _base_url(key: str) -> URL:
     return make_url(raw)
 
 
+# 선택: Docker 대신 직접 접속 가능한 PostgreSQL을 쓰는 환경(CI·클라우드 세션 등)용.
+# 슈퍼유저로 접속하는 psql 명령 앞부분을 지정한다(예: `psql -h /tmp -p 5544 -U postgres`).
+# 미설정이면 기존처럼 Docker 컨테이너를 쓴다(동작 불변).
+ADMIN_PSQL_ENV = "TEST_PG_ADMIN_PSQL"
+
+
+def _admin_psql(*extra: str) -> list[str]:
+    custom = os.environ.get(ADMIN_PSQL_ENV, "").strip()
+    if custom:
+        return [*shlex.split(custom), *extra]
+    return ["docker", "exec", CONTAINER, "psql", "-U", "postgres", *extra]
+
+
+def _admin_ready() -> subprocess.CompletedProcess:
+    if os.environ.get(ADMIN_PSQL_ENV, "").strip():
+        cmd = _admin_psql("-At", "-c", "SELECT 1")
+    else:
+        cmd = ["docker", "exec", CONTAINER, "pg_isready"]
+    return subprocess.run(
+        cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30
+    )
+
+
 def _psql(sql: str) -> None:
     proc = subprocess.run(
-        ["docker", "exec", CONTAINER, "psql", "-U", "postgres", "-v", "ON_ERROR_STOP=1", "-c", sql],
+        _admin_psql("-v", "ON_ERROR_STOP=1", "-c", sql),
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -80,18 +104,13 @@ def temp_database() -> Iterator[TempDb]:
         migrator = _base_url("ALEMBIC_DATABASE_URL")
         batch = _base_url("BATCH_DATABASE_URL")
         api = _base_url("PUBLIC_API_DATABASE_URL")
-        probe = subprocess.run(
-            ["docker", "exec", CONTAINER, "pg_isready"],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=30,
-        )
+        probe = _admin_ready()
     except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
-        raise TempDbUnavailable(f"docker 사용 불가: {exc}") from exc
+        raise TempDbUnavailable(f"docker/psql 사용 불가: {exc}") from exc
     if probe.returncode != 0:
-        raise TempDbUnavailable("stock-screener-pg 컨테이너가 응답하지 않습니다.")
+        raise TempDbUnavailable(
+            "PostgreSQL(stock-screener-pg 또는 TEST_PG_ADMIN_PSQL)이 응답하지 않습니다."
+        )
 
     name = f"{TEMP_DB_PREFIX}{uuid.uuid4().hex[:10]}"
     created = False
@@ -140,10 +159,9 @@ def run_alembic(db: TempDb, *args: str) -> subprocess.CompletedProcess:
 def leftover_temp_databases() -> list[str]:
     """정리 누락 점검용 — 남아 있는 임시 DB 이름 목록."""
     proc = subprocess.run(
-        [
-            "docker", "exec", CONTAINER, "psql", "-U", "postgres", "-At", "-c",
-            f"SELECT datname FROM pg_database WHERE datname LIKE '{TEMP_DB_PREFIX}%'",
-        ],
+        _admin_psql(
+            "-At", "-c", f"SELECT datname FROM pg_database WHERE datname LIKE '{TEMP_DB_PREFIX}%'"
+        ),
         capture_output=True,
         text=True,
         encoding="utf-8",
