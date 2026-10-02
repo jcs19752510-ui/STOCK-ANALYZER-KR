@@ -55,7 +55,7 @@ class FakeRepo:
 
 @pytest.fixture(autouse=True)
 def _clear(monkeypatch):
-    monkeypatch.setenv("PUBLIC_API_PRICE_EXPOSURE_ENABLED", "true")  # 기본은 꺼짐(DEC-048)
+    monkeypatch.delenv("PUBLIC_API_PRICE_EXPOSURE_ENABLED", raising=False)  # 기본은 켜짐(DEC-050)
     yield
     app.dependency_overrides.clear()
 
@@ -228,23 +228,20 @@ def test_quotes_route_does_not_shadow_stock_search_or_prices():
     assert "/api/v1/stocks/quotes" in paths
 
 
-def test_price_exposure_is_off_by_default_and_blocks_both_endpoints(monkeypatch):
-    """R3(DEC-048): 스위치가 없거나 true가 아니면 시세 원값 엔드포인트는 404 FEATURE_DISABLED."""
+def test_price_exposure_is_on_by_default_and_off_only_when_false(monkeypatch):
+    """DEC-050: 기본은 켜짐, `false`(대소문자·공백 무시)일 때만 404 FEATURE_DISABLED."""
     client, repo = _client()
-    for value in (None, "", "false", "1", "yes"):
+    urls = ("/api/v1/stocks/T00001/prices", "/api/v1/stocks/quotes?codes=T00001")
+    for value in (None, "", "true", "1"):
         if value is None:
             monkeypatch.delenv("PUBLIC_API_PRICE_EXPOSURE_ENABLED", raising=False)
         else:
             monkeypatch.setenv("PUBLIC_API_PRICE_EXPOSURE_ENABLED", value)
-        for url in ("/api/v1/stocks/005930/prices", "/api/v1/stocks/quotes?codes=005930"):
+        assert client.get(urls[0]).status_code == 200, value
+    for value in ("false", " FALSE "):
+        monkeypatch.setenv("PUBLIC_API_PRICE_EXPOSURE_ENABLED", value)
+        for url in urls:
             resp = client.get(url)
             assert resp.status_code == 404, (value, url)
             assert resp.json()["error"]["code"] == "FEATURE_DISABLED"
             assert resp.json()["data"] is None
-    assert repo.calls == []  # 리포지토리까지 도달하지 않는다
-
-
-def test_price_exposure_on_allows_prices(monkeypatch):
-    monkeypatch.setenv("PUBLIC_API_PRICE_EXPOSURE_ENABLED", " TRUE ")
-    client, _ = _client()
-    assert client.get(URL.format(code="T00001")).status_code == 200

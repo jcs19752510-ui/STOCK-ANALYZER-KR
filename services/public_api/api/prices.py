@@ -31,14 +31,12 @@ PRICE_EXPOSURE_ENV = "PUBLIC_API_PRICE_EXPOSURE_ENABLED"
 
 
 def require_price_exposure() -> None:
-    """시세 원값 공개 스위치(DEC-048, R3). 기본 **꺼짐**(fail closed).
+    """시세 원값 공개 스위치(DEC-048 → DEC-050). 기본 **켜짐**, `false`로 명시할 때만 끈다.
 
-    `true`일 때만 일봉·시세 요약을 공개한다.
-
-    공공데이터포털 약관의 재배포 금지 조항에 대한 법률 검토(REQ-022)가 끝나기 전에는 가공 지표만
-    공개한다. 값은 요청 시점에 읽으므로 환경변수만 바꾸고 API를 재시작하면 즉시 반영된다.
+    법률 검토(REQ-022)가 끝나기 전 외부 배포 환경에서는 `PUBLIC_API_PRICE_EXPOSURE_ENABLED=false`로
+    꺼서 가공 지표만 공개한다. 값은 요청 시점에 읽으므로 재시작하면 반영된다.
     """
-    if os.environ.get(PRICE_EXPOSURE_ENV, "").strip().lower() != "true":
+    if os.environ.get(PRICE_EXPOSURE_ENV, "").strip().lower() == "false":
         raise ApiError(
             status_code=404, code="FEATURE_DISABLED", message="이 기능은 현재 제공되지 않습니다."
         )
