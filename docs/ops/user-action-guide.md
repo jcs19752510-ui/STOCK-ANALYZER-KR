@@ -107,3 +107,12 @@ powershell -ExecutionPolicy Bypass -File scripts\update_to_latest.ps1
 - 중간에 끊겨도 같은 명령을 다시 실행하면 이어서 합니다.
 - 종료코드 2(`Latest trading day is not published yet`)는 오늘 자료가 아직 안 올라온 정상 상황입니다. 오후에 다시 실행하세요.
 - 자세한 로그: `logs\update_to_latest.log`(서비스키는 출력되지 않음). **이 스크립트는 Linux 개발 환경에서 실행하지 못했습니다**(PowerShell 없음) — 오류가 나면 화면 메시지를 그대로 알려주세요.
+
+---
+## 부록 3. 권장 순서 전체를 한 번에 — 명령 한 줄
+```
+git pull origin PROD_SCH
+powershell -ExecutionPolicy Bypass -File scripts\setup_everything.ps1
+```
+① 데이터 최신화(백필→일일 배치→신선도) → ② 스케줄러 등록·상태 표시 → ③ (선택) 알림 웹훅 저장 → ④ 화면 확인 안내와 브라우저 열기.
+백필을 이미 했다면 `-SkipBackfill`, 확인 질문을 생략하려면 `-Yes`. 권한 오류가 나면 PowerShell을 "관리자 권한으로 실행"해 다시 하세요. **Linux 개발 환경에서는 실행해 보지 못했습니다** — 오류 메시지를 그대로 알려 주세요.
