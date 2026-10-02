@@ -25,10 +25,17 @@ ASGI scope의 `client`를 `X-Forwarded-For` 헤더값으로 덮어쓰기 때문�
 기동해야 한다 — 이 스크립트가 기본값으로 프록시 헤더 신뢰 자체를 끈다
 (`proxy_headers=False`, fail closed). `uvicorn services.public_api.main:app`을
 직접 실행하면 이 방어가 적용되지 않는다.
+
+**프론트 서버 내부 호출(DEC-045, R1)**: 프론트 SSR이 API를 부르면 peer가 한 IP라
+방문자가 한도를 공유한다. `PUBLIC_API_INTERNAL_TOKEN`과 일치하는 `X-Internal-Token`이
+있는 호출에서만 `X-End-User-IP`를 신뢰한다(`_resolve_client`). 토큰이 없거나 틀리면
+위 신뢰 경계 그대로 peer 주소만 쓴다.
 """
 
 from __future__ import annotations
 
+import hmac
+import ipaddress
 import os
 import time
 from collections.abc import Awaitable, Callable
@@ -51,6 +58,18 @@ KST = ZoneInfo("Asia/Seoul")
 # 있게 한다) — 미설정 시 기본값은 §6-3이 명시한 수치 그대로다.
 DEFAULT_LIMIT = int(os.environ.get("PUBLIC_API_RATE_LIMIT_PER_MINUTE", "60"))
 DEFAULT_WINDOW_SECONDS = 60.0
+# 프론트엔드 서버(SSR)의 내부 호출 식별(DEC-045, R1). 프론트 서버가 API를 호출하면 TCP peer가
+# 항상 프론트 서버 한 IP라 방문자 전체가 한도 하나를 공유한다. 이를 풀기 위해 **공유 비밀 토큰을
+# 가진 호출에서만** 최종 사용자 IP 헤더를 신뢰한다. 토큰이 없거나 틀리면 헤더는 무시된다(스푸핑
+# 불가, DEF-SEC-03과 같은 fail-closed 원칙). 토큰 환경변수가 비어 있으면 기능 자체가 꺼진다.
+INTERNAL_TOKEN_HEADER = "x-internal-token"
+END_USER_IP_HEADER = "x-end-user-ip"
+# 토큰은 맞지만 최종 사용자 IP를 알 수 없는 내부 호출(프론트가 프록시 신뢰 설정을 안 한 경우)은
+# 방문자 전체가 공유하는 별도 버킷으로 받되 한도를 넉넉히 둔다(서비스 마비 방지, 완전 무제한 아님).
+INTERNAL_FALLBACK_KEY = "internal-fallback"
+DEFAULT_INTERNAL_LIMIT = int(
+    os.environ.get("PUBLIC_API_INTERNAL_RATE_LIMIT_PER_MINUTE", "600")
+)
 # 이 상한을 넘으면 만료된 항목을 정리한다(고유 방문 IP가 매우 많아질 때
 # 메모리가 무한정 늘어나는 것을 막는 방어적 조치, 정상 트래픽에서는
 # 도달하지 않는 값).
@@ -65,6 +84,32 @@ _counters: dict[str, tuple[float, int]] = {}
 def reset_rate_limit_state() -> None:
     """테스트 전용 헬퍼: IP별 카운터를 초기화한다(unit-01-note.md §6-1 참조)."""
     _counters.clear()
+
+
+def _internal_token() -> str:
+    return os.environ.get("PUBLIC_API_INTERNAL_TOKEN", "").strip()
+
+
+def _resolve_client(request: Request, default_limit: int, internal_limit: int) -> tuple[str, int]:
+    """(카운터 키, 한도)를 정한다.
+
+    - 유효한 내부 토큰 + 유효한 `X-End-User-IP` → 그 IP를 키로 일반 한도(브라우저가 직접 호출한
+      같은 방문자와 하나의 예산을 공유한다).
+    - 유효한 내부 토큰 + IP 없음/형식 오류 → 내부 공용 버킷과 넉넉한 한도.
+    - 그 외(토큰 없음/불일치/기능 꺼짐) → 헤더를 전부 무시하고 TCP peer 주소 기준(기존 동작).
+    """
+    peer = request.client.host if request.client is not None else "unknown"
+    expected = _internal_token()
+    provided = request.headers.get(INTERNAL_TOKEN_HEADER, "")
+    if not expected or not provided or not hmac.compare_digest(
+        provided.encode("utf-8"), expected.encode("utf-8")
+    ):
+        return peer, default_limit
+    raw_ip = request.headers.get(END_USER_IP_HEADER, "").strip()
+    try:
+        return str(ipaddress.ip_address(raw_ip)), default_limit
+    except ValueError:
+        return INTERNAL_FALLBACK_KEY, internal_limit
 
 
 def _evict_expired(now: float, window_seconds: float) -> None:
@@ -96,15 +141,17 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         *,
         limit: int = DEFAULT_LIMIT,
         window_seconds: float = DEFAULT_WINDOW_SECONDS,
+        internal_limit: int | None = None,
     ) -> None:
         super().__init__(app)
         self._limit = limit
+        self._internal_limit = DEFAULT_INTERNAL_LIMIT if internal_limit is None else internal_limit
         self._window_seconds = window_seconds
 
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
-        client_ip = request.client.host if request.client is not None else "unknown"
+        client_ip, limit = _resolve_client(request, self._limit, self._internal_limit)
         now = time.monotonic()
 
         if len(_counters) > _MAX_TRACKED_CLIENTS:
@@ -116,7 +163,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         count += 1
         _counters[client_ip] = (window_start, count)
 
-        if count > self._limit:
+        if count > limit:
             return _rate_limited_response()
 
         return await call_next(request)

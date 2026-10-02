@@ -448,6 +448,7 @@ function _already_closed(candidate: date, row: MarketCalendarRow, as_of: datetim
 ### 6-3. 입력 검증 및 어뷰징 방지
 - 모든 요청 파라미터는 FastAPI/Pydantic 스키마로 타입·범위 검증(예: `market_cap_min >= 0`, KRW 정수 단위). SQL Injection은 ORM 파라미터 바인딩으로 원천 차단(문자열 결합 쿼리 금지를 코드 컨벤션으로 고정).
 - IP 기준 rate limiting(예: 분당 60회) 적용 — 이는 인증이 아니라 **스크레이핑/대량 재배포 방지** 목적이다. §4-3 데이터 가공 원칙과 REQ-022 리스크(가공 데이터라도 대량으로 긁어가면 사실상 원본 재배포와 유사한 결과를 낳을 수 있음)를 함께 고려한 조치.
+  - **(DEC-045 보강) 프론트 서버 호출의 사용자 IP 식별**: 프론트 서버(SSR)가 API를 호출하면 TCP peer가 한 IP로 보이므로, 공유 비밀 토큰(`X-Internal-Token`)이 일치하는 호출에 한해 `X-End-User-IP`를 신뢰해 방문자별로 센다. 토큰이 없거나 틀리면 이 헤더와 `X-Forwarded-For` 등 모든 클라이언트 헤더를 무시한다(fail closed). IP를 못 얻은 내부 호출은 별도 공용 버킷(기본 분당 600). 운영 설정은 `.env.example` 참조.
 - 응답 헤더에 기본 보안 헤더 적용: `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `Strict-Transport-Security`(HTTPS 강제). CORS는 자사 프론트엔드 오리진으로만 제한.
 - 의존성 취약점 스캔(예: `pip-audit`, `npm audit`)을 CI에 포함해 9단계 보안검증 이전에 1차 방어.
 

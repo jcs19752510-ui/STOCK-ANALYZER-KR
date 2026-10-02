@@ -1,3 +1,4 @@
+import { serverApiHeaders } from "@/lib/serverApiHeaders";
 import type { DataFreshness, Envelope, StockPricesData } from "@/lib/types";
 
 /**
@@ -13,7 +14,10 @@ async function getJson<T>(path: string): Promise<{ ok: boolean; body: Envelope<T
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   if (!baseUrl) return { ok: false, body: null };
   try {
-    const response = await fetch(new URL(path, baseUrl).toString(), { cache: "no-store" });
+    const response = await fetch(new URL(path, baseUrl).toString(), {
+      cache: "no-store",
+      headers: await serverApiHeaders(),
+    });
     const body = (await response.json()) as Envelope<T>;
     return { ok: response.ok, body };
   } catch {
