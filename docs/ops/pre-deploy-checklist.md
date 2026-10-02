@@ -24,5 +24,5 @@
 - [ ] 사용자 PC에서 `scripts/register_daily_batch_task.ps1` 1회 실행, `DATA_FRESHNESS_WEBHOOK_URL` 설정, 다음 날 `logs/daily_batch.log`로 첫 따라잡기 확인(누락 4거래일 09-22·23·30, 10-01).
 - [ ] 공공데이터 일일 호출 한도(마이페이지 확인)와 실제 공개 시각 확인 후 14:30/18:30 조정.
 
-## D. 기능 범위 결정 (R7)
-- [ ] 수급(투자자별 순매수): 공식 무료 출처 없음. 유료(KRX Data Marketplace)·증권사 OpenAPI 중 선택하거나 계속 "준비 중"으로 둘지 결정. 호가·뉴스는 제외 유지.
+## D. 기능 범위 (R7)
+- [x] 수급(투자자별): **미제공 유지로 결정(DEC-049)**. 호가·뉴스도 제외 유지. 재개는 R3 법률 검토 이후 KRX Data Marketplace 비용·약관 확인부터.
