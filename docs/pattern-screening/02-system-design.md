@@ -114,6 +114,8 @@ flowchart LR
 2. 최근 L−1개 일수익률 중 `|r| > 31%` 하나라도 있음, 또는 종가 ≤ 0 → `SUSPECT_PRICE_JUMP` — 모든 조건 `null`.
 3. 개별 지표 분모가 0(예: 60일 수익률 표준편차 0, 60일 평균 거래량 0) → 해당 값 `NULL` → 그 값을 쓰는 조건은 3값 논리로 `null`(다른 항이 `false`면 `false`).
 
+4. **"거래일"의 의미(알려진 한계)**: 계산은 달력상 거래일이 아니라 **`raw_ohlcv`에 존재하는 일봉 행**을 센다. 거래정지 등으로 행이 빠진 종목은 같은 80행이 더 긴 달력 기간을 뜻할 수 있다. 이 한계를 허용하고 정의 패널에는 "일봉 기준"으로만 표기한다(수정 필요 시 사용자 결정).
+
 ### 4-2. 조건 c1~c5, c9
 
 | ID | 이름(원문 기준) | 판정식 (SQL과 동일 의미) |
@@ -143,7 +145,7 @@ c4의 단계 해석(화면 표시용): `gap < −BAND`=60일선 한참 아래(�
 |---|---|---|---|
 | `market` | `ALL`\|`KOSPI`\|`KOSDAQ` | `ALL` | 400 `INVALID_PARAMETER` |
 | `required` | 쉼표 구분, `c1,c2,c3,c4,c5,c9`의 비어있지 않은 부분집합, **중복·미지 ID·공백 금지** | 6개 전부 | 400 |
-| `market_cap_min` | int ≥ 0 (KRW 원) | 없음 | 422→기존과 동일 처리 |
+| `market_cap_min` | int ≥ 0 (KRW 원) | 없음 | 400 `INVALID_PARAMETER` (FastAPI `Query(ge=0)` 위반은 `main.py`의 `RequestValidationError` 핸들러가 400으로 변환 — 기존 `/screen`과 동일) |
 | `volume_min` | int ≥ 0 (주) | 없음 | 〃 |
 | `sort_by` | `market_cap`\|`ma60_gap_pct`\|`sideways_range_pct`\|`ma_convergence_pct` | `market_cap` | 400 |
 | `sort_dir` | `asc`\|`desc` | `desc` | 400 |
@@ -216,7 +218,7 @@ c4의 단계 해석(화면 표시용): `gap < −BAND`=60일선 한참 아래(�
 - `build_condition_exprs(th) -> dict[str, ColumnElement]`: 각 식을 `case((status == 'OK', <식>), else_=None)`으로 감싸 상태 게이트를 구현한다. c4의 `IS NOT NULL`은 `ma60_cross_up_days.is_not(None)`.
 - `required` 조건은 `expr.is_(True)`로 WHERE에 건다(FALSE·NULL 모두 제외). 응답의 `met`은 같은 `expr`을 SELECT한 값(`True/False/None`)이다.
 - 3값 논리: SQLAlchemy `and_/or_`는 SQL `AND/OR`로 컴파일되어 `FALSE AND NULL = FALSE`가 유지된다(기준 구현 `_and3/_or3`와 동일). **Python에서 재판정하지 않는다.**
-- 조회 순서: (1) 발행 거래일 확인(기존 로직 재사용) → (2) readiness 집계 → (3) 0건이면 424 → (4) count → (5) 정렬(2차 키 `stock_code ASC`, 결정론적 페이지네이션) → (6) 페이지 조회. `sort_by` 컬럼은 화이트리스트 매핑 딕셔너리로만 선택(문자열 연결 금지).
+- 조회 순서: (1) 발행 거래일 확인(기존 로직 재사용) → (2) readiness 집계(**`market` 필터 적용 후** 행 대상) → (3) 그 집합에서 `status='OK'`가 0건이면 424(예: `market=KOSDAQ`만 미준비여도 해당 요청은 424 — 부분 시장 준비 상태를 숨기지 않는다) → (4) count → (5) 정렬(2차 키 `stock_code ASC`, 결정론적 페이지네이션) → (6) 페이지 조회. `sort_by` 컬럼은 화이트리스트 매핑 딕셔너리로만 선택(문자열 연결 금지).
 - `ORDER BY ... NULLS LAST`로 산정 불가 행을 뒤로 보낸다.
 
 ## 6. 보안 설계 (위협 모델)
@@ -230,7 +232,7 @@ c4의 단계 해석(화면 표시용): `gap < −BAND`=60일선 한참 아래(�
 | T5 | 백필 스크립트의 키 노출 | 서비스키는 환경변수에서만 읽고 **로그·예외 메시지·URL 출력 금지**(URL 로그 시 마스킹), `.env` 비커밋 유지 | TC-B05 |
 | T6 | 백필의 외부 API 과호출 | 호출 간 최소 간격·지수 백오프·일일 호출 상한 인자, 재개 가능(이미 있는 날짜 건너뜀) | TC-B 계열 |
 | T7 | 배치 쓰기 경계 | `batch_worker`만 쓰기, `api_service`는 SELECT만 — 0011 후 **실제 역할로 재검증** | TC-D05 |
-| T8 | 개인정보 | 신규 수집·저장 없음(사용자 식별자 없음). 단, 폴더 `정찬욱주식현황요청_카톡/` 이미지에 카톡 이름·관심종목 포함 → **git 추적 제외 여부 미결(Q5)**, 저장소는 과거 공개 이력이 있음 | 커밋 전 확인 |
+| T8 | 개인정보 | 신규 수집·저장 없음(사용자 식별자 없음). 단, 폴더 `정찬욱주식현황요청_카톡/` 이미지에 카톡 이름·관심종목 포함 → **이미 커밋·푸시됨(커밋 `8034a39`, `origin/PROD_SCH`) — 원격 제거 여부는 사용자 결정(Q5)**, 저장소는 과거 공개 이력이 있음 | 커밋 전 확인 |
 | T9 | DoS | 단일 거래일 ~2.7k행·기존 인덱스, 페이지 상한, 기존 요청 타임아웃(503 단락) | TC-P 계열 |
 | T10 | 규제 오인 | 비예측 고지 상시 노출, 서열화 금지, 명칭 단일 출처, **기능 스위치로 배포 시점 통제**, REQ-022 범위에 명칭 포함 | TC-R 계열 |
 
@@ -239,6 +241,7 @@ c4의 단계 해석(화면 표시용): `gap < −BAND`=60일선 한참 아래(�
 ## 7. 백필 설계 — `scripts/backfill_ohlcv.py` (REQ-031)
 
 - **목표**: 종목당 최소 80, 목표 130거래일. 대상 구간은 `reference.market_calendar`의 `is_trading_day=True`인 날(`shared.calendar_service`의 `CalendarRow`)을 최신→과거로 순회.
+- **호출량 추정(실측 근거)**: `PAGE_SIZE=1000`, 거래일당 ≈2,870종목 → **일당 3페이지**, 130거래일 ≈ **390회**(재시도 제외). 일일 호출 한도 대비 여부는 UNIT-11에서 확인.
 - **재사용**: `services/ingestion_batch/run_ingestion.py`의 `_fetch_all_ohlcv()`(페이지네이션, `MAX_PAGES=10`)와 `repository.upsert_ohlcv()`. `run_once()`는 **재사용하지 않는다** — 재무지표·PER/PBR까지 일일 처리하고 날짜마다 `batch_run`을 남기기 때문(백필은 시세만 필요).
 - **batch_run 정책**: 서킷브레이커(`circuit_breaker.evaluate`, 최근 연속 실패 집계)를 오염시키지 않도록 **백필 1회 실행당 `batch_run` 1행**만 기록(`error_summary` 접두 `BACKFILL`), 날짜별 실패는 그 행의 요약과 stdout에 남긴다. 구현 전 `circuit_breaker`·`batch_run_repository`를 읽고 영향이 없음을 테스트로 입증(TC-B04).
 - **인자**: `--days 130`, `--from/--to`, `--sleep 0.3`(호출 간격), `--max-calls`(일일 상한), `--dry-run`(호출 없이 대상 날짜·예상 호출 수만 출력).

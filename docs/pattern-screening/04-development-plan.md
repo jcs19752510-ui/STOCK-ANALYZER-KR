@@ -52,7 +52,7 @@ flowchart LR
 ### UNIT-13 — 패턴 지표 순수 함수 (REQ-030)
 - **파일**: `shared/pattern_params.py`(신규), `services/derivation_batch/compute.py`(함수 추가만), `tests/unit/test_pattern_compute.py`(신규).
 - **구현 요점**: 기존 `compute.py` 스타일 유지(Decimal, `_QUANT` 4자리, 한국어 docstring에 정의 근거). 입력은 최신순 `OhlcvPoint` 리스트. 산정 불가 규칙은 설계서 §4-1. **기준 구현(`prototype/pattern_rules_reference.py`)을 오라클로** 300개 합성 시계열에서 11개 필드가 허용오차 내 일치(TC-U40).
-- **AC**: 경계값(정확히 80행/79행, ±31.0%/31.1%, 임계 경계 포함)·0 분모·Decimal 정밀도 TC 전부 통과.
+- **AC**: TC-U01~U16·U40~U42 전부 통과 — 경계값(80행/79행, ±31.0%/31.1%, 급등 경계)·0 분모·Decimal 정밀도·윈도우 절단·오라클 300건 일치.
 
 ### UNIT-14 — 스키마·배치 통합 (REQ-030, REQ-035)
 - **파일**: `db/alembic/versions/0011_*.py`, `shared/db_models/public_serving.py`, `services/derivation_batch/{repository,run_derivation}.py`, 신규 테스트.

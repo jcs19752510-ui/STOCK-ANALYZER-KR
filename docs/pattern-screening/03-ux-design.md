@@ -29,7 +29,7 @@
 ┌ DisclaimerBanner(고정, 기존) ──────────────────────────────────────────────┐
 ├ GlobalNav ────────────────────────────────────────────────────────────────┤
 │ [직접 조건 설정]  [급등 전 압축주]◀현재        DataFreshnessBadge          │
-│ ┌ InlineNotice(info) ──────────────────────────────────────────────────┐ │
+│ ┌ PatternNotice (CSS: inline-notice--info) ─────────────────────────────┐ │
 │ │ ⓘ 이 목록은 가격·거래량 흐름이 아래 수치 조건에 해당하는 종목을 기계적으로 │ │
 │ │   표시한 것입니다. 이후의 주가 움직임을 예측하거나 매수·매도를 권유하는   │ │
 │ │   정보가 아닙니다.                                                      │ │
@@ -50,7 +50,7 @@
 
 ### 2-2. 모바일 (< 1024px, 기준 폭 320~767)
 
-- 전환 링크 → 고지(InlineNotice) → **`조건 설정` 버튼**(바텀시트 열기, 기존 `ConditionFilterPanel` 모바일 패턴·포커스 트랩 재사용) → 결과 **카드 리스트** → Pagination → "조건 정의와 기준값".
+- 전환 링크 → 고지(`PatternNotice`) → **`조건 설정` 버튼**(바텀시트 열기, 기존 `ConditionFilterPanel` 모바일 패턴·포커스 트랩 재사용) → 결과 **카드 리스트** → Pagination → "조건 정의와 기준값".
 - 카드 1개 = 종목명·코드·시장 뱃지 + **조건 6행 체크리스트**(`<dl>`): 각 행 `조건명 | 상태 배지 | 근거 문장`.
 - 표 대신 카드를 쓰는 분기점은 **1024px**(기존 결과 목록의 768px과 다름): 조건 열이 6개라 768px에서 가로 스크롤 없이 읽히지 않기 때문. 가로 페이지 스크롤은 어떤 폭에서도 만들지 않는다(기존 규칙).
 
@@ -94,13 +94,13 @@
 | 컴포넌트 | 목적 | 상태/변형 | 재사용 |
 |---|---|---|---|
 | `ScreeningModeNav` | 두 스크리닝 방식 전환 링크 | 현재/비현재(`aria-current`), 스위치 off 시 미렌더 | `GlobalNav` 스타일 |
-| `PatternNotice` | 비예측 고지(상시) | 단일 | `InlineNotice`(`info` 변형), **닫기 버튼 없음** |
+| `PatternNotice` | 비예측 고지(상시) | 단일 | **기존 CSS 클래스 `inline-notice inline-notice--info`**(`frontend/src/app/globals.css`) 재사용 — 별도 `InlineNotice` 컴포넌트는 존재하지 않고 `ScreenerClient.tsx`·`SectorSummaryList.tsx`가 클래스를 직접 쓴다. **닫기 버튼 없음**, 면책 배너(`DisclaimerBanner`, `role="note"`)와 시각적으로 구분 |
 | `PatternFilterPanel` | 시장·최소 시총·최소 거래량·필수 조건 체크 | 기본/오류/비활성(로딩) | `MarketFilterControl`·`ConditionField`·바텀시트 패턴 |
 | `ConditionStatusBadge` | §3-1 | 충족/미충족/산정 불가 | 신규 |
 | `PatternResultsTable` | ≥1024 결과 표 | 정상/로딩 | `ResultsTable` 구조 |
 | `PatternResultsList` | <1024 카드 리스트 | 정상/로딩 | `ResultsList` 구조 |
 | `PatternDefinitionPanel` | §3-3 | 접힘/펼침 | 신규 |
-| `ReadinessNote` | "평가 {evaluated}/{total}종목, 나머지는 산정 불가" 보조 줄 | `ready_ratio<1`일 때만 | `InlineNotice`(`info`) |
+| `ReadinessNote` | "평가 {evaluated}/{total}종목, 나머지는 산정 불가" 보조 줄 | `ready_ratio<1`일 때만 | 같은 CSS 클래스 `inline-notice inline-notice--info` |
 
 `EmptyState`에 변형 `pattern-data-not-ready` 추가, `errorMapping.ts`에 `PATTERN_DATA_NOT_READY → {kind:"empty", variant:"pattern-data-not-ready"}`. `mapApiErrorCodeToDisplay`의 기존 분기는 불변.
 
@@ -136,7 +136,7 @@ frontend/src/lib/patternValidation.ts               required 검증(순수 함�
 | 키 | 값 | 비고 |
 |---|---|---|
 | `pattern.label` | **급등 전 압축주** | 사용자 결정(DEC-032). **이 키 한 곳만 바꾸면 전 화면 반영** — 법률 검토 결과 대응용 |
-| `pattern.pageTitle` | `{label} | 국내주식 조건 스크리닝 정보 서비스` | `metadata.title`도 이 키 조합 |
+| `pattern.pageTitle` | `pattern.label` 뒤에 " \| 국내주식 조건 스크리닝 정보 서비스"를 붙인 형태(기존 `metadata.title` 형식과 동일) | `metadata.title`도 이 키 조합 |
 | `pattern.modeNavAriaLabel` | 스크리닝 방식 | |
 | `pattern.modeManualLabel` | 직접 조건 설정 | |
 | `pattern.notice` | 이 목록은 가격·거래량 흐름이 아래 수치 조건에 해당하는 종목을 기계적으로 표시한 것입니다. 이후의 주가 움직임을 예측하거나 매수·매도를 권유하는 정보가 아닙니다. | 상시·닫기 불가 |

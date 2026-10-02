@@ -47,7 +47,7 @@ $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 [System.IO.File]::AppendAllText($logFile, "===== $timestamp KST run start =====`r`n", $utf8NoBom)
 
-cmd /c "chcp 65001 >nul & python scripts\run_daily_batch.py >>`"$logFile`" 2>&1"
+cmd /c "chcp 65001 >nul & py -3.12 scripts\run_daily_batch.py >>`"$logFile`" 2>&1"
 $exitCode = $LASTEXITCODE
 
 $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
