@@ -94,3 +94,16 @@ py -3.12 scripts\run_daily_batch.py
 ---
 ## 부록. 분봉·틱·호가·체결(개인 로컬 모드)을 쓰려면
 `docs/ops/local-intraday-guide.md`를 따라 하세요(한국투자증권 실전 앱키 필요). 핵심만: ① `.env`에 `LOCAL_INTRADAY_ENABLED=true`·`KIS_APP_KEY`·`KIS_APP_SECRET` ② `frontend\.env.local`에 `NEXT_PUBLIC_LOCAL_INTRADAY_ENABLED=true` ③ API·프론트 재시작 ④ 장중에 `py -3.12 scripts\kis_smoke_test.py` 1회 실행. **인터넷에 공개하는 서버에서는 켜지 마세요.**
+
+---
+## 부록 2. 데이터를 최신으로 맞추기 — 명령 한 줄 (백필 + 일일 배치 + 확인)
+프로젝트 폴더의 PowerShell에서:
+```
+git pull origin PROD_SCH
+powershell -ExecutionPolicy Bypass -File scripts\update_to_latest.ps1
+```
+순서: ① DB 컨테이너 확인 → ② 백필 **계획만** 출력(호출 없음, 예상 호출 수 표시) → 한도를 확인하고 `y` 입력 → ③ 백필 실행 → ④ 일일 배치(빠진 거래일 채움·가공) → ⑤ 최신 여부 확인.
+- 이미 백필을 끝냈다면 `-SkipBackfill`, 확인 질문을 생략하려면 `-Yes`.
+- 중간에 끊겨도 같은 명령을 다시 실행하면 이어서 합니다.
+- 종료코드 2(`Latest trading day is not published yet`)는 오늘 자료가 아직 안 올라온 정상 상황입니다. 오후에 다시 실행하세요.
+- 자세한 로그: `logs\update_to_latest.log`(서비스키는 출력되지 않음). **이 스크립트는 Linux 개발 환경에서 실행하지 못했습니다**(PowerShell 없음) — 오류가 나면 화면 메시지를 그대로 알려주세요.
