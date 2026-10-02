@@ -14,7 +14,7 @@ for (const [w, h] of [[320, 568], [360, 800], [390, 844], [414, 896], [768, 1024
   const tb = await p.evaluate(() => {
     const t = document.querySelector(".stock-chart__toolbar");
     const kids = [...t.querySelectorAll("button")].filter((e) => e.getBoundingClientRect().width > 0);
-    const tops = kids.map((e) => Math.round(e.getBoundingClientRect().top));
+    const tops = kids.map((e) => { const r = e.getBoundingClientRect(); return Math.round((r.top + r.bottom) / 2 / 20); });
     return { h: Math.round(t.getBoundingClientRect().height), rows: new Set(tops).size, n: kids.length };
   });
   rec(`[${w}] 도구 줄 한 줄 유지`, tb.rows === 1, `높이 ${tb.h}px 줄수 ${tb.rows} 버튼 ${tb.n}`);
@@ -55,7 +55,7 @@ for (const [w, h] of [[320, 568], [360, 800], [390, 844], [414, 896], [768, 1024
   if (w === 360) await p.screenshot({ path: `${OUT}/local-ticks-360.png` });
   const axe3 = await runAxe(p);
   const all = [...axe1, ...axe2, ...axe3].map((v) => `${v.id}:${v.nodes.length}`);
-  rec(`[${w}] 로컬 모드 axe`, all.length === 0, all.join(","));
+  rec(`[${w}] 로컬 모드 axe`, all.length === 0, all.join(",") + " " + [...axe1, ...axe2, ...axe3].flatMap((v) => v.nodes.slice(0, 3).map((n) => n.target.slice(0, 40) + " " + n.summary.slice(0, 90))).slice(0, 4).join(" || "));
   rec(`[${w}] 페이지 오류 없음`, errs.length === 0, errs.join("|"));
   await p.close();
 }

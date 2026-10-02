@@ -1,0 +1,42 @@
+// 보고서용 대표 스크린샷(public 빌드 기준) → docs/qa/2026-10-02/
+import { BASE, SHOTS, launch, devices, sleep } from "./common.mjs";
+import { pathToFileURL } from "node:url";
+const b = await launch();
+const save = (p, name, opt = {}) => p.screenshot({ path: `${SHOTS}/${name}`, ...opt });
+async function page(ctxOpt, path, wait = ".stock-chart__svg") {
+  const ctx = await b.newContext(ctxOpt);
+  const p = await ctx.newPage();
+  await p.goto(BASE + path);
+  await p.waitForSelector(wait);
+  await sleep(400);
+  return p;
+}
+let p = await page({ viewport: { width: 360, height: 1250 } }, "/stocks/T00001");
+await save(p, "01-detail-360-full.png");
+await p.getByRole("tab", { name: "일자별 시세" }).click(); await sleep(300);
+await save(p, "02-detail-daily-360.png");
+p = await page({ viewport: { width: 320, height: 800 } }, "/stocks/T00001");
+await save(p, "03-detail-320.png");
+p = await page({ viewport: { width: 1280, height: 900 } }, "/stocks/T00001");
+await save(p, "04-detail-1280.png");
+p = await page({ viewport: { width: 768, height: 1024 } }, "/screener/pattern", "main");
+await save(p, "05-pattern-768.png");
+p = await page({ viewport: { width: 360, height: 640 } }, "/stocks/ZZZZZZ", "main");
+await save(p, "06-notfound-360.png");
+p = await page({ ...devices["iPhone 13"] }, "/stocks/T00001");
+await p.getByRole("button", { name: "차트 요약" }).tap(); await p.waitForSelector(".chart-summary li"); await sleep(300);
+await p.evaluate(() => document.querySelector(".chart-summary").scrollIntoView({ block: "start" }));
+await save(p, "07-iphone13-summary.jpg", { type: "jpeg", quality: 70 });
+p = await page({ ...devices["Pixel 7"] }, "/stocks/T00001");
+await p.locator(".stock-chart__svg").scrollIntoViewIfNeeded();
+const box = await p.locator(".stock-chart__svg").boundingBox();
+await p.touchscreen.tap(box.x + box.width * 0.3, box.y + box.height * 0.3); await sleep(300);
+await p.locator(".stock-chart__readout").scrollIntoViewIfNeeded();
+await save(p, "08-pixel7-tap-select.jpg", { type: "jpeg", quality: 70 });
+await p.locator(".chart-expand").tap(); await sleep(400);
+await save(p, "09-pixel7-expanded.jpg", { type: "jpeg", quality: 70 });
+p = await page({ viewport: { width: 390, height: 844 }, forcedColors: "active" }, "/stocks/T00001");
+await save(p, "10-forced-colors-390.png");
+p = await page({ viewport: { width: 640, height: 400 }, deviceScaleFactor: 1, colorScheme: "dark" }, "/stocks/T00001");
+await save(p, "11-dark-pref-640.png");
+await b.close();

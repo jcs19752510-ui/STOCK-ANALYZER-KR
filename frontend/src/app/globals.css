@@ -2004,7 +2004,7 @@ main {
 }
 
 .orderbook__price--bid {
-  color: #d9342b;
+  color: #c42d25; /* 옅은 빨강 배경 위 4.5:1 확보(검수 QA-03) */
 }
 
 .orderbook__total {
@@ -2018,7 +2018,7 @@ main {
 }
 
 .orderbook__total--bid {
-  color: #d9342b;
+  color: #c42d25; /* 옅은 빨강 배경 위 4.5:1 확보(검수 QA-03) */
 }
 
 .orderbook__table tfoot th {
@@ -2141,5 +2141,22 @@ main {
   .stock-tabs__menu-item[aria-current="true"],
   .chart-seg__menu button[aria-current="true"] {
     text-decoration: underline;
+  }
+}
+
+/* 320px 급 좁은 폰: 도구 줄(일·주·월·분·틱 + 요약·설정·도구)이 두 줄로 꺾이지 않게 간격을 줄인다(검수 QA-08) */
+@media (max-width: 340px) {
+  .chart-seg__btn {
+    min-width: 32px;
+    padding: 0 4px;
+  }
+
+  .chart-tools {
+    gap: 4px;
+  }
+
+  .chart-tools__btn {
+    width: 36px;
+    height: 36px;
   }
 }
