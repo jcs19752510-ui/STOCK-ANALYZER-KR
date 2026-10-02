@@ -8,6 +8,7 @@ import { ValuationMetricCard } from "@/components/ValuationMetricCard";
 import copy from "@/content/copy.ko.json";
 import { mapApiErrorCodeToDisplay } from "@/lib/errorMapping";
 import { formatSignedPercent, percentDirectionLabel, percentValueClassName } from "@/lib/formatPercent";
+import { PRICE_EXPOSURE_ENABLED } from "@/lib/priceExposure";
 import { fetchStockMetrics } from "@/lib/stockMetrics";
 import { fetchStockPrices } from "@/lib/stockDetailApi";
 
@@ -27,9 +28,10 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
   const { code } = await params;
   const { date } = await searchParams;
   // 서버 호출은 2건만(첫 화면에 필요한 것). 실적·조건 체크는 탭을 열 때 브라우저가 호출한다.
+  // 시세 원값 비공개(DEC-048, 기본)면 일봉을 호출하지 않는다.
   const [result, pricesResult] = await Promise.all([
     fetchStockMetrics(code, date),
-    fetchStockPrices(code),
+    PRICE_EXPOSURE_ENABLED ? fetchStockPrices(code) : Promise.resolve(null),
   ]);
 
   if (result.kind === "not_found") {
@@ -47,7 +49,7 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
   }
 
   const { data, freshness } = result;
-  const prices = pricesResult.kind === "success" ? pricesResult.data.prices : [];
+  const prices = pricesResult?.kind === "success" ? pricesResult.data.prices : [];
   const latest = prices.length > 0 ? prices[prices.length - 1] : null;
   const changeClass =
     latest?.change == null || latest.change === 0
@@ -82,15 +84,16 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
 
       <DataFreshnessBadge freshness={freshness} />
 
-      {pricesResult.kind === "success" && prices.length > 0 ? (
-        <StockDetailTabs
-          stockCode={data.stock_code}
-          stockName={data.name}
-          prices={prices}
-        />
+      {!PRICE_EXPOSURE_ENABLED ? (
+        <>
+          <p className="stock-quote__basis">{copy.stockDetail.pricesHiddenNote}</p>
+          <StockDetailTabs stockCode={data.stock_code} stockName={data.name} prices={[]} showPrices={false} />
+        </>
+      ) : pricesResult?.kind === "success" && prices.length > 0 ? (
+        <StockDetailTabs stockCode={data.stock_code} stockName={data.name} prices={prices} />
       ) : (
         <p className="stock-tabs__pending">
-          {pricesResult.kind === "success"
+          {pricesResult?.kind === "success"
             ? copy.stockDetail.pricesEmpty
             : copy.stockDetail.pricesUnavailable}
         </p>

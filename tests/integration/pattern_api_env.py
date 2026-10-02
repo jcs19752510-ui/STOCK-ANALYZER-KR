@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import date, time, timedelta
@@ -96,9 +97,16 @@ def api_client(db: TempDb) -> Iterator[TestClient]:
 
     app.dependency_overrides[get_db] = _override_db
     reset_rate_limit_state()
+    # 시세 원값 공개 스위치(DEC-048)는 기본 꺼짐 — 시세 엔드포인트도 검증하는 테스트라 켠다.
+    prev_exposure = os.environ.get("PUBLIC_API_PRICE_EXPOSURE_ENABLED")
+    os.environ["PUBLIC_API_PRICE_EXPOSURE_ENABLED"] = "true"
     try:
         yield TestClient(app)
     finally:
+        if prev_exposure is None:
+            os.environ.pop("PUBLIC_API_PRICE_EXPOSURE_ENABLED", None)
+        else:
+            os.environ["PUBLIC_API_PRICE_EXPOSURE_ENABLED"] = prev_exposure
         app.dependency_overrides.clear()
         reset_rate_limit_state()
         engine.dispose()

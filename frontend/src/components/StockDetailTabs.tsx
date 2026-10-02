@@ -17,13 +17,16 @@ import type { PatternCheckData, StockEarningsData, StockPricePoint } from "@/lib
  * 점수·순위·충족 개수는 어디에도 두지 않는다.
  */
 type TabId = "chart" | "daily" | "earnings" | "investor" | "check";
-const TABS: { id: TabId; label: string }[] = [
+const ALL_TABS: { id: TabId; label: string }[] = [
   { id: "chart", label: copy.stockDetail.tabChart },
   { id: "daily", label: copy.stockDetail.tabDaily },
   { id: "earnings", label: copy.stockDetail.tabEarnings },
   { id: "investor", label: copy.stockDetail.tabInvestor },
   { id: "check", label: copy.stockDetail.tabCheck },
 ];
+
+// 시세 원값 비공개(DEC-048)일 때는 차트·일자별 시세 탭을 뺀다.
+const PRICE_TAB_IDS: TabId[] = ["chart", "daily"];
 
 const nf = new Intl.NumberFormat("ko-KR");
 
@@ -42,12 +45,21 @@ interface StockDetailTabsProps {
   stockCode: string;
   stockName: string;
   prices: StockPricePoint[];
+  /** false면 시세 원값 탭(차트·일자별 시세)을 만들지 않는다(DEC-048). 기본 true. */
+  showPrices?: boolean;
 }
 
-export function StockDetailTabs({ stockCode, stockName, prices }: StockDetailTabsProps) {
-  const [tab, setTab] = useState<TabId>("chart");
+export function StockDetailTabs({
+  stockCode,
+  stockName,
+  prices,
+  showPrices = true,
+}: StockDetailTabsProps) {
+  const TABS = showPrices ? ALL_TABS : ALL_TABS.filter((t) => !PRICE_TAB_IDS.includes(t.id));
+  const [tab, setTab] = useState<TabId>(TABS[0].id);
+  const initialId = TABS[0].id;
   // 보조 정보는 해당 탭을 처음 열 때 브라우저가 호출한다(방문자별 rate limit 집계, `useLazyApi` 참조).
-  const [opened, setOpened] = useState<Record<string, boolean>>({});
+  const [opened, setOpened] = useState<Record<string, boolean>>({ [initialId]: true });
   const codePath = encodeURIComponent(stockCode);
   const earnings = useLazyApi<StockEarningsData>(
     `/api/v1/stocks/${codePath}/earnings`,

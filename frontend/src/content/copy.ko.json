@@ -38,6 +38,7 @@
     "priceBasis": "{date} 종가 기준",
     "priceBasisNote": "일 단위 종가 기준 시세이며 실시간 시세가 아닙니다.",
     "pricesUnavailable": "시세 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    "pricesHiddenNote": "이 서비스는 시세 원본이 아닌 가공 지표와 조건 충족 여부를 제공합니다.",
     "pricesEmpty": "이 종목의 일봉 시세가 아직 준비되지 않았습니다.",
     "tabsLabel": "종목 상세 정보",
     "tabChart": "차트",
