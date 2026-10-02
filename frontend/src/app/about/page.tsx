@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import copy from "@/content/copy.ko.json";
+import { PRICE_EXPOSURE_ENABLED } from "@/lib/priceExposure";
 
 export const metadata: Metadata = {
   title: `${copy.about.title} | 국내주식 조건 스크리닝 정보 서비스`,
@@ -28,7 +29,11 @@ export default function AboutPage() {
 
       <section>
         <h2>{copy.about.dataProcessingHeading}</h2>
-        <p>{copy.about.dataProcessingBody}</p>
+        <p>
+          {PRICE_EXPOSURE_ENABLED
+            ? copy.about.dataProcessingBodyWithPrices
+            : copy.about.dataProcessingBody}
+        </p>
       </section>
 
       <section>

@@ -179,6 +179,30 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [expanded]);
 
+  // 분·틱 메뉴와 차트 요약: Esc 로 닫고 포커스를 연 버튼으로 돌려준다. 메뉴는 바깥을 누르면 닫힌다(검수 QA-05).
+  useEffect(() => {
+    if (menu === null && !summaryOpen) return;
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (menu !== null) {
+        document.querySelector<HTMLElement>('.chart-seg__btn[aria-expanded="true"]')?.focus();
+        setMenu(null);
+      } else {
+        document.querySelector<HTMLElement>('[aria-controls="chart-summary-panel"]')?.focus();
+        setSummaryOpen(false);
+      }
+    };
+    const onPointerDown = (e: globalThis.PointerEvent) => {
+      if (menu !== null && e.target instanceof Element && !e.target.closest(".chart-seg__wrap")) setMenu(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [menu, summaryOpen]);
+
   const model = useMemo(() => {
     // 분·틱을 골랐으면 일봉으로 대체하지 않는다(불러오는 중에는 빈 차트 + 상태 문구).
     const series = intra ? (intraCandles ?? []) : aggregate(candles, timeframe);
@@ -607,7 +631,10 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
           role="img"
           aria-label={`${stockName} ${copy.stockDetail.chartAriaLabel}`}
           onPointerMove={(e) => setHover(indexFromPointer(e))}
-          onPointerLeave={() => setHover(null)}
+          onPointerLeave={(e) => {
+            // 터치는 손가락을 떼면 pointerleave 가 바로 따라오므로, 탭으로 고른 봉이 지워지지 않게 마우스일 때만 해제한다.
+            if (e.pointerType === "mouse") setHover(null);
+          }}
           onPointerDown={(e) => setHover(indexFromPointer(e))}
         >
           {/* 범례: 가격 이동평균 · 매물대 · 표시 봉 수 */}

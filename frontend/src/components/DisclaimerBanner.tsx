@@ -7,13 +7,13 @@ import copy from "@/content/copy.ko.json";
  */
 export function DisclaimerBanner() {
   return (
-    <div className="disclaimer-banner" role="note" aria-label="투자자문 아님 고지">
+    <aside className="disclaimer-banner" aria-label="투자자문 아님 고지">
       <p className="disclaimer-banner__text">
         {copy.disclaimer.banner}{" "}
         <a href="/about" className="disclaimer-banner__link">
           {copy.disclaimer.bannerMoreLinkText}
         </a>
       </p>
-    </div>
+    </aside>
   );
 }

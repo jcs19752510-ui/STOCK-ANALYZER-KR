@@ -11,7 +11,7 @@ export default function StockNotFound() {
   return (
     <section>
       <h1>{copy.stockDetail.notFoundHeading}</h1>
-      <Link href="/stocks">{copy.stockDetail.backToSearchCta}</Link>
+      <Link href="/stocks" className="stock-not-found__cta">{copy.stockDetail.backToSearchCta}</Link>
     </section>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useState, useSyncExternalStore } from "react";
 import type { KeyboardEvent } from "react";
 import { ConditionStatusBadge } from "@/components/ConditionStatusBadge";
 import { OrderBookPanel } from "@/components/OrderBookPanel";
@@ -91,9 +91,33 @@ export function StockDetailTabs({
     setOpened((o) => (o[id] ? o : { ...o, [id]: true }));
   };
 
+  // ⌄ 전체 보기 메뉴: Esc 로 닫고 포커스를 ⌄ 버튼으로 돌려준다, 바깥을 누르면 닫힌다(검수 QA-05).
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      document.querySelector<HTMLElement>(".stock-tabs__more")?.focus();
+      setMenuOpen(false);
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.target instanceof Element && !e.target.closest(".stock-tabs__menu, .stock-tabs__more")) setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [menuOpen]);
+
   const onKey = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
-    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-    const next = (index + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length;
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft" && e.key !== "Home" && e.key !== "End") return;
+    const next =
+      e.key === "Home"
+        ? 0
+        : e.key === "End"
+          ? TABS.length - 1
+          : (index + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length;
     setTab(TABS[next].id);
     setOpened((o) => (o[TABS[next].id] ? o : { ...o, [TABS[next].id]: true }));
     document.getElementById(`${baseId}-tab-${TABS[next].id}`)?.focus();
