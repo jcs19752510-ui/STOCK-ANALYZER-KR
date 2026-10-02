@@ -1,0 +1,8 @@
+# Linux/container cron example for the daily batch (DEC-047). Adjust paths, then: crontab scripts/crontab.example
+# Times are KST. Set CRON_TZ so the schedule does not depend on the server timezone.
+CRON_TZ=Asia/Seoul
+# Batch twice a day (idempotent; skips the API when data is already current; catches up missed days).
+30 14 * * * cd /srv/stock-analyzer-kr && set -a && . ./.env && set +a && python scripts/run_daily_batch.py >> logs/daily_batch.log 2>&1
+30 18 * * * cd /srv/stock-analyzer-kr && set -a && . ./.env && set +a && python scripts/run_daily_batch.py >> logs/daily_batch.log 2>&1
+# Freshness check (read-only; webhook alert when stale).
+10 9 * * * cd /srv/stock-analyzer-kr && set -a && . ./.env && set +a && python scripts/check_data_freshness.py >> logs/freshness.log 2>&1

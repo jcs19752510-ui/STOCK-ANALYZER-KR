@@ -16,6 +16,11 @@
 # 예외로 취급될 수 있다. 이를 피하기 위해 `cmd /c`로 감싸 순수 텍스트
 # 스트림으로 리다이렉트한다(한글 깨짐 방지를 위해 `chcp 65001` + `PYTHONUTF8=1`).
 
+param(
+    [string]$Script = "scripts\run_daily_batch.py",
+    [string]$LogName = "daily_batch.log"
+)
+
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
@@ -23,7 +28,7 @@ $logDir = Join-Path $repoRoot "logs"
 if (-not (Test-Path $logDir)) {
     New-Item -ItemType Directory -Path $logDir | Out-Null
 }
-$logFile = Join-Path $logDir "daily_batch.log"
+$logFile = Join-Path $logDir $LogName
 
 $envFile = Join-Path $repoRoot ".env"
 if (Test-Path $envFile) {
@@ -47,7 +52,7 @@ $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 [System.IO.File]::AppendAllText($logFile, "===== $timestamp KST run start =====`r`n", $utf8NoBom)
 
-cmd /c "chcp 65001 >nul & py -3.12 scripts\run_daily_batch.py >>`"$logFile`" 2>&1"
+cmd /c "chcp 65001 >nul & py -3.12 $Script >>`"$logFile`" 2>&1"
 $exitCode = $LASTEXITCODE
 
 $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
