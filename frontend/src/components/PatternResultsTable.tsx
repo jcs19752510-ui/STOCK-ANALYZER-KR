@@ -1,9 +1,10 @@
 import Link from "next/link";
 import copy from "@/content/copy.ko.json";
 import { ConditionStatusBadge } from "@/components/ConditionStatusBadge";
+import { QuoteText } from "@/components/QuoteText";
 import { PATTERN_CONDITION_IDS } from "@/lib/patternApi";
 import { conditionTitle, evidenceText } from "@/lib/patternFormat";
-import type { PatternDefinition, PatternItem } from "@/lib/types";
+import type { PatternDefinition, PatternItem, StockQuote } from "@/lib/types";
 
 /**
  * 결과 표(≥1024px, 03-ux-design.md §2-1·§8) — `<table>` + `<caption>`(sr-only) + 열 `scope="col"`,
@@ -15,9 +16,14 @@ import type { PatternDefinition, PatternItem } from "@/lib/types";
 interface PatternResultsTableProps {
   items: PatternItem[];
   definition: PatternDefinition;
+  quotes?: Record<string, StockQuote>;
 }
 
-export function PatternResultsTable({ items, definition }: PatternResultsTableProps) {
+export function PatternResultsTable({
+  items,
+  definition,
+  quotes = {},
+}: PatternResultsTableProps) {
   return (
     <div
       className="pattern-table-wrap"
@@ -47,6 +53,7 @@ export function PatternResultsTable({ items, definition }: PatternResultsTablePr
                 <div>
                   <span className="market-badge">{item.market}</span>
                 </div>
+                <QuoteText quote={quotes[item.stock_code]} />
               </th>
               {PATTERN_CONDITION_IDS.map((id) => (
                 <td key={id}>

@@ -186,6 +186,48 @@ class DerivedMetricsDaily(Base):
     )
 
 
+class DailyPrice(Base):
+    """종목 상세 차트용 공개 일봉(DEC-041, 0012). Derivation Batch가 `raw_ohlcv`(KRX)에서 복사한다.
+
+    `raw_internal` 접근 차단(`api_service`)은 유지하고, 노출은 이 복사본 테이블로만 한다.
+    """
+
+    __tablename__ = "daily_prices"
+    __table_args__ = {"schema": "public_serving"}
+
+    stock_code: Mapped[str] = mapped_column(String(6), primary_key=True)
+    trade_date: Mapped[date] = mapped_column(Date, primary_key=True)
+    open: Mapped[Decimal] = mapped_column(Numeric, nullable=False)
+    high: Mapped[Decimal] = mapped_column(Numeric, nullable=False)
+    low: Mapped[Decimal] = mapped_column(Numeric, nullable=False)
+    close: Mapped[Decimal] = mapped_column(Numeric, nullable=False)
+    volume: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    trading_value: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class CorpEarnings(Base):
+    """종목 연간 실적(DEC-041, 0013). DART 사업보고서 기준 매출·영업이익·순이익(원), 결측은 NULL."""
+
+    __tablename__ = "corp_earnings"
+    __table_args__ = (
+        CheckConstraint("fs_div IN ('CFS', 'OFS')", name="ck_corp_earnings_fs_div"),
+        {"schema": "public_serving"},
+    )
+
+    stock_code: Mapped[str] = mapped_column(String(6), primary_key=True)
+    fiscal_year: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    fs_div: Mapped[str] = mapped_column(String(3), nullable=False)
+    revenue: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    operating_income: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    net_income: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class CurrentPublishedBatch(Base):
     """"현재 서빙 중" 데이터 포인터(§3-2, §5-3 롤백/무결성). REQ-002/003/004 공용 인프라.
 

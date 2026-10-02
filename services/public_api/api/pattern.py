@@ -36,12 +36,13 @@ from services.public_api.errors import ApiError
 from services.public_api.schemas.envelope import DataFreshness, Envelope, Meta
 from services.public_api.schemas.pattern import (
     ConditionResult,
+    PatternCheckData,
     PatternDefinition,
-    PatternUniverse,
     PatternItem,
     PatternMetricsOut,
     PatternReadiness,
     PatternScreenData,
+    PatternUniverse,
 )
 from shared.calendar_service import CalendarIntegrityError, get_last_trading_day
 from shared.calendar_service.types import CalendarLookup, Market
@@ -269,6 +270,57 @@ def screen_pattern(
                 evaluated_count=evaluated_rows,
                 total_count=total_rows,
                 ready_ratio=round(evaluated_rows / total_rows, 4),
+            ),
+        ),
+    )
+
+
+@router.get("/stocks/{code}/pattern-check", response_model=Envelope[PatternCheckData])
+def stock_pattern_check(
+    code: str,
+    thresholds: PatternThresholds = Depends(get_pattern_thresholds),
+    repository: PatternScreenRepository = Depends(get_pattern_repository),
+) -> Envelope[PatternCheckData]:
+    """종목 상세용 단일 종목 조건 체크표(조건식·임계값은 `/screen/pattern`과 같은 출처)."""
+    if not thresholds.enabled:
+        raise ApiError(
+            status_code=404,
+            code="FEATURE_DISABLED",
+            message="이 기능은 현재 제공되지 않습니다.",
+        )
+    published = repository.get_current_published_trade_date(DERIVATION_MARKET)
+    if published is None:
+        raise ApiError(
+            status_code=503,
+            code="DATA_PIPELINE_STALE",
+            message="표시할 데이터가 아직 없습니다. 서비스 데이터 준비 중입니다.",
+        )
+    result = repository.search(
+        PatternFilters(
+            trade_date=published,
+            market="ALL",
+            required=(),
+            market_cap_min=None,
+            volume_min=None,
+            sort_by=DEFAULT_SORT_BY,
+            sort_dir="desc",
+            page=1,
+            page_size=1,
+            stock_code=code,
+        ),
+        thresholds,
+    )
+    generated_at = datetime.now(KST)
+    return Envelope[PatternCheckData](
+        meta=Meta(generated_at=generated_at),
+        data=PatternCheckData(
+            trade_date=published,
+            item=_item(result.items[0]) if result.items else None,
+            definition=PatternDefinition(
+                version=DEFINITION_VERSION,
+                thresholds=thresholds.definition_thresholds(),
+                calc=PatternThresholds.definition_calc(),
+                universe=PatternUniverse(**thresholds.definition_universe()),
             ),
         ),
     )

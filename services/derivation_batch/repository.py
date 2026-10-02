@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -317,3 +317,35 @@ __all__ = [
     "upsert_derived_metrics",
     "upsert_market_summary",
 ]
+
+
+# 공개 일봉 보존 기간(달력일). 차트(최대 약 1년)에 충분하고 테이블이 무한히 자라지 않게 한다.
+DAILY_PRICES_RETENTION_DAYS = 400
+
+
+def sync_daily_prices(session: Session, *, market: str, upto_date: date) -> int:
+    """`raw_ohlcv`(해당 시장 세션)의 최근 일봉을 `public_serving.daily_prices`로 복사한다(upsert).
+
+    DEC-041: 종목 상세 차트용 공개 복사본. 같은 값이면 변화 없음(멱등)이고, 원본이 정정되면
+    덮어쓴다. 보존 기간 밖 일자와 다른 세션(NXT)은 복사하지 않는다. 반환: 처리 행 수.
+    """
+    result = session.execute(
+        text(
+            "INSERT INTO public_serving.daily_prices"
+            " (stock_code, trade_date, open, high, low, close, volume, trading_value)"
+            " SELECT stock_code, trade_date, open, high, low, close, volume, trading_value"
+            " FROM raw_internal.raw_ohlcv"
+            " WHERE market = CAST(:market AS reference.market_session)"
+            "   AND trade_date <= :upto AND trade_date > :floor"
+            " ON CONFLICT (stock_code, trade_date) DO UPDATE SET"
+            "   open = EXCLUDED.open, high = EXCLUDED.high, low = EXCLUDED.low,"
+            "   close = EXCLUDED.close, volume = EXCLUDED.volume,"
+            "   trading_value = EXCLUDED.trading_value, updated_at = now()"
+        ),
+        {
+            "market": market,
+            "upto": upto_date,
+            "floor": upto_date - timedelta(days=DAILY_PRICES_RETENTION_DAYS),
+        },
+    )
+    return result.rowcount or 0

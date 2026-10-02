@@ -150,6 +150,8 @@ class PatternFilters:
     sort_dir: str
     page: int
     page_size: int
+    # 종목 상세의 단일 종목 조회용(DEC-041). None이면 전체. 평가 대상 제외 규칙은 그대로 적용된다.
+    stock_code: str | None = None
 
 
 @dataclass(frozen=True)
@@ -237,6 +239,8 @@ class SqlPatternScreenRepository:
         where: list[ColumnElement] = [D.trade_date == filters.trade_date]
         if th.exclude_special_stocks:
             where.append(not_(special_stock_expr()))
+        if filters.stock_code is not None:
+            where.append(D.stock_code == filters.stock_code)
         if filters.market != "ALL":
             where.append(D.market == filters.market)
         if filters.market_cap_min is not None:

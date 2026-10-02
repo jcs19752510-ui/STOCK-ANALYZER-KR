@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useQuotes } from "@/lib/useQuotes";
 import copy from "@/content/copy.ko.json";
 import { DataFreshnessBadge } from "@/components/DataFreshnessBadge";
 import { EmptyState, type EmptyStateVariant } from "@/components/EmptyState";
@@ -99,6 +100,9 @@ export function PatternScreenerClient() {
   const [applied, setApplied] = useState<PatternQuery>(initialQuery);
   const [state, setState] = useState<PatternState>({ kind: "loading" });
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const quotes = useQuotes(
+    state.kind === "success" ? state.data.items.map((i) => i.stock_code) : [],
+  );
   const isDesktopResults = useIsDesktopViewport(1024);
   const startedRef = useRef(false);
 
@@ -201,9 +205,17 @@ export function PatternScreenerClient() {
               </h2>
               <ReadinessNote readiness={state.data.readiness} />
               {isDesktopResults ? (
-                <PatternResultsTable items={state.data.items} definition={state.data.definition} />
+                <PatternResultsTable
+                  items={state.data.items}
+                  definition={state.data.definition}
+                  quotes={quotes}
+                />
               ) : (
-                <PatternResultsList items={state.data.items} definition={state.data.definition} />
+                <PatternResultsList
+                  items={state.data.items}
+                  definition={state.data.definition}
+                  quotes={quotes}
+                />
               )}
               <Pagination
                 page={state.data.page}

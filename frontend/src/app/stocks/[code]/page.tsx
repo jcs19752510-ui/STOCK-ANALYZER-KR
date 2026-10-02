@@ -3,11 +3,13 @@ import { DataFreshnessBadge } from "@/components/DataFreshnessBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
 import { MetricCard } from "@/components/MetricCard";
+import { StockDetailTabs } from "@/components/StockDetailTabs";
 import { ValuationMetricCard } from "@/components/ValuationMetricCard";
 import copy from "@/content/copy.ko.json";
 import { mapApiErrorCodeToDisplay } from "@/lib/errorMapping";
 import { formatSignedPercent, percentDirectionLabel, percentValueClassName } from "@/lib/formatPercent";
 import { fetchStockMetrics } from "@/lib/stockMetrics";
+import { fetchPatternCheck, fetchStockEarnings, fetchStockPrices } from "@/lib/stockDetailApi";
 
 interface StockDetailPageProps {
   params: Promise<{ code: string }>;
@@ -24,7 +26,12 @@ interface StockDetailPageProps {
 export default async function StockDetailPage({ params, searchParams }: StockDetailPageProps) {
   const { code } = await params;
   const { date } = await searchParams;
-  const result = await fetchStockMetrics(code, date);
+  const [result, pricesResult, patternCheck, earnings] = await Promise.all([
+    fetchStockMetrics(code, date),
+    fetchStockPrices(code),
+    fetchPatternCheck(code),
+    fetchStockEarnings(code),
+  ]);
 
   if (result.kind === "not_found") {
     notFound();
@@ -41,6 +48,14 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
   }
 
   const { data, freshness } = result;
+  const prices = pricesResult.kind === "success" ? pricesResult.data.prices : [];
+  const latest = prices.length > 0 ? prices[prices.length - 1] : null;
+  const changeClass =
+    latest?.change == null || latest.change === 0
+      ? ""
+      : latest.change > 0
+        ? "price-up"
+        : "price-down";
 
   return (
     <section>
@@ -51,7 +66,37 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
         <span className="market-badge">{data.market}</span>
       </header>
 
+      {latest && (
+        <div className="stock-quote">
+          <p className="stock-quote__price">{latest.close.toLocaleString("ko-KR")}</p>
+          <p className={`stock-quote__change ${changeClass}`}>
+            {latest.change === null || latest.change_pct === null
+              ? "–"
+              : `${latest.change > 0 ? "▲" : latest.change < 0 ? "▼" : ""}${Math.abs(latest.change).toLocaleString("ko-KR")} (${Math.abs(latest.change_pct).toFixed(2)}%)`}
+          </p>
+          <p className="stock-quote__basis">
+            {copy.stockDetail.priceBasis.replace("{date}", latest.trade_date)} ·{" "}
+            {copy.stockDetail.priceBasisNote}
+          </p>
+        </div>
+      )}
+
       <DataFreshnessBadge freshness={freshness} />
+
+      {pricesResult.kind === "success" && prices.length > 0 ? (
+        <StockDetailTabs
+          stockName={data.name}
+          prices={prices}
+          patternCheck={patternCheck}
+          earnings={earnings}
+        />
+      ) : (
+        <p className="stock-tabs__pending">
+          {pricesResult.kind === "success"
+            ? copy.stockDetail.pricesEmpty
+            : copy.stockDetail.pricesUnavailable}
+        </p>
+      )}
 
       <div className="metric-card-grid">
         <MetricCard

@@ -61,6 +61,7 @@ from services.derivation_batch.repository import (  # noqa: E402
     fetch_sector_map,
     fetch_trading_values,
     publish_current_batch,
+    sync_daily_prices,
     upsert_derived_metrics,
     upsert_market_summary,
 )
@@ -381,6 +382,8 @@ def run_once(
 
     derivation_inputs = build_derivation_inputs(day_metrics, target_date=target_date)
     upsert_derived_metrics(session, derivation_inputs, batch_run_id=batch_run_id)
+    # DEC-041 — 종목 상세 차트용 공개 일봉 복사본(같은 트랜잭션, 멱등 upsert).
+    sync_daily_prices(session, market=DERIVATION_MARKET, upto_date=target_date)
 
     # REQ-004 — derived_metrics_daily와 같은 배치 실행 안에서 시장 동향 요약도
     # 함께 산출한다(03-system-design.md §1-2 "Derivation Batch... 시장 요약

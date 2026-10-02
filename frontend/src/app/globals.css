@@ -1283,3 +1283,222 @@ main {
   overflow-wrap: normal;
   word-break: keep-all;
 }
+
+/* ── 종목 상세 확장(DEC-041): 헤더 가격·탭·차트·일자별 표·조건 체크 ───────────────────── */
+.price-up {
+  color: var(--color-semantic-up);
+}
+
+.price-down {
+  color: var(--color-semantic-down);
+}
+
+.stock-quote {
+  margin: var(--space-3) 0;
+}
+
+.stock-quote__price {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.stock-quote__change {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.stock-quote__basis {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.stock-tabs__list {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--color-surface-subtle);
+  overflow-x: auto;
+}
+
+.stock-tabs__tab {
+  flex: 1 0 auto;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.stock-tabs__tab[aria-selected="true"] {
+  color: var(--color-text-primary);
+  border-bottom-color: var(--color-brand-primary);
+}
+
+.stock-tabs__panel {
+  padding: var(--space-3) 0;
+}
+
+.stock-tabs__note,
+.stock-chart__hint {
+  margin: var(--space-3) 0 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.stock-tabs__pending {
+  padding: var(--space-4);
+  border: 1px dashed var(--color-border-default);
+  border-radius: 8px;
+  color: var(--color-text-secondary);
+}
+
+.stock-tabs__pending-title {
+  margin: 0 0 var(--space-2);
+  font-size: 16px;
+  color: var(--color-text-primary);
+}
+
+.stock-chart__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.chart-seg {
+  display: inline-flex;
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.chart-seg__btn {
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: var(--color-surface-bg);
+  color: var(--color-text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.chart-seg__btn[aria-pressed="true"] {
+  background: var(--color-text-primary);
+  color: #ffffff;
+}
+
+.chart-legend {
+  display: flex;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.chart-legend__swatch {
+  display: inline-block;
+  width: 12px;
+  height: 3px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.stock-chart__readout {
+  margin: var(--space-2) 0;
+  font-size: 14px;
+  word-break: keep-all;
+}
+
+.stock-chart__frame {
+  border: 1px solid var(--color-surface-subtle);
+  border-radius: 8px;
+  touch-action: pan-y;
+}
+
+.stock-chart__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.daily-table-wrap {
+  overflow-x: auto;
+}
+
+.daily-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.daily-table th,
+.daily-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-surface-subtle);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.daily-table thead th,
+.daily-table tbody th {
+  text-align: left;
+}
+
+.daily-table thead th {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.pattern-check__lead {
+  margin: 0 0 var(--space-2);
+  font-weight: 600;
+}
+
+.earnings-basis {
+  display: block;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* ── 목록 행 시세 요약(DEC-041) ─────────────────────────────────────────────────────── */
+.quote-text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.quote-text__price {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.quote-text__change {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.quote-text__change--up {
+  color: var(--color-semantic-up);
+}
+
+.quote-text__change--down {
+  color: var(--color-semantic-down);
+}
+
+.quote-text__change--flat {
+  color: var(--color-text-secondary);
+}

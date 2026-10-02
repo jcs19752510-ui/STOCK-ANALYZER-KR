@@ -29,13 +29,18 @@ def db() -> Iterator[TempDb]:
     except TempDbUnavailable as exc:
         pytest.skip(f"임시 DB를 만들 수 없어 건너뜀(통과로 세지 않음): {exc}")
 
+
 SPECIAL_ROWS = [
     # (코드, 이름, 제외 대상?) — 우선주는 "이름이 우로 끝남 + 코드 끝자리 != 0"
     ("Q00010", "테스트스팩", True),  # 스팩: 이름에 '스팩'
     ("Q00015", "삼성테스트우", True),  # 우선주
     ("Q00017", "현대테스트2우B", True),  # 우선주(2우B)
     ("Q00025", "한화테스트3우(전환)", True),  # 우선주(전환)
-    ("Q00020", "성우", False),  # 보통주인데 이름이 '우'로 끝남 — 코드 끝자리 0 → 제외하면 안 됨(오탐 방지)
+    (
+        "Q00020",
+        "성우",
+        False,
+    ),  # 보통주인데 이름이 '우'로 끝남 — 코드 끝자리 0 → 제외하면 안 됨(오탐 방지)
     ("Q00030", "우리테스트기술", False),  # '우'가 이름 앞에 있는 보통주
 ]
 
@@ -60,7 +65,7 @@ def _insert_special_rows(db) -> uuid.UUID:
                     ),
                     {"c": code, "n": name},
                 )
-                c.execute(  # 상태 OK + 급등 이력 없음(c9 충족) — 필수 c9로 조회하면 통과해야 하는 행
+                c.execute(  # 상태 OK + 급등 이력 없음(c9 충족)
                     text(
                         "INSERT INTO public_serving.derived_metrics_daily"
                         "(stock_code,trade_date,market,pattern_metrics_status,recent_surge_flag,"
@@ -86,7 +91,9 @@ def _remove_special_rows(db, batch_id) -> None:
                 text("DELETE FROM public_serving.stock_master WHERE stock_code = ANY(:c)"),
                 {"c": codes},
             )
-            c.execute(text("DELETE FROM public_serving.batch_run WHERE batch_run_id=:b"), {"b": batch_id})
+            c.execute(
+                text("DELETE FROM public_serving.batch_run WHERE batch_run_id=:b"), {"b": batch_id}
+            )
     finally:
         mig.dispose()
 
@@ -94,7 +101,9 @@ def _remove_special_rows(db, batch_id) -> None:
 def test_q3_spac_and_preferred_are_excluded_by_default_but_look_alike_common_stocks_are_kept(db):
     batch_id = _insert_special_rows(db)
     try:
-        with api_client(db) as c:  # 앞선 테스트가 dependency_overrides를 비우므로 자체 클라이언트 사용
+        with api_client(
+            db
+        ) as c:  # 앞선 테스트가 dependency_overrides를 비우므로 자체 클라이언트 사용
             data = c.get(URL, params={"required": "c9", "page_size": 200}).json()["data"]
         got = {i["stock_code"] for i in data["items"]}
         excluded = {c for c, _, ex in SPECIAL_ROWS if ex}
@@ -125,5 +134,22 @@ def test_q3_exclusion_can_be_switched_off_by_server_setting(db):
         assert {c for c, _, _ in SPECIAL_ROWS} <= got  # 스위치 off면 모두 포함
         assert data["readiness"]["total_count"] == 16  # 10 + 6
         assert data["definition"]["universe"] == {"excluded_types": []}
+    finally:
+        _remove_special_rows(db, batch_id)
+
+
+def test_pattern_check_on_real_db_shows_all_six_conditions_and_hides_excluded_types(db):
+    batch_id = _insert_special_rows(db)
+    try:
+        with api_client(db) as c:
+            ok = c.get("/api/v1/stocks/T00001/pattern-check").json()["data"]
+            spac = c.get("/api/v1/stocks/Q00010/pattern-check").json()["data"]
+            common = c.get("/api/v1/stocks/Q00020/pattern-check").json()["data"]  # '성우'(보통주)
+            unknown = c.get("/api/v1/stocks/ZZZZZZ/pattern-check").json()["data"]
+        assert ok["item"]["stock_code"] == "T00001"
+        assert set(ok["item"]["conditions"]) == {"c1", "c2", "c3", "c4", "c5", "c9"}
+        assert spac["item"] is None  # 스팩은 평가 대상 아님
+        assert common["item"] is not None  # 이름이 우로 끝나는 보통주는 포함
+        assert unknown["item"] is None  # 모르는 종목도 오류 없이 '평가 대상 아님'
     finally:
         _remove_special_rows(db, batch_id)

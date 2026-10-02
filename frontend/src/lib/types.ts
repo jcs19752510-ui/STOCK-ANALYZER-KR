@@ -151,6 +151,7 @@ export interface PatternDefinition {
     surge_return_pct: number;
     surge_volume_mult: number;
   };
+  universe: { excluded_types: string[] };
 }
 
 export interface PatternReadiness {
@@ -180,4 +181,56 @@ export interface Envelope<T> {
   };
   data: T | null;
   error: ApiErrorDetail | null;
+}
+
+/** 일봉 1개(`GET /stocks/{code}/prices`, DEC-041). 일 단위 종가 기준이며 실시간 시세가 아니다. */
+export interface StockPricePoint {
+  trade_date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  trading_value: number;
+  change: number | null;
+  change_pct: number | null;
+}
+
+export interface StockPricesData {
+  stock_code: string;
+  name: string;
+  market: string;
+  prices: StockPricePoint[]; // 거래일 오름차순
+}
+
+/** `GET /stocks/{code}/pattern-check` — `item`이 null이면 평가 대상이 아니거나 데이터가 없다. */
+export interface PatternCheckData {
+  trade_date: string;
+  item: PatternItem | null;
+  definition: PatternDefinition;
+}
+
+/** `GET /stocks/{code}/earnings` — DART 사업보고서 연간 공시 수치(원). 찾지 못한 항목은 null(0 아님). */
+export interface EarningsYear {
+  fiscal_year: number;
+  fs_div: "CFS" | "OFS";
+  revenue: number | null;
+  operating_income: number | null;
+  net_income: number | null;
+}
+
+export interface StockEarningsData {
+  stock_code: string;
+  name: string;
+  market: string;
+  earnings: EarningsYear[]; // 연도 오름차순
+}
+
+/** `GET /stocks/quotes` 항목 — 목록용 최신 종가·전일대비(일 단위 종가 기준). */
+export interface StockQuote {
+  stock_code: string;
+  trade_date: string;
+  close: number;
+  change: number | null;
+  change_pct: number | null;
 }

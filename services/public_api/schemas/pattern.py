@@ -8,6 +8,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 from pydantic import BaseModel
 
 
@@ -70,3 +72,15 @@ class PatternScreenData(BaseModel):
     page: int
     definition: PatternDefinition
     readiness: PatternReadiness
+
+
+class PatternCheckData(BaseModel):
+    """`GET /api/v1/stocks/{code}/pattern-check` — 한 종목의 조건별 충족 여부(DEC-041).
+
+    `item`이 None이면 이 종목은 평가 대상이 아니거나(스팩·우선주 등) 발행 거래일 데이터가 없다.
+    점수·순위·충족 개수 같은 서열 필드는 없다(REQ-034).
+    """
+
+    trade_date: date  # 판정 기준 거래일(발행 거래일)
+    item: PatternItem | None
+    definition: PatternDefinition

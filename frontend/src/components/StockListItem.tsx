@@ -1,5 +1,6 @@
 import Link from "next/link";
-import type { StockSearchItem } from "@/lib/types";
+import { QuoteText } from "@/components/QuoteText";
+import type { StockQuote, StockSearchItem } from "@/lib/types";
 
 /**
  * 04-ux-design.md §2-3/§4 `StockListItem` — 종목명 + 코드 + 시장 뱃지.
@@ -10,15 +11,17 @@ import type { StockSearchItem } from "@/lib/types";
  */
 interface StockListItemProps {
   item: StockSearchItem;
+  quote?: StockQuote;
 }
 
-export function StockListItem({ item }: StockListItemProps) {
+export function StockListItem({ item, quote }: StockListItemProps) {
   return (
     <li className="stock-list__item">
       <Link href={`/stocks/${item.stock_code}`} className="stock-list__link">
         <span className="stock-list__name">{item.name}</span>
         <span className="stock-list__code">{item.stock_code}</span>
         <span className="market-badge">{item.market}</span>
+        <QuoteText quote={quote} />
       </Link>
     </li>
   );

@@ -24,6 +24,9 @@ export function PatternDefinitionPanel({ definition }: { definition: PatternDefi
         <p className="pattern-definition__note">{copy.pattern.definitionBasis}</p>
         <p className="pattern-definition__note">{copy.pattern.proxyFootnote}</p>
         <p className="pattern-definition__note">{copy.pattern.scopeFootnote}</p>
+        {definition.universe.excluded_types.length > 0 && (
+          <p className="pattern-definition__note">{copy.pattern.universeFootnote}</p>
+        )}
       </div>
     </details>
   );

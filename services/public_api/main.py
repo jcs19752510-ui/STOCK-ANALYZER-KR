@@ -13,10 +13,12 @@ from sqlalchemy.exc import TimeoutError as SATimeoutError
 
 from services.public_api.api import (
     calendar,
+    earnings,
     health,
     market_summary,
     metrics,
     pattern,
+    prices,
     screen,
     stocks,
 )
@@ -89,6 +91,8 @@ app.include_router(screen.router, prefix="/api/v1")
 # 패턴 스크리닝 "급등 전 압축주"(REQ-032). 기능 스위치 `PATTERN_SCREEN_ENABLED=false`면 이 경로는
 # 404 FEATURE_DISABLED를 반환한다. `PATTERN_*` 설정 오류는 위 import 시점에 기동 실패로 드러난다.
 app.include_router(pattern.router, prefix="/api/v1")
+app.include_router(prices.router, prefix="/api/v1")  # DEC-041 종목 상세 일봉
+app.include_router(earnings.router, prefix="/api/v1")  # DEC-041 종목 상세 실적
 app.include_router(market_summary.router, prefix="/api/v1")
 
 

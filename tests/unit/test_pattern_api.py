@@ -631,3 +631,34 @@ def test_definition_universe_discloses_excluded_types_and_readiness_receives_sam
     client, _ = _client(thresholds=th_off)
     off = client.get("/api/v1/screen/pattern").json()["data"]["definition"]["universe"]
     assert off == {"excluded_types": []}
+
+
+# ── DEC-041: 종목 상세용 단일 종목 조건 체크 ───────────────────────────────────────────
+CHECK_URL = "/api/v1/stocks/{code}/pattern-check"
+
+
+def test_pattern_check_passes_single_stock_filter_with_no_required_and_returns_item():
+    client, repo = _client(FakeRepo(rows=[_row("T00001")]))
+    resp = client.get(CHECK_URL.format(code="T00001"))
+    assert resp.status_code == 200, resp.text
+    data = resp.json()["data"]
+    assert data["item"]["stock_code"] == "T00001" and data["trade_date"]
+    assert set(data["item"]["conditions"]) == {"c1", "c2", "c3", "c4", "c5", "c9"}
+    assert data["definition"]["universe"] == {"excluded_types": ["SPAC", "PREFERRED"]}
+    f = repo.calls[-1][1]
+    assert f.stock_code == "T00001" and f.required == ()  # 충족 여부와 무관하게 6개 모두 표시
+
+
+def test_pattern_check_item_is_null_when_not_evaluated_and_has_no_rank_fields():
+    client, _ = _client(FakeRepo(rows=[]))
+    data = client.get(CHECK_URL.format(code="Q00010")).json()["data"]
+    assert data["item"] is None
+    text = str(data)
+    for banned in ("score", "rank", "total_met", "met_count"):
+        assert banned not in text
+
+
+def test_pattern_check_respects_feature_switch():
+    client, _ = _client(thresholds=load_pattern_thresholds({"PATTERN_SCREEN_ENABLED": "false"}))
+    resp = client.get(CHECK_URL.format(code="T00001"))
+    _error(resp, 404, "FEATURE_DISABLED")

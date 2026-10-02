@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { ConditionStatusBadge } from "@/components/ConditionStatusBadge";
+import { QuoteText } from "@/components/QuoteText";
 import { PATTERN_CONDITION_IDS } from "@/lib/patternApi";
 import { conditionTitle, evidenceText } from "@/lib/patternFormat";
-import type { PatternDefinition, PatternItem } from "@/lib/types";
+import type { PatternDefinition, PatternItem, StockQuote } from "@/lib/types";
 
 /**
  * 결과 카드 리스트(<1024px, 03-ux-design.md §2-2). 카드 1개 = 종목명·코드·시장 + 조건 6행 체크리스트
@@ -11,9 +12,14 @@ import type { PatternDefinition, PatternItem } from "@/lib/types";
 interface PatternResultsListProps {
   items: PatternItem[];
   definition: PatternDefinition;
+  quotes?: Record<string, StockQuote>;
 }
 
-export function PatternResultsList({ items, definition }: PatternResultsListProps) {
+export function PatternResultsList({
+  items,
+  definition,
+  quotes = {},
+}: PatternResultsListProps) {
   return (
     <ul className="results-list pattern-list">
       {items.map((item) => (
@@ -26,6 +32,7 @@ export function PatternResultsList({ items, definition }: PatternResultsListProp
               </Link>
               <span className="market-badge">{item.market}</span>
             </div>
+            <QuoteText quote={quotes[item.stock_code]} />
             <dl className="pattern-list__conditions">
               {PATTERN_CONDITION_IDS.map((id) => (
                 <div key={id} className="pattern-list__row">

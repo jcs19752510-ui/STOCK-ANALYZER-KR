@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useQuotes } from "@/lib/useQuotes";
 import copy from "@/content/copy.ko.json";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState, type ErrorStateVariant } from "@/components/ErrorState";
@@ -46,6 +47,9 @@ export function StockSearchClient() {
   // 상태를 그대로 파생시키는 동기 setState" 패턴을 피하기 위한 구조).
   const [state, setState] = useState<StockSearchState | null>(null);
   const [retryToken, setRetryToken] = useState(0);
+  const quotes = useQuotes(
+    state?.kind === "success" ? state.items.map((i) => i.stock_code) : [],
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), DEBOUNCE_MS);
@@ -127,7 +131,7 @@ export function StockSearchClient() {
         {!isQueryTooShort && state?.kind === "success" && (
           <ul className="stock-list">
             {state.items.map((item) => (
-              <StockListItem key={item.stock_code} item={item} />
+              <StockListItem key={item.stock_code} item={item} quote={quotes[item.stock_code]} />
             ))}
           </ul>
         )}

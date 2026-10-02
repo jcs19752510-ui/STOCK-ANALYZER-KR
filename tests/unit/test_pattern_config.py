@@ -213,4 +213,3 @@ def test_definition_universe_names_excluded_types_so_exclusion_is_never_silent()
     off = load_pattern_thresholds({"PATTERN_EXCLUDE_SPAC_PREFERRED": "false"})
     assert on.definition_universe() == {"excluded_types": ["SPAC", "PREFERRED"]}
     assert off.definition_universe() == {"excluded_types": []}
-

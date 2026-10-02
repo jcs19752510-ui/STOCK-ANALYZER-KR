@@ -347,3 +347,76 @@ def test_fetch_corp_code_map_extracts_zip_and_maps_stock_codes():
         mapping = client.fetch_corp_code_map()
 
     assert mapping == {"005930": "00126380"}
+
+
+# ── 연간 실적(매출·영업이익·순이익, 3개년) — 종목 상세 실적 탭(DEC-041) ─────────────────
+from services.ingestion_batch.dart_client import parse_annual_earnings  # noqa: E402
+
+
+def _is(account_id, nm, cur, prev, prev2, sj="IS"):
+    return {
+        "sj_div": sj,
+        "account_id": account_id,
+        "account_nm": nm,
+        "thstrm_amount": cur,
+        "frmtrm_amount": prev,
+        "bfefrmtrm_amount": prev2,
+    }
+
+
+SAMSUNG_LIKE = [
+    _is("ifrs-full_Revenue", "매출액", "300", "200", "100"),
+    _is("dart_OperatingIncomeLoss", "영업이익", "30", "-20", "10"),
+    _is("ifrs-full_ProfitLoss", "당기순이익", "25", "15", "5"),
+    _is("ifrs-full_ProfitLossAttributableToOwnersOfParent", "지배", "24", "14", "4"),
+    {"sj_div": "BS", "account_id": "ifrs-full_Revenue", "thstrm_amount": "999"},
+]
+
+
+def test_parse_annual_earnings_maps_three_years_in_order_with_parent_net_income():
+    recs = parse_annual_earnings(SAMSUNG_LIKE, bsns_year="2025", fs_div="CFS")
+    by_year = {r.fiscal_year: r for r in recs}
+    assert sorted(by_year) == [2023, 2024, 2025]
+    assert by_year[2025].revenue == Decimal("300") and by_year[2023].revenue == Decimal("100")
+    assert by_year[2024].operating_income == Decimal("-20")  # 적자는 음수 그대로
+    assert by_year[2025].net_income == Decimal("24")  # 지배주주 귀속 우선
+    assert all(r.fs_div == "CFS" for r in recs)  # BS의 같은 계정ID(999)는 무시
+
+
+def test_parse_annual_earnings_accepts_cis_only_filer_and_alt_operating_income_id():
+    items = [
+        _is("ifrs-full_Revenue", "수익(매출액)", "10", "9", "8", sj="CIS"),
+        _is("ifrs-full_ProfitLossFromOperatingActivities", "영업이익", "3", "2", "1", sj="CIS"),
+        _is("ifrs-full_ProfitLoss", "당기순이익", "2", "1", "0", sj="CIS"),
+    ]
+    recs = {r.fiscal_year: r for r in parse_annual_earnings(items, bsns_year="2025", fs_div="OFS")}
+    assert recs[2025].revenue == Decimal("10") and recs[2025].operating_income == Decimal("3")
+    assert recs[2023].net_income == Decimal("0")  # 0은 결측이 아니다
+
+
+def test_parse_annual_earnings_missing_accounts_are_none_not_zero():
+    # 금융회사처럼 표준 매출 계정이 없는 경우: 지어내지 않고 None
+    items = [_is("ifrs-full_ProfitLoss", "당기순이익", "5", "-", "", sj="CIS")]
+    recs = {r.fiscal_year: r for r in parse_annual_earnings(items, bsns_year="2025", fs_div="CFS")}
+    assert recs[2025].revenue is None and recs[2025].operating_income is None
+    assert recs[2025].net_income == Decimal("5")
+    assert 2024 not in recs and 2023 not in recs  # 세 값이 모두 없는 해는 만들지 않는다
+
+
+def test_parse_annual_earnings_returns_empty_when_nothing_usable():
+    assert parse_annual_earnings([], bsns_year="2025", fs_div="CFS") == []
+    unrelated = [_is("x", "y", "1", "1", "1")]
+    assert parse_annual_earnings(unrelated, bsns_year="2025", fs_div="CFS") == []
+
+
+def test_fetch_annual_earnings_calls_annual_report_and_returns_none_on_no_data():
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.update(dict(request.url.params))
+        return _json_response({"status": "013", "message": "조회된 데이타가 없습니다."})
+
+    with _make_client(handler) as client:
+        assert client.fetch_annual_earnings("00126380", bsns_year="2025", fs_div="CFS") is None
+    assert seen["reprt_code"] == "11011" and seen["fs_div"] == "CFS"
+    assert seen["bsns_year"] == "2025" and seen["corp_code"] == "00126380"
