@@ -7,6 +7,8 @@ import { StockChart } from "@/components/StockChart";
 import copy from "@/content/copy.ko.json";
 import { PATTERN_CONDITION_IDS } from "@/lib/patternApi";
 import { conditionTitle, evidenceText } from "@/lib/patternFormat";
+import { useLazyApi, type LazyState } from "@/lib/useLazyApi";
+import { formatEok } from "@/lib/formatEok";
 import type { PatternCheckData, StockEarningsData, StockPricePoint } from "@/lib/types";
 
 /**
@@ -37,25 +39,31 @@ function signedText(v: number | null, suffix = ""): string {
 }
 
 interface StockDetailTabsProps {
+  stockCode: string;
   stockName: string;
   prices: StockPricePoint[];
-  patternCheck: PatternCheckData | null;
-  earnings: StockEarningsData | null;
 }
 
-export function StockDetailTabs({
-  stockName,
-  prices,
-  patternCheck,
-  earnings,
-}: StockDetailTabsProps) {
+export function StockDetailTabs({ stockCode, stockName, prices }: StockDetailTabsProps) {
   const [tab, setTab] = useState<TabId>("chart");
+  // 보조 정보는 해당 탭을 처음 열 때 브라우저가 호출한다(방문자별 rate limit 집계, `useLazyApi` 참조).
+  const [opened, setOpened] = useState<Record<string, boolean>>({});
+  const codePath = encodeURIComponent(stockCode);
+  const earnings = useLazyApi<StockEarningsData>(
+    `/api/v1/stocks/${codePath}/earnings`,
+    opened.earnings === true,
+  );
+  const patternCheck = useLazyApi<PatternCheckData>(
+    `/api/v1/stocks/${codePath}/pattern-check`,
+    opened.check === true,
+  );
   const baseId = useId();
 
   const onKey = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
     if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
     const next = (index + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length;
     setTab(TABS[next].id);
+    setOpened((o) => (o[TABS[next].id] ? o : { ...o, [TABS[next].id]: true }));
     document.getElementById(`${baseId}-tab-${TABS[next].id}`)?.focus();
     e.preventDefault();
   };
@@ -75,7 +83,10 @@ export function StockDetailTabs({
             aria-controls={`${baseId}-panel-${t.id}`}
             tabIndex={tab === t.id ? 0 : -1}
             className="stock-tabs__tab"
-            onClick={() => setTab(t.id)}
+            onClick={() => {
+              setTab(t.id);
+              setOpened((o) => (o[t.id] ? o : { ...o, [t.id]: true }));
+            }}
             onKeyDown={(e) => onKey(e, i)}
           >
             {t.label}
@@ -129,7 +140,7 @@ export function StockDetailTabs({
             </div>
           )}
 
-          {t.id === "earnings" && tab === "earnings" && <EarningsPanel data={earnings} />}
+          {t.id === "earnings" && tab === "earnings" && <EarningsPanel state={earnings} />}
 
           {t.id === "investor" && tab === "investor" && (
             <div className="stock-tabs__pending">
@@ -138,17 +149,21 @@ export function StockDetailTabs({
             </div>
           )}
 
-          {t.id === "check" && tab === "check" && <PatternCheckPanel data={patternCheck} />}
+          {t.id === "check" && tab === "check" && <PatternCheckPanel state={patternCheck} />}
         </div>
       ))}
     </div>
   );
 }
 
-function PatternCheckPanel({ data }: { data: PatternCheckData | null }) {
-  if (data === null) {
+function PatternCheckPanel({ state }: { state: LazyState<PatternCheckData> }) {
+  if (state.kind === "idle" || state.kind === "loading") {
+    return <p className="stock-tabs__pending">{copy.stockDetail.tabLoading}</p>;
+  }
+  if (state.kind === "error") {
     return <p className="stock-tabs__pending">{copy.stockDetail.checkUnavailable}</p>;
   }
+  const data = state.data;
   if (data.item === null) {
     return <p className="stock-tabs__pending">{copy.stockDetail.checkNotEvaluated}</p>;
   }
@@ -176,17 +191,14 @@ function PatternCheckPanel({ data }: { data: PatternCheckData | null }) {
   );
 }
 
-/** 원 → 억 원(소수 첫째 자리에서 반올림한 정수), null은 '-'. */
-export function formatEok(value: number | null): string {
-  if (value === null) return "-";
-  const eok = Math.round(value / 100_000_000);
-  return nf.format(eok === 0 ? 0 : eok); // -0 방지
-}
-
-function EarningsPanel({ data }: { data: StockEarningsData | null }) {
-  if (data === null) {
+function EarningsPanel({ state }: { state: LazyState<StockEarningsData> }) {
+  if (state.kind === "idle" || state.kind === "loading") {
+    return <p className="stock-tabs__pending">{copy.stockDetail.tabLoading}</p>;
+  }
+  if (state.kind === "error") {
     return <p className="stock-tabs__pending">{copy.stockDetail.earningsUnavailable}</p>;
   }
+  const data = state.data;
   if (data.earnings.length === 0) {
     return <p className="stock-tabs__pending">{copy.stockDetail.earningsEmpty}</p>;
   }

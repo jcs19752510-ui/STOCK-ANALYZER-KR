@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from services.public_api.api.common import require_stock_code
 from services.public_api.db.earnings_repository import (
     SqlStockEarningsRepository,
     StockEarningsRepository,
@@ -35,13 +36,9 @@ def get_stock_earnings(
     code: str,
     repository: StockEarningsRepository = Depends(get_earnings_repository),
 ) -> Envelope[StockEarningsData]:
-    stock = repository.get_stock(code)
+    stock = repository.get_stock(require_stock_code(code))
     if stock is None:
-        raise ApiError(
-            status_code=404,
-            code="STOCK_NOT_FOUND",
-            message=f"종목코드 {code!r}를 찾을 수 없습니다.",
-        )
+        raise ApiError(status_code=404, code="STOCK_NOT_FOUND", message="종목을 찾을 수 없습니다.")
     rows = repository.get_earnings(code)
     return Envelope[StockEarningsData](
         meta=Meta(generated_at=datetime.now(KST)),

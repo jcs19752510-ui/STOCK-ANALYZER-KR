@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from services.public_api.api.common import require_stock_code
 from services.public_api.core.pattern_config import PatternThresholds, load_pattern_thresholds
 from services.public_api.data_freshness import build_staleness_note, resolve_session_close_at
 from services.public_api.db.calendar_repository import SqlCalendarRepository
@@ -288,6 +289,7 @@ def stock_pattern_check(
             code="FEATURE_DISABLED",
             message="이 기능은 현재 제공되지 않습니다.",
         )
+    require_stock_code(code)
     published = repository.get_current_published_trade_date(DERIVATION_MARKET)
     if published is None:
         raise ApiError(

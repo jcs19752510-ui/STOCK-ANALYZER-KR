@@ -9,7 +9,7 @@ import copy from "@/content/copy.ko.json";
 import { mapApiErrorCodeToDisplay } from "@/lib/errorMapping";
 import { formatSignedPercent, percentDirectionLabel, percentValueClassName } from "@/lib/formatPercent";
 import { fetchStockMetrics } from "@/lib/stockMetrics";
-import { fetchPatternCheck, fetchStockEarnings, fetchStockPrices } from "@/lib/stockDetailApi";
+import { fetchStockPrices } from "@/lib/stockDetailApi";
 
 interface StockDetailPageProps {
   params: Promise<{ code: string }>;
@@ -26,11 +26,10 @@ interface StockDetailPageProps {
 export default async function StockDetailPage({ params, searchParams }: StockDetailPageProps) {
   const { code } = await params;
   const { date } = await searchParams;
-  const [result, pricesResult, patternCheck, earnings] = await Promise.all([
+  // 서버 호출은 2건만(첫 화면에 필요한 것). 실적·조건 체크는 탭을 열 때 브라우저가 호출한다.
+  const [result, pricesResult] = await Promise.all([
     fetchStockMetrics(code, date),
     fetchStockPrices(code),
-    fetchPatternCheck(code),
-    fetchStockEarnings(code),
   ]);
 
   if (result.kind === "not_found") {
@@ -85,10 +84,9 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
 
       {pricesResult.kind === "success" && prices.length > 0 ? (
         <StockDetailTabs
+          stockCode={data.stock_code}
           stockName={data.name}
           prices={prices}
-          patternCheck={patternCheck}
-          earnings={earnings}
         />
       ) : (
         <p className="stock-tabs__pending">

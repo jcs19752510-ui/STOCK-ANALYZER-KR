@@ -23,6 +23,7 @@
     "staleFallbackWarning": "예상보다 지연된 데이터입니다"
   },
   "stockDetail": {
+    "tabLoading": "불러오는 중입니다…",
     "tabEarnings": "실적",
     "earningsLabel": "연간 실적(단위: 억 원)",
     "colYear": "연도",

@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from services.public_api.api.common import require_stock_code
 from services.public_api.data_freshness import build_staleness_note, resolve_session_close_at
 from services.public_api.db.calendar_repository import SqlCalendarRepository
 from services.public_api.db.price_repository import (
@@ -74,13 +75,9 @@ def get_stock_prices(
     repository: StockPriceRepository = Depends(get_price_repository),
     calendar: CalendarLookup = Depends(get_price_calendar_repository),
 ) -> Envelope[StockPricesData]:
-    stock = repository.get_stock(code)
+    stock = repository.get_stock(require_stock_code(code))
     if stock is None:
-        raise ApiError(
-            status_code=404,
-            code="STOCK_NOT_FOUND",
-            message=f"종목코드 {code!r}를 찾을 수 없습니다.",
-        )
+        raise ApiError(status_code=404, code="STOCK_NOT_FOUND", message="종목을 찾을 수 없습니다.")
 
     now = datetime.now(KST)
     rows = repository.get_prices(code, days)
