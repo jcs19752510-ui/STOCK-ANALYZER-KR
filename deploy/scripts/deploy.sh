@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Deploys the "release" branch on THIS server. Called by the GitHub Actions workflow over SSH,
-# or by hand:   ./deploy/scripts/deploy.sh [branch]
+# Deploys the production branch (default PROD_SCH, DEC-062) on THIS server.
+# Called every few minutes by auto-deploy.sh (cron), or by hand:   ./deploy/scripts/deploy.sh [branch]
 # Steps: lock -> fetch -> backup -> build -> migrate -> start (wait healthy) -> rollback on failure.
+# Exit codes: 0 deployed, 1 failed (old version restored when possible), 75 another deploy is running.
 set -euo pipefail
 
 DEPLOY_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_DIR="$(cd "$DEPLOY_DIR/.." && pwd)"
-BRANCH="${1:-release}"
+BRANCH="${1:-${AUTO_DEPLOY_BRANCH:-PROD_SCH}}"
 cd "$DEPLOY_DIR"
 [ -f .env ] || { echo "[STOP] deploy/.env is missing (run scripts/init-env.sh)" >&2; exit 1; }
 
@@ -14,7 +15,7 @@ cd "$DEPLOY_DIR"
 # (Replacing a bash script while it is running is unsafe, so the real work runs from the fresh copy.)
 if [ -z "${DEPLOY_REEXEC:-}" ]; then
   exec 9>/tmp/stock-analyzer-deploy.lock
-  flock -n 9 || { echo "[STOP] another deploy is running" >&2; exit 1; }
+  flock -n 9 || { echo "[STOP] another deploy is running" >&2; exit 75; }
   echo "[deploy] fetching origin/${BRANCH}"
   git -C "$REPO_DIR" fetch --quiet origin "$BRANCH"
   git -C "$REPO_DIR" reset --hard "origin/${BRANCH}"
@@ -48,6 +49,7 @@ fi
 echo "[deploy] starting services"
 if docker compose up -d --remove-orphans --wait --wait-timeout 240; then
   echo "$NEW_TAG" > .current_tag
+  git -C "$REPO_DIR" rev-parse HEAD > .deployed_sha
   [ -n "$PREV_TAG" ] && echo "$PREV_TAG" > .previous_tag || true
   echo "[OK] deployed ${NEW_TAG}"
   docker image prune -f >/dev/null || true

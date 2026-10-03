@@ -14,3 +14,7 @@ L=/home/ubuntu/stock-logs
 
 # Database backup to R2 (03:20 KST every day)
 20 3 * * * flock -n /tmp/stock-backup.lock bash -c 'cd $D && docker compose --profile tools run --rm -T backup' >> $L/backup.log 2>&1
+
+# Auto deploy (DEC-062): every 2 minutes check GitHub (read-only deploy key); deploy when PROD_SCH has new RUNTIME code.
+# It has its own lock, makes no output when there is nothing to do, and never retries a commit that failed.
+*/2 * * * * bash -c 'cd $D && ./scripts/auto-deploy.sh' >> $L/auto_deploy.log 2>&1

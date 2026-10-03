@@ -39,3 +39,7 @@ frontend/.env.local
 deploy/.env
 deploy/.current_tag
 deploy/.previous_tag
+deploy/.deployed_sha
+deploy/.checked_sha
+deploy/.failed_sha
+deploy/.auto-deploy-paused

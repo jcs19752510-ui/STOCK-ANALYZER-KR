@@ -1,5 +1,7 @@
 # 운영 배포 구성(Oracle VM + R2) 내부테스트 결과서 (DEC-060)
 
+> **갱신(DEC-062)**: 이 결과서의 GitHub Actions 워크플로·승인 환경·`release` 브랜치 관련 항목은 **폐기**되었다(워크플로 삭제). 자동 배포는 서버 폴링 방식으로 대체되었고 시험은 `docs/qa/2026-10-03-auto-deploy-test-result.md`를 본다. DB 계정·백업·복구·PC DB 이전 시험(2~8번)은 그대로 유효하다.
+
 - 작성일: 2026-10-03 (KST) / 브랜치 `PROD_SCH`
 - 범위: `deploy/*`, `.github/workflows/deploy-production.yml`, `.dockerignore`, `docs/ops/oracle-deploy-guide.md`
 - **중요: 클라우드 개발 환경에는 Docker 엔진이 없어 이미지 빌드·컨테이너 기동은 시험하지 못했다.** 아래 "시험함"은 같은 SQL·스크립트·명령을 임시 PostgreSQL 16과 가짜 docker로 실행한 결과다.

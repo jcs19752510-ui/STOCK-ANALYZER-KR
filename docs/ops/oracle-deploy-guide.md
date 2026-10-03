@@ -3,7 +3,8 @@
 > **이 문서는 처음 서버를 다뤄 보는 사람 기준**으로 썼습니다. 순서대로 따라 하면 됩니다.
 > 각 단계 끝에 **"이렇게 보이면 성공"** 이 있습니다. 그게 안 보이면 **다음 단계로 가지 말고** 그 화면을 캡처해서 알려 주세요.
 > 서버 생성·결제·키 발급은 **본인 계정으로 직접** 해야 합니다(제가 대신할 수 없습니다). 이 저장소가 제공하는 것은 설정 파일과 스크립트입니다.
-> **하네스 규칙**: 실제 운영 배포는 사용자의 명시적 승인이 있어야 합니다. 자동 배포도 "승인 버튼"을 거치도록 만들었습니다.
+> **배포 방식(DEC-062, 2026-10-03 변경)**: `PROD_SCH` 브랜치에 푸시하면 **서버가 몇 분 안에 알아서 반영**합니다. 승인 버튼, `release` 브랜치, GitHub Actions, GitHub Secrets는 **쓰지 않습니다.** 사용자가 이 "항상 자동 반영" 방식을 상시 승인으로 선택했습니다(11번).
+> **서버 업체**: 이 문서는 Oracle 무료 VM 기준으로 쓰였지만, Docker가 되는 리눅스 서버(국내·해외 VPS)라면 4~5번의 "방화벽·접속" 부분만 업체 화면에 맞게 바꾸면 **나머지는 그대로** 쓸 수 있습니다.
 
 ---
 
@@ -33,10 +34,11 @@
 | `deploy/.env.production.example` | 서버 설정 템플릿(비밀번호·키 자리) |
 | `deploy/scripts/init-env.sh` | 설정 파일 만들고 랜덤 비밀번호 채움 |
 | `deploy/scripts/deploy.sh` | 배포(백업→빌드→DB 갱신→재시작→실패 시 되돌리기) |
+| `deploy/scripts/auto-deploy.sh` | **자동 배포**: 몇 분마다 `PROD_SCH`를 확인해 코드가 바뀌었을 때만 `deploy.sh` 실행 |
+| `deploy/tests/test-auto-deploy.sh` | 자동 배포 시험 코드(가짜 docker로 78개 항목 점검) |
 | `deploy/scripts/bootstrap-data.sh` | 처음 데이터 채우기 |
 | `deploy/scripts/backup.sh`, `restore.sh`, `restore-run.sh` | 백업·복구 |
 | `deploy/crontab.example`, `logrotate.stock-analyzer` | 자동 실행 시간표, 로그 정리 |
-| `.github/workflows/deploy-production.yml` | 자동 배포(검사 → **승인** → 서버 배포) |
 
 ### 0-2-1. 준비물과 예상 시간·비용
 | 항목 | 내용 |
@@ -237,16 +239,14 @@ cat ~/.ssh/github_deploy.pub
    ```
    > **이렇게 보이면 성공**: `Hi jcs19752510-ui/stock-analyzer-kr! You've successfully authenticated...`
 
-### 7-2. 운영 브랜치 `release` 만들기 (GitHub 웹에서, 최초 1회)
-> ⚠️ **순서 주의**: `release` 브랜치를 만들면 자동 배포 워크플로가 시작됩니다. 아래 **11번의 "배포 스위치"가 꺼져 있는 동안은 검사만 하고 배포는 건너뜁니다**(안전). 그래도 11번 설정을 먼저 읽어 보세요.
-1. GitHub 저장소 → 브랜치 선택 상자 → 검증이 끝난 브랜치(현재 개발 브랜치 `PROD_SCH`)를 선택 → 상자에 `release` 입력 → **Create branch: release from PROD_SCH**.
-2. (권장) Settings → Branches → **Add rule**: 브랜치 `release`, **Require a pull request before merging** 체크 → 이후 `release`는 **PR 승인으로만** 바뀝니다.
-- 개발은 계속 `PROD_SCH`에서, **검증이 끝난 코드만** `release`로 합칩니다. (자동 배포는 `release`만 바라봅니다.)
+### 7-2. 운영 브랜치는 `PROD_SCH` 그대로 (DEC-062)
+- **새 브랜치(`release`)를 만들지 않습니다.** 서버는 개발 브랜치 `PROD_SCH`를 그대로 따라갑니다.
+- ⚠️ 그래서 **`PROD_SCH`에 푸시한 코드는 곧바로 운영에 반영**됩니다(11번). 미완성 코드를 올리기 전에는 서버에서 `./scripts/auto-deploy.sh --pause`로 자동 반영을 잠시 멈추세요.
 
 ### 7-3. 코드 받기
 ```
 cd ~
-git clone -b release git@github.com:jcs19752510-ui/stock-analyzer-kr.git stock-analyzer-kr
+git clone -b PROD_SCH git@github.com:jcs19752510-ui/stock-analyzer-kr.git stock-analyzer-kr
 cd stock-analyzer-kr/deploy
 ls
 ```
@@ -264,7 +264,8 @@ nano .env
 | `ACME_EMAIL` | 내 이메일(인증서 만료 알림용) |
 | `GOV_DATA_PORTAL_SERVICE_KEY` | **새로 발급한** 공공데이터포털 서비스키 |
 | `DART_API_KEY` | **새로 발급한** DART 키 |
-| `DATA_FRESHNESS_WEBHOOK_URL` | (선택) Slack/Discord 웹훅. 없으면 비워 둠 |
+| `DATA_FRESHNESS_WEBHOOK_URL` | (선택) Slack/Discord 웹훅. 데이터가 늦을 때 알림. 없으면 비워 둠 |
+| `AUTO_DEPLOY_WEBHOOK_URL` | (선택) 자동 배포 성공·실패 알림용 Slack/Discord 웹훅. 없으면 비워 둠 |
 | `PRICE_EXPOSURE_ENABLED` | `false` 유지 권장(1번 3항, **사용자 결정**) |
 | `BACKUP_AGE_RECIPIENT` | 2-1에서 메모한 `age1...` **공개키** |
 | `R2_BUCKET` / `R2_ENDPOINT` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | 2-2에서 메모한 값 |
@@ -279,7 +280,7 @@ nano .env
 ### 8-1. 첫 배포 (처음엔 직접 실행)
 ```
 cd ~/stock-analyzer-kr/deploy
-./scripts/deploy.sh release
+./scripts/deploy.sh PROD_SCH
 ```
 - 처음에는 **이미지를 만드느라 10~25분** 걸립니다(ARM). 중간에 멈춘 것처럼 보여도 기다립니다.
 - 흐름: 코드 갱신 → (DB가 아직 없어 백업은 건너뜀) → 이미지 빌드 → DB 시작 → **DB 계정 3개 자동 생성** → 마이그레이션 → 서비스 시작 → 건강 상태 확인.
@@ -356,6 +357,7 @@ sudo cp deploy/logrotate.stock-analyzer /etc/logrotate.d/stock-analyzer
 | 매일 14:30, 18:30 | 일일 배치(수집 → 지표 계산, 놓친 날 따라잡기) |
 | 매일 09:10 | 데이터 신선도 점검(늦으면 웹훅 알림) |
 | 매일 03:20 | DB 백업 → 암호화 → R2 |
+| **2분마다** | **자동 배포 확인**: `PROD_SCH`에 코드가 바뀐 새 커밋이 있으면 배포(없으면 아무 일도 안 함) |
 
 ### 9-2. 지금 한 번 직접 돌려 보기
 ```
@@ -393,51 +395,73 @@ docker compose --profile tools run --rm -T backup
 
 ---
 
-## 11. 자동 배포 설정 (GitHub Actions + 승인 버튼)
+## 11. 자동 배포 (`PROD_SCH` 푸시 → 서버가 자동 반영, DEC-062)
 
-### 11-1. 평소 배포 흐름
+### 11-1. 어떻게 동작하나요?
 ```
-PROD_SCH(개발) ──PR 병합──▶ release ──▶ 자동 검사(린트·테스트·빌드) ──▶ [사람이 "Approve" 클릭] ──▶ 서버가 새 버전 배포
-                                                                      └─ 실패하면 이전 버전으로 자동 복귀
+내 PC / 클라우드 / PC의 Claude ──git push──▶ GitHub의 PROD_SCH
+                                                  │  (서버가 2분마다 "새 커밋 있나?" 하고 읽어 감)
+                                                  ▼
+                 서버의 auto-deploy.sh ── 바뀐 파일이 코드인가? ──아니오(문서·시험·결과서만)──▶ 건너뜀
+                                                  │예
+                                                  ▼
+                          배포 전 DB 백업 ─▶ 이미지 빌드 ─▶ DB 구조 갱신 ─▶ 재시작 ─▶ 상태 확인
+                                                  │실패하면
+                                                  ▼
+                          이전 버전으로 자동 복귀 + (선택) 알림, 같은 커밋은 다시 시도하지 않음
 ```
-- 코드가 `release`에 합쳐져도 **승인 전에는 서버가 바뀌지 않습니다.**
-- 배포 직전에 DB를 자동 백업합니다. 백업이 실패하면 **배포를 취소**합니다.
+- **서버가 GitHub를 "읽기만"** 합니다. 그래서 서버의 SSH(22번)를 **내 IP만 허용한 상태 그대로** 두어도 됩니다. GitHub에 비밀값(Secrets)을 등록할 필요도 없습니다.
+- 푸시하고 **최대 약 2분 뒤** 서버가 알아차리고, 이미지 빌드(보통 몇 분~십여 분)가 끝나면 반영됩니다.
+- 이전의 승인 버튼, `release` 브랜치, GitHub Actions 검사는 **없앴습니다.**
 
-### 11-2. 배포 전용 SSH 키 만들기 (내 PC PowerShell)
-개인 접속용 키와 **분리**합니다.
-```
-ssh-keygen -t ed25519 -f $HOME\.ssh\github_actions_deploy -C "github-actions-deploy" -N '""'
-type $HOME\.ssh\github_actions_deploy.pub
-```
-서버의 `~/.ssh/authorized_keys` 맨 아래에 **아래 한 줄을 추가**합니다(공개키 부분만 방금 출력한 값으로). 이 키로는 **배포 스크립트 실행 외에는 아무것도 못 합니다.**
-```
-command="bash $HOME/stock-analyzer-kr/deploy/scripts/deploy.sh release",no-port-forwarding,no-agent-forwarding,no-pty,no-X11-forwarding ssh-ed25519 AAAA...배포용공개키... github-actions-deploy
-```
+### 11-2. 무엇이 배포되고, 무엇은 배포되지 않나요?
+| 배포됨(서버에서 다시 빌드) | 배포 안 됨(건너뜀) |
+|---|---|
+| `services/`, `shared/`, `db/`(마이그레이션 포함), `scripts/*.py`, `data/` | `docs/`(문서·QA 결과서·캡처) |
+| `frontend/`(화면 코드, 설정, 패키지) | `tests/`, `frontend/scripts/qa/`, `frontend/scripts/check-*.mjs`(시험 코드) |
+| `requirements.txt`, `alembic.ini`, `.dockerignore` | `*.md`, 이미지 파일(`.png` 등), `.github/`, `automation/` |
+| `deploy/docker-compose.yml`, `Caddyfile`, `*.Dockerfile`, `deploy/db/init/`, `deploy/scripts/backup.sh`·`restore.sh` | `deploy/scripts/`의 나머지(배포·설정 스크립트), `crontab.example`, `scripts/*.ps1`(Windows 전용) |
+- **판단 기준**: 서버 안에서 돌아가는 프로그램에 영향을 주는 파일이 하나라도 바뀌었으면 배포합니다. **목록에 없는 새 파일은 배포 쪽으로 처리**합니다(놓치는 것보다 한 번 더 배포하는 쪽이 안전).
+- 문서만 올린 푸시는 건너뛰지만, 그 뒤에 코드가 바뀐 푸시가 오면 **그 사이 바뀐 것 전부**가 함께 반영됩니다.
 
-### 11-3. 서버 신원 값(known_hosts) 구하기 — 중간자 공격 방지
+### 11-3. 처음 한 번 확인하기 (서버에서)
+`9-1`에서 cron을 등록했다면(2분 줄 포함) 이미 켜져 있습니다. 아래로 상태를 봅니다.
 ```
-ssh-keyscan -t ed25519 <서버 퍼블릭 IP>
+cd ~/stock-analyzer-kr/deploy
+./scripts/auto-deploy.sh --status
 ```
-출력된 한 줄(`<IP> ssh-ed25519 AAAA...`)이 `DEPLOY_KNOWN_HOSTS` 값입니다. 서버에서 `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` 로 나온 지문이 같은지 대조하면 더 안전합니다.
+> **이렇게 보이면 성공**: `branch : PROD_SCH`, `auto deploy : on`, `running (deployed)`에 12자리 값, `remote head`에 12자리 값.
+- 처음 배포(8-1)를 한 뒤에는 `running`과 `remote head`가 같아야 합니다(같으면 할 일 없음).
+- 로그 보기: `tail -n 30 ~/stock-logs/auto_deploy.log` (아무 일도 없으면 이 파일은 비어 있습니다. 정상입니다.)
 
-### 11-4. GitHub 설정 (저장소 → Settings)
-1. **Environments → New environment → `production`** → **Required reviewers**에 **본인 계정**을 추가 → Save. (이게 "승인 버튼"입니다. **이 설정이 없으면 배포가 승인 없이 진행**될 수 있으니 반드시 먼저 하세요.)
-2. 같은 환경의 **Deployment branches → Selected branches → `release`** 만 허용.
-3. **Secrets and variables → Actions → Secrets** (환경 `production`의 Secret으로 추가 권장):
-   | 이름 | 값 |
-   |---|---|
-   | `DEPLOY_HOST` | 서버 퍼블릭 IP |
-   | `DEPLOY_USER` | `ubuntu` |
-   | `DEPLOY_SSH_KEY` | `github_actions_deploy` **개인키 파일 전체 내용**(`-----BEGIN ... END-----` 포함) |
-   | `DEPLOY_KNOWN_HOSTS` | 11-3의 출력 한 줄 |
-4. **Variables 탭 → New repository variable**: `DEPLOY_ENABLED` = `true`
-   - **이 스위치를 만들기 전까지는 어떤 경우에도 서버 배포가 실행되지 않습니다.** 서버 준비가 끝난 뒤 마지막에 켭니다. 비상 시 이 값을 지우거나 `false`로 바꾸면 즉시 자동 배포가 멈춥니다.
+**동작 시험(권장, 한 번만)**
+1. 문서만 푸시: 로그에 `skip ...: docs/tests/QA only, no redeploy`가 찍히고 서버는 그대로입니다.
+2. 눈에 안 띄는 작은 코드 변경을 푸시: 2분 안에 `new commit ... -> deploying` → `[OK] deployed`가 찍힙니다.
 
-### 11-5. 첫 자동 배포 시험
-1. `PROD_SCH` → `release` PR을 만들어 병합합니다.
-2. GitHub → Actions → `deploy-production` 실행 → `checks` 통과 → `deploy` 가 **"Waiting for review"** 로 멈춥니다 → **Review deployments → production 체크 → Approve and deploy**.
-3. 로그 마지막에 `[OK] deployed ...` 가 나오면 성공입니다.
-> 배포가 실패하면 서버가 **자동으로 이전 버전으로 되돌립니다.** (단, DB 구조 변경(마이그레이션)은 자동으로 되돌리지 않습니다. 필요하면 10-3 복구.)
+### 11-4. 자주 쓰는 명령 (서버에서, `~/stock-analyzer-kr/deploy` 폴더)
+| 하고 싶은 일 | 명령 |
+|---|---|
+| 상태 보기 | `./scripts/auto-deploy.sh --status` |
+| **자동 반영 잠시 멈추기**(위험한 작업 전) | `./scripts/auto-deploy.sh --pause` |
+| 다시 켜기 | `./scripts/auto-deploy.sh --resume` |
+| 실패한 커밋 다시 시도 | `./scripts/auto-deploy.sh --retry` (원인을 고친 뒤) |
+| 지금 당장 직접 배포 | `./scripts/deploy.sh PROD_SCH` |
+| 사용 설명 | `./scripts/auto-deploy.sh --help` |
+- 멈춰 있던 동안 쌓인 변경은 **다시 켜면 한꺼번에** 반영됩니다.
+
+### 11-5. 배포가 실패하면
+- 서버가 **이전 버전으로 자동 복귀**를 시도하고, 로그에 `[FAIL] deployment of ... failed`가 남습니다. (`AUTO_DEPLOY_WEBHOOK_URL`을 설정했다면 알림도 갑니다.)
+- **같은 커밋은 다시 시도하지 않습니다**(2분마다 계속 실패하는 것을 막기 위함). 고치려면 ① 코드를 고쳐 새로 푸시하거나 ② 원인(예: 백업 설정)을 고친 뒤 `--retry`.
+- **백업이 실패하면 배포 자체를 취소**하고 서버를 건드리지 않습니다(안전장치).
+- ⚠️ 자동 복귀는 **프로그램만** 되돌립니다. **DB 구조 변경(마이그레이션)은 되돌리지 않습니다.** DB가 문제면 10-3 복구를 하세요.
+
+### 11-6. 반드시 알아 둘 위험 (상시 승인으로 선택하신 내용)
+1. **`PROD_SCH`에 푸시된 코드는 사람의 확인 없이 운영에 반영됩니다.** 개발 중인 코드, 실수로 올린 코드도 같습니다.
+2. **GitHub 쓰기 권한 = 운영 서버에서 코드를 실행할 수 있는 권한**입니다. GitHub 계정에 **2단계 인증**을 켜고, 저장소에 쓰기 권한이 있는 사람·도구(이 클라우드 세션, PC의 Claude 등)를 최소로 유지하세요.
+3. 사전 검사(린트·테스트)가 없어서, **고장 난 코드도 빌드만 되면 올라갑니다.** 마지막 방어선은 "새 버전이 정상 상태(health)가 아니면 이전 버전으로 복귀"입니다.
+4. **DB 구조를 바꾸는 큰 작업**(마이그레이션)을 푸시하기 전에는 `--pause`로 멈추고 직접 `deploy.sh`로 지켜보며 배포하는 것을 권합니다.
+5. 빌드하는 몇 분 동안 서버가 느려질 수 있습니다.
+6. 배포를 완전히 끄고 싶으면 `./scripts/auto-deploy.sh --pause`(임시) 또는 `crontab -e`에서 2분 줄을 지웁니다(영구).
 
 ---
 
@@ -446,7 +470,8 @@ ssh-keyscan -t ed25519 <서버 퍼블릭 IP>
 | 상황 | 할 일 |
 |---|---|
 | 화면이 안 열림 | 서버에서 `cd ~/stock-analyzer-kr/deploy && docker compose ps` → 멈춘 컨테이너 확인 → `docker compose logs --tail 80 <이름>` |
-| 방금 배포 후 이상 | 자동 롤백이 안 됐다면: `cat .previous_tag` 로 이전 버전 확인 → `APP_TAG=<이전 버전> docker compose up -d --wait` |
+| 방금 배포 후 이상 | 먼저 `./scripts/auto-deploy.sh --pause`로 자동 반영을 멈춥니다. 자동 롤백이 안 됐다면: `cat .previous_tag` 로 이전 버전 확인 → `APP_TAG=<이전 버전> docker compose up -d --wait`. 코드를 고치거나 `git revert`를 푸시한 뒤 `--resume` |
+| 자동 배포가 안 되는 것 같음 | `./scripts/auto-deploy.sh --status`(PAUSED인지, failed 커밋이 있는지), `tail -n 50 ~/stock-logs/auto_deploy.log`, `crontab -l`에 2분 줄이 있는지, `ssh -T git@github.com`이 되는지 |
 | DB가 이상함 | 10-3 복구(최신 백업) |
 | 서버 자체가 사라짐/정지 | 4~8-2를 새 서버에서 반복 → 10-3으로 DB 복구 |
 | 데이터가 오래됨 | `tail -50 ~/stock-logs/daily_batch.log`. 종료코드 `2` 는 공개 전(정상), 그 외는 오류 메시지 확인 |
@@ -459,12 +484,13 @@ ssh-keyscan -t ed25519 <서버 퍼블릭 IP>
 - [ ] 노출됐던 키(KIS/공공데이터/DART)를 **모두 재발급**했다.
 - [ ] 서버 `.env` 권한이 600이고 GitHub에 올라가 있지 않다.
 - [ ] 서버에 `KIS_APP_KEY`, `KIS_APP_SECRET`, `LOCAL_INTRADAY_ENABLED` 가 **없다**: `grep -E "KIS_|LOCAL_INTRADAY" ~/stock-analyzer-kr/deploy/.env` 결과가 비어 있다.
-- [ ] 열린 포트는 80/443(전체)과 22(내 IP만). `sudo ss -tlnp` 에서 5432가 외부에 열려 있지 않다(Docker 내부 전용).
+- [ ] 열린 포트는 80/443(전체)과 22(**내 IP만**, 자동 배포는 서버가 GitHub를 읽는 방식이라 22번을 열 필요가 없다). `sudo ss -tlnp` 에서 5432가 외부에 열려 있지 않다(Docker 내부 전용).
 - [ ] SSH는 키 로그인만(5-4).
 - [ ] `https://<SITE_HOST>/docs` 가 열리지 않는다(API 문서 비공개).
 - [ ] HTTP로 접속하면 HTTPS로 자동 이동한다.
 - [ ] 개인키(`age-private-key.txt`)는 2곳 이상에 보관, 서버에는 없다.
-- [ ] GitHub `production` 환경에 **승인자 설정**이 되어 있다.
+- [ ] GitHub 계정에 **2단계 인증**이 켜져 있고, 저장소 쓰기 권한이 필요한 사람·도구만 있다(푸시 = 운영 반영).
+- [ ] 서버의 GitHub 배포 키는 **읽기 전용**(Allow write access 체크 안 함)이다.
 - [ ] 약관·법률 확인(1번 3항) 후에만 `PRICE_EXPOSURE_ENABLED=true` 를 검토한다.
 
 ---
@@ -477,7 +503,8 @@ ssh-keyscan -t ed25519 <서버 퍼블릭 IP>
 | 분기 | `./scripts/bootstrap-data.sh corpfin` (PER/PBR 재무 갱신) |
 | 매년 4월 초순 이후 | `./scripts/bootstrap-data.sh earnings` (연간 실적) |
 | 매년 말 | **다음 해 휴장일 달력** 파일(`data/calendar/2027.yaml`)을 만들어 코드에 반영한 뒤 `./scripts/bootstrap-data.sh calendar data/calendar/2027.yaml` |
-| 서버 서비스 이미지 갱신 | `release` 배포 때 코드가 새로 빌드됩니다. DB·Caddy 이미지는 `docker compose pull && docker compose up -d --wait` |
+| 서버 서비스 이미지 갱신 | `PROD_SCH` 자동 배포 때 코드가 새로 빌드됩니다. DB·Caddy 이미지는 `docker compose pull && docker compose up -d --wait` |
+| 매주(자동 배포) | `./scripts/auto-deploy.sh --status`와 `~/stock-logs/auto_deploy.log`에 실패 기록이 없는지 |
 
 ---
 
@@ -489,7 +516,7 @@ ssh-keyscan -t ed25519 <서버 퍼블릭 IP>
 | 빌드가 중간에 죽음(메모리) | 5-5 스왑 추가, `docker compose build` 재시도 |
 | api가 `unhealthy` | `docker compose logs api --tail 80`. `.env`의 DB 비밀번호를 **나중에 바꿨다면** DB 볼륨은 처음 만들 때의 비밀번호를 유지하므로, 바꾼 값과 맞지 않아 접속이 실패합니다(아래 참고) |
 | 접속은 되는데 데이터가 없음 | 8-3을 아직 안 함, 또는 복원 후 API 재시작을 안 함 |
-| 화면에서 호출 오류 | 브라우저 개발자도구 Network 탭의 요청 주소가 `https://<SITE_HOST>/api/...` 인지 확인(주소를 바꿨다면 웹 이미지를 **다시 빌드**해야 함: `./scripts/deploy.sh release`) |
+| 화면에서 호출 오류 | 브라우저 개발자도구 Network 탭의 요청 주소가 `https://<SITE_HOST>/api/...` 인지 확인(주소를 바꿨다면 웹 이미지를 **다시 빌드**해야 함: `./scripts/deploy.sh PROD_SCH`) |
 | 배치가 `exit=2` | 대상 거래일 데이터가 아직 공개 전(주말/휴일 직후 정상) |
 
 > **DB 비밀번호를 바꾸고 싶을 때**: `.env` 만 고치면 안 됩니다. DB 안의 비밀번호도 `ALTER ROLE ... PASSWORD`로 바꿔야 합니다. 모르면 질문해 주세요.
@@ -503,8 +530,8 @@ ssh-keyscan -t ed25519 <서버 퍼블릭 IP>
   - ✅ 이 DB 구성으로 API 기동·`/api/v1/health`·CORS·보안 헤더 확인
   - ✅ 백업(`pg_dump -Fc`) → 복원(`--no-owner --role=migrator`) → 데이터·소유자·권한 보존 확인, PC DB 덤프를 새 서버 DB에 복원하는 절차 확인
   - ✅ 배포 스크립트의 정상 배포 / 실패 시 롤백 / 동시 실행 차단을 가짜 docker로 시험
-  - ✅ 워크플로 YAML 문법, CI와 같은 조건에서 린트·테스트(663 통과, DB 필요 테스트 206건은 자동 건너뜀)
-  - ❌ **미확인**: ARM(aarch64)에서의 이미지 빌드, `age`·`rclone` 실제 R2 업로드, Caddy 인증서 발급, GitHub Actions 실제 실행, `read_only` 컨테이너에서 Next.js 동작. **첫 배포 때 이 단계에서 오류가 나면 출력을 그대로 알려 주세요.** 한 번에 고치겠습니다.
+  - ✅ **자동 배포(`auto-deploy.sh`)**: 가짜 docker·임시 git 저장소로 78개 항목 시험(새 커밋 감지, 문서만 바뀐 푸시 건너뜀, 코드 푸시 배포, 실패 시 롤백과 재시도 방지, 백업 실패 시 취소, 일시 정지·재개, 다른 배포 중 대기, GitHub 접속 불가, 알림 JSON). 시험이 실제로 결함을 잡는지 변이 시험으로도 확인(`bash deploy/tests/test-auto-deploy.sh`)
+  - ❌ **미확인**: ARM(aarch64)에서의 이미지 빌드, `age`·`rclone` 실제 R2 업로드, Caddy 인증서 발급, **서버에서 실제 cron으로 도는 자동 배포**, `read_only` 컨테이너에서 Next.js 동작. **첫 배포 때 이 단계에서 오류가 나면 출력을 그대로 알려 주세요.** 한 번에 고치겠습니다.
 - Oracle·R2·DuckDNS의 **2026-10 현재 무료 한도·약관은 공식 페이지에서 직접 확인하지 못했습니다**(블로그·비교 사이트 검색 결과 기준). Oracle 무료 한도는 2026-06에 예고 없이 줄어든 전례가 있습니다.
-- GitHub Actions 액션은 주요 버전 태그(`@v4`, `@v5`)로 지정했습니다. 더 엄격하게는 커밋 해시 고정을 권장합니다(선택).
+- 자동 배포는 **서버에서 cron으로 직접 실행한 적이 없습니다**(가짜 환경 시험만). 서버의 GitHub 읽기 접속(배포 키), cron 환경(PATH·HOME), 실제 Docker 빌드 시간 중의 동작은 첫 배포 후 11-3의 동작 시험으로 확인하세요.
 - 서버 한 대 구성이라 **그 서버가 멈추면 전체가 멈춥니다**(고가용성 아님). 백업이 유일한 안전망이므로 10번을 꼭 수행하세요.
