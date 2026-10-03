@@ -9,11 +9,18 @@ import { StockChart } from "@/components/StockChart";
 import { TickPanel } from "@/components/TickPanel";
 import copy from "@/content/copy.ko.json";
 import { localIntradayAvailable } from "@/lib/localIntraday";
+import { evaluateEarnings, evaluateInvestorFlow, type ExtraCriterion } from "@/lib/extraCriteria";
 import { PATTERN_CONDITION_IDS } from "@/lib/patternApi";
 import { conditionTitle, evidenceText } from "@/lib/patternFormat";
 import { useLazyApi, type LazyState } from "@/lib/useLazyApi";
 import { formatEok } from "@/lib/formatEok";
-import type { PatternCheckData, StockEarningsData, StockPricePoint } from "@/lib/types";
+import { useIntradayPoll } from "@/lib/useIntradayPoll";
+import type {
+  IntradayInvestorData,
+  PatternCheckData,
+  StockEarningsData,
+  StockPricePoint,
+} from "@/lib/types";
 
 /**
  * 종목 상세 탭(DEC-041): 차트 · 일자별 시세 · 투자자(공개 화면은 준비 중, 개인 로컬 모드에서만 증권사 순매수) · 조건 체크.
@@ -79,7 +86,7 @@ export function StockDetailTabs({
   const codePath = encodeURIComponent(stockCode);
   const earnings = useLazyApi<StockEarningsData>(
     `/api/v1/stocks/${codePath}/earnings`,
-    opened.earnings === true,
+    opened.earnings === true || opened.check === true, // 조건 체크의 실적 점검(⑧)도 같은 데이터를 쓴다
   );
   const patternCheck = useLazyApi<PatternCheckData>(
     `/api/v1/stocks/${codePath}/pattern-check`,
@@ -247,14 +254,31 @@ export function StockDetailTabs({
             </div>
           )}
 
-          {t.id === "check" && tab === "check" && <PatternCheckPanel state={patternCheck} />}
+          {t.id === "check" && tab === "check" && (
+            <PatternCheckPanel
+              state={patternCheck}
+              earnings={earnings}
+              stockCode={stockCode}
+              localMode={localMode}
+            />
+          )}
         </div>
       ))}
     </div>
   );
 }
 
-function PatternCheckPanel({ state }: { state: LazyState<PatternCheckData> }) {
+function PatternCheckPanel({
+  state,
+  earnings,
+  stockCode,
+  localMode,
+}: {
+  state: LazyState<PatternCheckData>;
+  earnings: LazyState<StockEarningsData>;
+  stockCode: string;
+  localMode: boolean;
+}) {
   if (state.kind === "idle" || state.kind === "loading") {
     return <p className="stock-tabs__pending">{copy.stockDetail.tabLoading}</p>;
   }
@@ -282,10 +306,74 @@ function PatternCheckPanel({ state }: { state: LazyState<PatternCheckData> }) {
           </div>
         ))}
       </dl>
+      <ExtraChecks earnings={earnings} stockCode={stockCode} localMode={localMode} />
       <p className="stock-tabs__note">{copy.pattern.proxyFootnote}</p>
       <p className="stock-tabs__note">{copy.pattern.scopeFootnote}</p>
       <p className="stock-tabs__note">{copy.stockDetail.checkNotice}</p>
     </div>
+  );
+}
+
+/** 선발 기준 ⑥⑦⑧(DEC-055): 실적은 공개 화면에서도, 수급은 개인 로컬 모드에서만 점검한다. */
+function ExtraRow({ title, item, fallback }: { title: string; item: ExtraCriterion | null; fallback: string }) {
+  return (
+    <div className="pattern-list__row">
+      <dt>{title}</dt>
+      <dd>
+        {item ? (
+          <>
+            <ConditionStatusBadge result={item.result} />
+            <span className="pattern-evidence">{item.evidence}</span>
+          </>
+        ) : (
+          <span className="pattern-evidence">{fallback}</span>
+        )}
+      </dd>
+    </div>
+  );
+}
+
+function ExtraChecks({
+  earnings,
+  stockCode,
+  localMode,
+}: {
+  earnings: LazyState<StockEarningsData>;
+  stockCode: string;
+  localMode: boolean;
+}) {
+  const flow = useIntradayPoll<IntradayInvestorData>(
+    localMode ? `/api/v1/local/stocks/${encodeURIComponent(stockCode)}/investor` : null,
+    60_000,
+  );
+  const earningsItem = earnings.kind === "ready" ? evaluateEarnings(earnings.data.earnings) : null;
+  const earningsFallback =
+    earnings.kind === "error" ? copy.stockDetail.extraEarningsError : copy.stockDetail.extraEarningsLoading;
+  const flowEval = flow.data ? evaluateInvestorFlow(flow.data.rows) : null;
+  const flowFallback = flow.error ? copy.stockDetail.extraFlowError : copy.stockDetail.extraFlowLoading;
+  return (
+    <>
+      <h3 className="pattern-check__lead">{copy.stockDetail.extraHeading}</h3>
+      <dl className="pattern-list__conditions">
+        <ExtraRow title={copy.stockDetail.extraEarnings} item={earningsItem} fallback={earningsFallback} />
+        {localMode ? (
+          <>
+            <ExtraRow
+              title={copy.stockDetail.extraFlowInstitutional}
+              item={flowEval?.institutional ?? null}
+              fallback={flowFallback}
+            />
+            <ExtraRow
+              title={copy.stockDetail.extraFlowPersonal}
+              item={flowEval?.personal ?? null}
+              fallback={flowFallback}
+            />
+          </>
+        ) : null}
+      </dl>
+      {!localMode && <p className="stock-tabs__note">{copy.stockDetail.extraFlowLocalOnly}</p>}
+      <p className="stock-tabs__note">{copy.stockDetail.extraNote}</p>
+    </>
   );
 }
 

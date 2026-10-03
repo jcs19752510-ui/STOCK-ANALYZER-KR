@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import copy from "@/content/copy.ko.json";
 
 /**
- * 04-ux-design.md §1-0/§6 — 전역 내비게이션 3항목(홈/조건 스크리닝/종목 검색).
+ * 04-ux-design.md §1-0/§6 — 전역 내비게이션 4항목(홈/조건 스크리닝/종목 검색/관심종목, 관심종목은 DEC-055로 추가).
  * "About/이용안내"는 §1-0이 명시적으로 1차 내비게이션에서 제외했으므로(배너/
  * 푸터 링크로만 노출) 여기 추가하지 않는다.
  */
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: "/", label: copy.nav.home },
   { href: "/screener", label: copy.nav.screener },
   { href: "/stocks", label: copy.nav.stocks },
+  { href: "/watchlist", label: copy.nav.watchlist },
 ] as const;
 
 function isActive(pathname: string, href: string): boolean {

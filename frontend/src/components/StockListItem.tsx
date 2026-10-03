@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { QuoteText } from "@/components/QuoteText";
+import { WatchStar } from "@/components/WatchStar";
 import type { StockQuote, StockSearchItem } from "@/lib/types";
 
 /**
@@ -12,11 +13,14 @@ import type { StockQuote, StockSearchItem } from "@/lib/types";
 interface StockListItemProps {
   item: StockSearchItem;
   quote?: StockQuote;
+  /** 관심종목 별 버튼을 행 오른쪽에 붙인다(링크 바깥 형제 요소). */
+  star?: boolean;
+  children?: React.ReactNode; // 편집 모드 컨트롤(관심종목 화면)
 }
 
-export function StockListItem({ item, quote }: StockListItemProps) {
+export function StockListItem({ item, quote, star = false, children }: StockListItemProps) {
   return (
-    <li className="stock-list__item">
+    <li className={`stock-list__item${star || children ? " stock-list__item--with-actions" : ""}`}>
       <Link href={`/stocks/${item.stock_code}`} className="stock-list__link">
         <span className="stock-list__head">
           <span className="stock-list__title">
@@ -32,6 +36,10 @@ export function StockListItem({ item, quote }: StockListItemProps) {
         </span>
         <QuoteText quote={quote} />
       </Link>
+      {star && (
+        <WatchStar item={{ code: item.stock_code, name: item.name, market: item.market }} variant="row" />
+      )}
+      {children}
     </li>
   );
 }

@@ -131,7 +131,7 @@ export function StockSearchClient() {
         {!isQueryTooShort && state?.kind === "success" && (
           <ul className="stock-list">
             {state.items.map((item) => (
-              <StockListItem key={item.stock_code} item={item} quote={quotes[item.stock_code]} />
+              <StockListItem key={item.stock_code} item={item} quote={quotes[item.stock_code]} star />
             ))}
           </ul>
         )}

@@ -54,12 +54,9 @@ const PLOT_W = W - PAD_R;
 const LEGEND_H = 24;
 const PRICE_TOP = LEGEND_H;
 const PRICE_H = 226;
-const VOL_TOP = PRICE_TOP + PRICE_H;
 const VOL_H = 70;
-const MACD_TOP = VOL_TOP + VOL_H;
 const MACD_H = 122;
 const AXIS_H = 26;
-const H = MACD_TOP + MACD_H + AXIS_H;
 
 const UP = "#d9342b"; // 상승(빨강) — 한국 시장 관례. 색 외에 ▲▼·텍스트로도 구분한다
 const DOWN = "#1a6fc9";
@@ -101,6 +98,7 @@ interface StockChartProps {
 }
 
 type IntraSpec = { mode: "minute" | "tick"; n: number };
+type PanelId = "volume" | "macd";
 const MINUTE_OPTIONS = [1, 3, 5, 10, 15, 30, 60];
 const TICK_OPTIONS = [1, 3, 5, 10, 30];
 
@@ -149,6 +147,9 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
   const [bubbleDismissed, setBubbleDismissed] = useState(false);
   const [intra, setIntra] = useState<IntraSpec | null>(null);
   const [menu, setMenu] = useState<"minute" | "tick" | null>(null);
+  // 거래량·MACD 패널 닫기(⊠)와 순서 바꾸기(≡). 닫은 패널은 설정(⚙)에서 다시 켠다.
+  const [panelOrder, setPanelOrder] = useState<PanelId[]>(["volume", "macd"]);
+  const [panelOn, setPanelOn] = useState<Record<PanelId, boolean>>({ volume: true, macd: true });
   // 개인 로컬 모드가 꺼진 상태에서 분·틱을 눌렀을 때 이유를 보여 주는 안내(눌러도 무반응으로 보이지 않게).
   const [unavailableNotice, setUnavailableNotice] = useState<"minute" | "tick" | null>(null);
   const intraPath =
@@ -406,6 +407,16 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
             />
             {copy.stockDetail.profileLabel}
           </label>
+          {(["volume", "macd"] as const).map((id) => (
+            <label key={id} className="chart-settings__item">
+              <input
+                type="checkbox"
+                checked={panelOn[id]}
+                onChange={(e) => setPanelOn((o) => ({ ...o, [id]: e.target.checked }))}
+              />
+              {id === "volume" ? copy.stockDetail.panelVolume : copy.stockDetail.panelMacd}
+            </label>
+          ))}
           <label className="chart-settings__item">
             <input
               type="checkbox"
@@ -543,8 +554,20 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
   const maxShare = Math.max(0, ...profile.map((b) => b.share));
 
   // 거래량 패널
-  const volBase = VOL_TOP + VOL_H - 2;
-  const volTop = VOL_TOP + 18;
+  // 패널 배치: 켜진 패널을 정해진 순서대로 가격 패널 아래에 쌓는다.
+  const panelTop: Record<PanelId, number> = { volume: 0, macd: 0 };
+  let cursor = PRICE_TOP + PRICE_H;
+  for (const id of panelOrder) {
+    if (!panelOn[id]) continue;
+    panelTop[id] = cursor;
+    cursor += id === "volume" ? VOL_H : MACD_H;
+  }
+  const chartBottom = cursor;
+  const svgH = chartBottom + AXIS_H;
+  const volY = panelTop.volume;
+  const macdY = panelTop.macd;
+  const volBase = volY + VOL_H - 2;
+  const volTop = volY + 18;
   const visibleVolMas = layers.volMa
     ? volMas.filter((s) => s.values.slice(start).some((v) => v !== null))
     : [];
@@ -562,8 +585,8 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
   const visMacd = [...m.macd.slice(start), ...m.signal.slice(start)];
   const finiteMacd = visMacd.filter((v): v is number => v !== null);
   const [mLo, mHi] = paddedExtent(finiteMacd.length ? [...finiteMacd, 0] : [0], 0.08);
-  const macdTop = MACD_TOP + 22;
-  const macdBottom = MACD_TOP + MACD_H - 8;
+  const macdTop = macdY + 22;
+  const macdBottom = macdY + MACD_H - 8;
   const my = (v: number) => macdTop + ((mHi - v) / (mHi - mLo)) * (macdBottom - macdTop);
   const macdTicks = niceTicks(mLo, mHi, 3);
   const crosses = macdCrosses(m.macd.slice(start), m.signal.slice(start));
@@ -616,11 +639,11 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
 
   const badgeColor = lastUp ? UP : DOWN;
   const badgeY = Math.max(PRICE_TOP + 14, Math.min(PRICE_TOP + PRICE_H - 14, py(lastBar.close)));
-  const volBadgeY = Math.max(VOL_TOP + 26, Math.min(VOL_TOP + VOL_H - 10, vy(lastBar.volume)));
+  const volBadgeY = Math.max(volY + 26, Math.min(volY + VOL_H - 10, vy(lastBar.volume)));
   const macdBadgeY =
     lastMacd === null || lastMacd === undefined
       ? null
-      : Math.max(MACD_TOP + 30, Math.min(MACD_TOP + MACD_H - 10, my(lastMacd)));
+      : Math.max(macdY + 30, Math.min(macdY + MACD_H - 10, my(lastMacd)));
 
   const hiRight = hiIdx > n / 2;
   const loRight = loIdx > n / 2;
@@ -637,7 +660,7 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
         onKeyDown={onKey}
       >
         <svg
-          viewBox={`0 0 ${W} ${H}`}
+          viewBox={`0 0 ${W} ${svgH}`}
           className="stock-chart__svg"
           role="img"
           aria-label={`${stockName} ${copy.stockDetail.chartAriaLabel}`}
@@ -689,7 +712,7 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
               x1={x(i)}
               x2={x(i)}
               y1={PRICE_TOP}
-              y2={MACD_TOP + MACD_H}
+              y2={chartBottom}
               stroke={GRID}
               strokeWidth="0.8"
             />
@@ -711,7 +734,7 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
               </text>
             </g>
           ))}
-          <line x1={PLOT_W} x2={PLOT_W} y1={PRICE_TOP} y2={MACD_TOP + MACD_H} stroke={GRID} />
+          <line x1={PLOT_W} x2={PLOT_W} y1={PRICE_TOP} y2={chartBottom} stroke={GRID} />
 
           {/* 매물대(가격대별 거래량 비중) — 캔들 뒤 */}
           {profile.map((b, i) => {
@@ -806,16 +829,17 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
             )}
           </g>
 
-          {/* 거래량 패널 */}
-          <line x1={0} x2={W} y1={VOL_TOP} y2={VOL_TOP} stroke={GRID} />
+          {panelOn.volume && (
+          <g>
+          <line x1={0} x2={W} y1={volY} y2={volY} stroke={GRID} />
           <g fontSize="11" fill="#1f2937">
-            <text x={2} y={VOL_TOP + 14}>
+            <text x={2} y={volY + 14}>
               {copy.stockDetail.volumePanel}
             </text>
             {VOL_MA_PERIODS.map((p, i) => (
               <g key={p} opacity={layers.volMa ? 1 : 0.35}>
-                <circle cx={58 + i * 40} cy={VOL_TOP + 10} r={5} fill={VOL_MA_COLORS[p]} />
-                <text x={66 + i * 40} y={VOL_TOP + 14}>
+                <circle cx={58 + i * 40} cy={volY + 10} r={5} fill={VOL_MA_COLORS[p]} />
+                <text x={66 + i * 40} y={volY + 14}>
                   {p}
                 </text>
               </g>
@@ -865,15 +889,19 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
             </text>
           </g>
 
-          {/* MACD 패널 */}
-          <line x1={0} x2={W} y1={MACD_TOP} y2={MACD_TOP} stroke={GRID} />
+          </g>
+          )}
+
+          {panelOn.macd && (
+          <g>
+          <line x1={0} x2={W} y1={macdY} y2={macdY} stroke={GRID} />
           <g fontSize="11" fill="#1f2937">
-            <circle cx={9} cy={MACD_TOP + 10} r={5} fill={MACD_COLOR} />
-            <text x={18} y={MACD_TOP + 14}>
+            <circle cx={9} cy={macdY + 10} r={5} fill={MACD_COLOR} />
+            <text x={18} y={macdY + 14}>
               MACD(12,26)
             </text>
-            <circle cx={104} cy={MACD_TOP + 10} r={5} fill={SIGNAL_COLOR} />
-            <text x={113} y={MACD_TOP + 14}>
+            <circle cx={104} cy={macdY + 10} r={5} fill={SIGNAL_COLOR} />
+            <text x={113} y={macdY + 14}>
               Signal(9)
             </text>
           </g>
@@ -928,12 +956,15 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
             </g>
           )}
 
+          </g>
+          )}
+
           {/* X축 날짜 */}
           {xTickIdx.map((i) => (
             <text
               key={`xt-${i}`}
               x={clampX(x(i))}
-              y={H - 8}
+              y={svgH - 8}
               fontSize="11.5"
               fill={AXIS_TEXT}
               textAnchor="middle"
@@ -948,13 +979,47 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
               x1={x(selected)}
               x2={x(selected)}
               y1={PRICE_TOP}
-              y2={MACD_TOP + MACD_H}
+              y2={chartBottom}
               stroke="#111827"
               strokeOpacity="0.4"
               strokeDasharray="3 3"
             />
           )}
         </svg>
+        {(["volume", "macd"] as const)
+          .filter((id) => panelOn[id])
+          .map((id) => {
+            const label = id === "volume" ? copy.stockDetail.panelVolume : copy.stockDetail.panelMacd;
+            const top = `${((panelTop[id] + 14) / svgH) * 100}%`;
+            return (
+              <span key={id}>
+                <button
+                  type="button"
+                  className="chart-panel-btn"
+                  style={{ left: "calc(100% - 66px)", top }}
+                  aria-label={`${label} ${copy.stockDetail.panelMove}`}
+                  disabled={panelOrder.filter((p) => panelOn[p]).length < 2}
+                  onClick={() => setPanelOrder((o) => [o[1], o[0]])}
+                >
+                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                    <path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  className="chart-panel-btn"
+                  style={{ left: "calc(100% - 22px)", top }}
+                  aria-label={`${label} ${copy.stockDetail.panelClose}`}
+                  onClick={() => setPanelOn((o) => ({ ...o, [id]: false }))}
+                >
+                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                    <rect x="4" y="4" width="16" height="16" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+                    <path d="m9 9 6 6M15 9l-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </span>
+            );
+          })}
         <button
           type="button"
           className="chart-expand"

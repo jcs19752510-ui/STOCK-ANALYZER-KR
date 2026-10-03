@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { WatchStar } from "@/components/WatchStar";
 import copy from "@/content/copy.ko.json";
 
 /**
@@ -67,6 +68,7 @@ export function StockQuoteHeader({
           )}
         </p>
       </div>
+      <WatchStar item={{ code: stockCode, name, market }} variant="band" />
       <Link href="/stocks" className="quote-band__icon" aria-label={copy.stockDetail.searchLabel}>
         <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
           <circle cx="10.500" cy="10.500" r="6.500" fill="none" stroke="currentColor" strokeWidth="2.200" />
