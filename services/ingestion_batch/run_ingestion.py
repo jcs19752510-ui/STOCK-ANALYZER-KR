@@ -38,6 +38,7 @@ from sqlalchemy import create_engine  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
 from services.ingestion_batch.batch_run_repository import (  # noqa: E402
+    NOT_PUBLISHED_ERROR_SUMMARY_PREFIX,
     finish_run,
     recent_ingest_statuses,
     start_run,
@@ -181,8 +182,9 @@ def run_once(
 
     if not result.records:
         error_summary = (
-            "대상 거래일 데이터가 0건 반환되었습니다(공공데이터포털 +1영업일 지연 특성상 "
-            "아직 배포되지 않았을 가능성 — 배치 실행 시각을 확인하세요)."
+            f"{NOT_PUBLISHED_ERROR_SUMMARY_PREFIX}: 대상 거래일 데이터가 0건 반환되었습니다"
+            "(공공데이터포털 +1영업일 지연 특성상 아직 배포되지 않았을 가능성 — "
+            "배치 실행 시각을 확인하세요)."
         )
         finish_run(
             session,
