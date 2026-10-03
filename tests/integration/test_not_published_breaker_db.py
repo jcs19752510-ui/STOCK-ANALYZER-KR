@@ -110,7 +110,7 @@ def test_run_once_records_not_published_with_prefix_and_failed_status(db, clean)
             s.commit()
     finally:
         eng.dispose()
-    assert status == "FAILED" and covered == date(2026, 10, 2)  # 실행 자체는 실패로 기록(재시도 대상)
+    assert status == "FAILED" and covered == date(2026, 10, 2)  # 재시도 대상으로 FAILED 기록
     assert summary is not None and summary.startswith(NOT_PUBLISHED_ERROR_SUMMARY_PREFIX)
     statuses, breaker = _view(db)
     assert statuses == [] and breaker.is_open is False
