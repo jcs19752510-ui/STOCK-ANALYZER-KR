@@ -2378,3 +2378,104 @@ main {
   color: #ffffff;
   text-decoration: none;
 }
+
+/* ── 차트 그리기 도구(DEC-059) ────────────────────────────────────────────────────── */
+.stock-chart__svg--drawing {
+  cursor: crosshair;
+}
+
+.chart-draw {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-2) var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+}
+
+.chart-draw__tools,
+.chart-draw__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.chart-draw__row input {
+  flex: 1;
+  min-width: 100px;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+  background: var(--color-surface-bg);
+  color: var(--color-text-primary);
+  font: inherit;
+}
+
+.chart-draw__btn {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+  background: var(--color-surface-bg);
+  color: var(--color-text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.chart-draw__btn[aria-pressed="true"] {
+  background: #2d3138;
+  color: #ffffff;
+}
+
+.chart-draw__btn--danger {
+  border-color: #d03232;
+  color: #d03232;
+}
+
+.chart-draw__hint {
+  margin: 0;
+  color: #0f766e;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.chart-draw__title {
+  margin: var(--space-2) 0 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.chart-draw__note {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.chart-draw__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chart-draw__list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 2px var(--space-2);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.chart-draw__item--selected {
+  background: #e6f4f1;
+  font-weight: 700;
+}

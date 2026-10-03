@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { KeyboardEvent, PointerEvent } from "react";
+import type { KeyboardEvent, MouseEvent, PointerEvent } from "react";
 import { LocalModeNotice } from "@/components/LocalModeNotice";
 import copy from "@/content/copy.ko.json";
 import { buildChartSummary, type SummaryGroup } from "@/lib/chartSummary";
@@ -16,6 +16,17 @@ import {
   type Candle,
   type Timeframe,
 } from "@/lib/chartIndicators";
+import {
+  MAX_DRAWINGS,
+  addDrawing,
+  describeDrawing,
+  isValidPrice,
+  priceFromY,
+  removeDrawing,
+  snapIndex,
+  type DrawPoint,
+} from "@/lib/chartDrawings";
+import { useChartDrawings } from "@/lib/useChartDrawings";
 import { useIntradayPoll } from "@/lib/useIntradayPoll";
 import { setIntradayFlag } from "@/lib/viewBasis";
 import type { IntradayMinutesData, IntradayTicksData } from "@/lib/types";
@@ -61,6 +72,7 @@ const AXIS_H = 26;
 
 const UP = "#d9342b"; // 상승(빨강) — 한국 시장 관례. 색 외에 ▲▼·텍스트로도 구분한다
 const DOWN = "#1a6fc9";
+const DRAW_COLOR = "#0f766e"; // 사용자가 직접 그린 선(이동평균선 색과 겹치지 않게)
 const GRID = "#e6e8eb";
 const AXIS_TEXT = "#9aa0a8";
 
@@ -153,8 +165,15 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
   const [panelOn, setPanelOn] = useState<Record<PanelId, boolean>>({ volume: true, macd: true });
   // 개인 로컬 모드가 꺼진 상태에서 분·틱을 눌렀을 때 이유를 보여 주는 안내(눌러도 무반응으로 보이지 않게).
   const [unavailableNotice, setUnavailableNotice] = useState<"minute" | "tick" | null>(null);
-  // 그리기 도구(✎)는 아직 제공하지 않는다. 눌렀을 때 무반응으로 보이지 않게 이유를 보여 준다.
-  const [drawNotice, setDrawNotice] = useState(false);
+  // 그리기 도구(✎, DEC-059): 일봉에서 추세선·수평선을 그린다. 선은 (거래일, 가격)으로 이 브라우저에만 저장한다.
+  const [drawOpen, setDrawOpen] = useState(false);
+  const [drawTool, setDrawTool] = useState<"trend" | "hline" | null>(null);
+  const [pendingPoint, setPendingPoint] = useState<DrawPoint | null>(null);
+  const [selectedDrawing, setSelectedDrawing] = useState<string | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [hlineInput, setHlineInput] = useState("");
+  const [drawMessage, setDrawMessage] = useState("");
+  const { drawings, update: updateDrawings } = useChartDrawings(stockCode);
   const intraPath =
     localMode && intra && stockCode
       ? intra.mode === "minute"
@@ -239,6 +258,36 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
         : [],
     [summaryOpen, series, timeframe, intra],
   );
+  // 그리기는 일봉에서만 가능하다(점을 거래일로 저장하므로).
+  const drawable = !intra && timeframe === "D";
+  const activeTool = drawable ? drawTool : null;
+  const commitDrawing = (draft: Parameters<typeof addDrawing>[1]) => {
+    let result = "invalid";
+    updateDrawings((list) => {
+      const r = addDrawing(list, draft);
+      result = r.result;
+      return r.list;
+    });
+    setDrawMessage(
+      result === "added"
+        ? copy.stockDetail.drawAdded
+        : result === "full"
+          ? copy.stockDetail.drawFull.replace("{max}", String(MAX_DRAWINGS))
+          : copy.stockDetail.drawInvalid,
+    );
+  };
+  useEffect(() => {
+    if (!drawTool) return;
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setDrawTool(null);
+      setPendingPoint(null);
+      setDrawMessage(copy.stockDetail.drawCanceled);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [drawTool]);
+
   const header = (
     <>
       <div className="stock-chart__toolbar">
@@ -368,13 +417,17 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
           </button>
           <button
             type="button"
-            className="chart-tools__btn chart-tools__btn--unavailable"
-            aria-disabled="true"
-            aria-controls="chart-draw-notice"
-            aria-expanded={drawNotice}
-            aria-label={copy.stockDetail.drawDisabled}
-            title={copy.stockDetail.drawDisabled}
-            onClick={() => setDrawNotice((v) => !v)}
+            className="chart-tools__btn"
+            aria-controls="chart-draw-panel"
+            aria-expanded={drawOpen}
+            aria-label={drawOpen ? copy.stockDetail.drawToolClose : copy.stockDetail.drawToolOpen}
+            title={drawOpen ? copy.stockDetail.drawToolClose : copy.stockDetail.drawToolOpen}
+            onClick={() => {
+              setDrawOpen((v) => !v);
+              setDrawTool(null);
+              setPendingPoint(null);
+              setConfirmClear(false);
+            }}
           >
             <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
               <path
@@ -389,10 +442,118 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
         </div>
       </div>
 
-      {drawNotice && (
-        <p id="chart-draw-notice" className="stock-chart__status stock-chart__notice" role="status">
-          {copy.stockDetail.drawUnavailableNotice}
-        </p>
+      {drawOpen && (
+        <section id="chart-draw-panel" className="chart-draw" aria-label={copy.stockDetail.drawPanelTitle}>
+          {!drawable ? (
+            <p className="chart-draw__note">{copy.stockDetail.drawOnlyDaily}</p>
+          ) : (
+            <>
+              <div className="chart-draw__tools" role="group" aria-label={copy.stockDetail.drawPanelTitle}>
+                {(["trend", "hline"] as const).map((tool) => (
+                  <button
+                    key={tool}
+                    type="button"
+                    className="chart-draw__btn"
+                    aria-pressed={drawTool === tool}
+                    onClick={() => {
+                      setDrawTool((t) => (t === tool ? null : tool));
+                      setPendingPoint(null);
+                      setConfirmClear(false);
+                      setDrawMessage("");
+                    }}
+                  >
+                    {tool === "trend" ? copy.stockDetail.drawTrend : copy.stockDetail.drawHline}
+                  </button>
+                ))}
+              </div>
+              {drawTool && (
+                <p className="chart-draw__hint" role="status">
+                  {drawTool === "hline"
+                    ? copy.stockDetail.drawHintHline
+                    : pendingPoint
+                      ? copy.stockDetail.drawHintTrendEnd
+                      : copy.stockDetail.drawHintTrendStart}
+                </p>
+              )}
+              <form
+                className="chart-draw__row"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const price = Number(hlineInput);
+                  if (!isValidPrice(price)) {
+                    setDrawMessage(copy.stockDetail.drawInvalid);
+                    return;
+                  }
+                  commitDrawing({ kind: "hline", price });
+                  setHlineInput("");
+                }}
+              >
+                <label htmlFor="chart-hline-input">{copy.stockDetail.drawHlineInputLabel}</label>
+                <input
+                  id="chart-hline-input"
+                  type="number"
+                  inputMode="decimal"
+                  value={hlineInput}
+                  onChange={(e) => setHlineInput(e.target.value)}
+                />
+                <button type="submit" className="chart-draw__btn">
+                  {copy.stockDetail.drawAdd}
+                </button>
+              </form>
+              <p className="chart-draw__title">{copy.stockDetail.drawListTitle}</p>
+              {drawings.length === 0 ? (
+                <p className="chart-draw__note">{copy.stockDetail.drawListEmpty}</p>
+              ) : (
+                <ul className="chart-draw__list">
+                  {drawings.map((d) => (
+                    <li key={d.id} className={selectedDrawing === d.id ? "chart-draw__item--selected" : undefined}>
+                      <span>{describeDrawing(d)}</span>
+                      <button
+                        type="button"
+                        className="chart-draw__btn"
+                        aria-label={`${describeDrawing(d)} ${copy.stockDetail.drawRemove}`}
+                        onClick={() => {
+                          updateDrawings((list) => removeDrawing(list, d.id));
+                          setSelectedDrawing(null);
+                          setDrawMessage(copy.stockDetail.drawRemoved);
+                        }}
+                      >
+                        {copy.stockDetail.drawRemove}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {drawings.length > 0 && (
+                <button
+                  type="button"
+                  className={`chart-draw__btn${confirmClear ? " chart-draw__btn--danger" : ""}`}
+                  onClick={() => {
+                    if (!confirmClear) {
+                      setConfirmClear(true);
+                      return;
+                    }
+                    updateDrawings(() => []);
+                    setConfirmClear(false);
+                    setSelectedDrawing(null);
+                    setDrawMessage(copy.stockDetail.drawCleared);
+                  }}
+                >
+                  {confirmClear ? copy.stockDetail.drawClearConfirm : copy.stockDetail.drawClearAll}
+                </button>
+              )}
+            </>
+          )}
+          <p className="chart-draw__note">{copy.stockDetail.drawStorageNote}</p>
+          <p className="sr-only" role="status">
+            {drawMessage}
+          </p>
+          {drawMessage && (
+            <p className="chart-draw__note" aria-hidden="true">
+              {drawMessage}
+            </p>
+          )}
+        </section>
       )}
 
       {!localMode && unavailableNotice && (
@@ -642,6 +803,41 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
     return Math.max(0, Math.min(n - 1, Math.floor(vx / step)));
   };
 
+  const idxByDate = new Map<string, number>();
+  if (drawable) series.forEach((c, i) => idxByDate.set(c.trade_date, i));
+  const xOfDate = (date: string): number | null => {
+    const j = idxByDate.get(date);
+    return j === undefined ? null : x(j - start);
+  };
+  const handleCanvasClick = (e: MouseEvent<SVGSVGElement>) => {
+    if (!activeTool) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const vx = ((e.clientX - rect.left) / rect.width) * W;
+    const vy = ((e.clientY - rect.top) / rect.height) * svgH;
+    if (vx > PLOT_W || vy < PRICE_TOP || vy > PRICE_TOP + PRICE_H) return; // 가격 패널 안쪽만
+    const bar = view[snapIndex(vx, step, n)];
+    const price = Math.round(priceFromY(vy, { hi: pHi, lo: pLo }, PRICE_TOP, PRICE_H));
+    if (!bar || !isValidPrice(price)) return;
+    const point: DrawPoint = { date: bar.trade_date, price };
+    if (activeTool === "hline") {
+      commitDrawing({ kind: "hline", price });
+      setDrawTool(null);
+      return;
+    }
+    if (!pendingPoint) {
+      setPendingPoint(point);
+      setDrawMessage(copy.stockDetail.drawPending);
+      return;
+    }
+    if (pendingPoint.date === point.date) {
+      setDrawMessage(copy.stockDetail.drawSameDate);
+      return;
+    }
+    commitDrawing({ kind: "trend", a: pendingPoint, b: point });
+    setPendingPoint(null);
+    setDrawTool(null);
+  };
+
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "ArrowLeft") {
       setHover(Math.max(0, selected - 1));
@@ -678,7 +874,8 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
       >
         <svg
           viewBox={`0 0 ${W} ${svgH}`}
-          className="stock-chart__svg"
+          className={`stock-chart__svg${activeTool ? " stock-chart__svg--drawing" : ""}`}
+          onClick={handleCanvasClick}
           role="img"
           aria-label={`${stockName} ${copy.stockDetail.chartAriaLabel}`}
           onPointerMove={(e) => setHover(indexFromPointer(e))}
@@ -989,6 +1186,81 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
               {view[i].time ?? shortDate(view[i].trade_date)}
             </text>
           ))}
+
+          {/* 사용자가 직접 그린 선(일봉) */}
+          {drawable && (
+            <g>
+              <defs>
+                <clipPath id="chart-draw-clip">
+                  <rect x={0} y={PRICE_TOP} width={PLOT_W} height={PRICE_H} />
+                </clipPath>
+              </defs>
+              <g clipPath="url(#chart-draw-clip)">
+                {drawings.map((d) => {
+                  const sel = selectedDrawing === d.id;
+                  const sw = sel ? 2.6 : 1.5;
+                  if (d.kind === "hline") {
+                    const y = py(d.price);
+                    return (
+                      <g key={d.id} aria-hidden="true">
+                        <line x1={0} x2={PLOT_W} y1={y} y2={y} stroke={DRAW_COLOR} strokeWidth={sw} strokeDasharray="6 4" />
+                        <line
+                          x1={0}
+                          x2={PLOT_W}
+                          y1={y}
+                          y2={y}
+                          stroke="transparent"
+                          strokeWidth={16}
+                          pointerEvents={activeTool ? "none" : "stroke"}
+                          onClick={() => setSelectedDrawing(d.id)}
+                        />
+                      </g>
+                    );
+                  }
+                  const xa = xOfDate(d.a.date);
+                  const xb = xOfDate(d.b.date);
+                  if (xa === null || xb === null) return null;
+                  return (
+                    <g key={d.id} aria-hidden="true">
+                      <line x1={xa} y1={py(d.a.price)} x2={xb} y2={py(d.b.price)} stroke={DRAW_COLOR} strokeWidth={sw} />
+                      <circle cx={xa} cy={py(d.a.price)} r={3.5} fill={DRAW_COLOR} />
+                      <circle cx={xb} cy={py(d.b.price)} r={3.5} fill={DRAW_COLOR} />
+                      <line
+                        x1={xa}
+                        y1={py(d.a.price)}
+                        x2={xb}
+                        y2={py(d.b.price)}
+                        stroke="transparent"
+                        strokeWidth={16}
+                        pointerEvents={activeTool ? "none" : "stroke"}
+                        onClick={() => setSelectedDrawing(d.id)}
+                      />
+                    </g>
+                  );
+                })}
+                {activeTool === "trend" && pendingPoint && xOfDate(pendingPoint.date) !== null && (
+                  <circle
+                    cx={xOfDate(pendingPoint.date) ?? 0}
+                    cy={py(pendingPoint.price)}
+                    r={5}
+                    fill="none"
+                    stroke={DRAW_COLOR}
+                    strokeWidth={2}
+                  />
+                )}
+              </g>
+              {drawings.map((d) => {
+                if (d.kind !== "hline") return null;
+                const y = py(d.price);
+                if (y < PRICE_TOP || y > PRICE_TOP + PRICE_H) return null;
+                return (
+                  <text key={`dl-${d.id}`} x={PLOT_W + 9} y={y + 4} fontSize="10.5" fill={DRAW_COLOR} aria-hidden="true">
+                    {fmtPrice(d.price)}
+                  </text>
+                );
+              })}
+            </g>
+          )}
 
           {/* 선택선 */}
           {hover !== null && (
