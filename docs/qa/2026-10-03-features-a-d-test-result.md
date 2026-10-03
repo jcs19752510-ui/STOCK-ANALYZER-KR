@@ -70,6 +70,6 @@
 
 ## 8. PER/PBR 산정 불가 사유 구분(DEC-057)
 - 구현: 마이그레이션 `0014`(`derived_metrics_daily.per_unavailable_reason`/`pbr_unavailable_reason`, nullable, CHECK `LOSS`/`NO_DATA`) → 가공 배치가 `raw_corp_financials`로 판정(`valuation_unavailable_reason`) → `GET /stocks/{code}/metrics` 노출 → 화면 문구 3종.
-- 자동 테스트: 단위 3건(`test_valuation_reason.py`), **실제 PostgreSQL 통합 2건**(`test_valuation_reason_db.py`: 적자·자본잠식·재무 없음·정상 4종목의 사유 파생과 API 노출, 원시 재무·PER/PBR 비노출, CHECK 제약 거부, `api_service` 쓰기 거부). **전체 `tests` 865건 통과**(실제 PG 포함, 이전 853건 + 신규 12건 포함 아님: 신규 포함 합계).
+- 자동 테스트: 단위 3건(`test_valuation_reason.py`), **실제 PostgreSQL 통합 2건**(`test_valuation_reason_db.py`: 적자·자본잠식·재무 없음·정상 4종목의 사유 파생과 API 노출, 원시 재무·PER/PBR 비노출, CHECK 제약 거부, `api_service` 쓰기 거부). **전체 `tests` 865건 통과**(실제 PostgreSQL 포함, 이번 신규 테스트 포함).
 - 화면(`frontend/scripts/qa/valuation-reason.mjs` 3/3): PER 적자·PBR 데이터 없음 / PER 데이터 없음·PBR 자본잠식 / 사유 NULL(이전 배치 행)은 원인을 단정하지 않는 문구. 회귀 `features-oct3` 21, `basis-wording` 8, 프런트 48, tsc, eslint 통과.
 - 운영 주의: 0014 미적용 상태에서 새 코드를 실행하면 종목 상세·스크리닝 조회가 실패한다 → `scripts/start_local_api.ps1`이 시작 시 `alembic upgrade head`를 자동 실행한다(ASCII 전용 확인, 실제 PC 실행은 미확인). 기존 날짜의 사유는 해당 날짜를 가공 배치로 다시 처리해야 채워진다.
