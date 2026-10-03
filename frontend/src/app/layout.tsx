@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { ApiWakeNotice } from "@/components/ApiWakeNotice";
 import { DisclaimerBanner } from "@/components/DisclaimerBanner";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <SkipLink />
         <DisclaimerBanner />
+        <ApiWakeNotice />
         <Header />
         <main id="main-content">{children}</main>
         <Footer />

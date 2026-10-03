@@ -45,3 +45,56 @@ def get_cors_allowed_origins() -> list[str]:
     if not origins:
         return list(DEFAULT_CORS_ALLOWED_ORIGINS)
     return origins
+
+
+# --- 시간 제한 설정 (DEC-063) ----------------------------------------------------------------
+# 기본값은 기존과 같다(연결 3초, 쿼리 3초, 요청 4.5초). Neon처럼 유휴 시 정지되는 DB는
+# 첫 요청에서 깨어나는 시간이 더 걸릴 수 있어 그런 환경에서만 환경변수로 늘린다.
+# 잘못된 값이면 기동을 실패시킨다.
+DEFAULT_DB_CONNECT_TIMEOUT_SECONDS = 3.0
+DEFAULT_DB_STATEMENT_TIMEOUT_MS = 3000.0
+DEFAULT_REQUEST_TIMEOUT_SECONDS = 4.5
+
+
+def _env_number(name: str, default: float, *, minimum: float, maximum: float) -> float:
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        raise ConfigError(f"환경변수 {name}={raw!r} 는 숫자가 아닙니다.") from exc
+    if not (minimum <= value <= maximum):
+        raise ConfigError(f"환경변수 {name}={raw} 는 {minimum:g}~{maximum:g} 범위여야 합니다.")
+    return value
+
+
+def get_db_connect_timeout_seconds() -> int:
+    return int(
+        _env_number(
+            "PUBLIC_API_DB_CONNECT_TIMEOUT_SECONDS",
+            DEFAULT_DB_CONNECT_TIMEOUT_SECONDS,
+            minimum=1,
+            maximum=30,
+        )
+    )
+
+
+def get_db_statement_timeout_ms() -> int:
+    return int(
+        _env_number(
+            "PUBLIC_API_DB_STATEMENT_TIMEOUT_MS",
+            DEFAULT_DB_STATEMENT_TIMEOUT_MS,
+            minimum=500,
+            maximum=30000,
+        )
+    )
+
+
+def get_request_timeout_seconds() -> float:
+    return _env_number(
+        "PUBLIC_API_REQUEST_TIMEOUT_SECONDS",
+        DEFAULT_REQUEST_TIMEOUT_SECONDS,
+        minimum=1,
+        maximum=60,
+    )

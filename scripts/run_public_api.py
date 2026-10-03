@@ -24,8 +24,11 @@ limiting이 그 헤더 하나만 바꿔가며 보내는 것으로 완전히 무�
 환경변수:
     PUBLIC_API_HOST                기본값 "0.0.0.0"
     PUBLIC_API_PORT                기본값 "8000"
-    PUBLIC_API_TRUSTED_PROXY_IPS   쉼표 구분 IP 목록. 비어 있으면(기본) 프록시
-                                    헤더를 전혀 신뢰하지 않는다.
+    PUBLIC_API_TRUSTED_PROXY_IPS   쉼표 구분 IP/CIDR 목록(예: 10.0.0.0/8). 비어 있으면(기본)
+                                    프록시 헤더를 전혀 신뢰하지 않는다.
+    PUBLIC_API_REQUIRE_TRUSTED_PROXY  true면 위 목록이 비어 있을 때 **기동을 거부**한다(DEC-063).
+                                    프록시 뒤 배포에서 "대역 확인 전 공개 보류"를 강제하는 안전장치.
+                                    대역 확인 중에는 false로 두고 PUBLIC_API_LOG_PEER_IPS=1을 쓴다.
 """
 
 from __future__ import annotations
@@ -44,6 +47,19 @@ def main() -> None:
     host = os.environ.get("PUBLIC_API_HOST", "0.0.0.0")
     port = int(os.environ.get("PUBLIC_API_PORT", "8000"))
     trusted_proxy_ips = os.environ.get("PUBLIC_API_TRUSTED_PROXY_IPS", "").strip()
+    require_trusted = os.environ.get("PUBLIC_API_REQUIRE_TRUSTED_PROXY", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+    if require_trusted and not trusted_proxy_ips:
+        print(
+            "[기동 거부] REQUIRE_TRUSTED_PROXY=true 인데 TRUSTED_PROXY_IPS가 비었습니다. "
+            "프록시 대역을 확인해 설정하세요(절차서 참고). 확인 중이라면 REQUIRE를 false로 하고 "
+            "PUBLIC_API_LOG_PEER_IPS=1로 접속 주소를 확인하세요.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
 
     uvicorn.run(
         "services.public_api.main:app",

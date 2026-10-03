@@ -143,3 +143,34 @@ class RequestTimeoutMiddleware(BaseHTTPMiddleware):
                 request.url.path,
             )
             return _service_unavailable_response()
+
+
+class PeerDiagnosticsMiddleware(BaseHTTPMiddleware):
+    """임시 진단(DEC-063): 앞단 프록시가 어떤 주소로 접속해 오는지 로그로 확인한다.
+
+    관리형 호스팅(Render 등)은 프록시 IP 대역이 문서로 확인되지 않을 수 있다. 이 값을 모르고
+    `PUBLIC_API_TRUSTED_PROXY_IPS`를 비우면 모든 방문자가 한도(분당 60회)를 공유하고, `*`로 두면
+    한도를 우회할 수 있다. 그래서 **처음 몇 건만** 접속 주소(TCP peer)와 X-Forwarded-For 헤더를 남겨
+    운영자가 실제 대역을 확인하게 한다. 방문자 IP가 로그에 남으므로 확인이 끝나면 반드시 끈다.
+    기본은 꺼짐이며 `PUBLIC_API_LOG_PEER_IPS=1`일 때만 등록된다. 최대 MAX_LOGGED 건만 기록한다.
+    """
+
+    MAX_LOGGED = 20
+    _logged = 0
+
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        cls = type(self)
+        if cls._logged < self.MAX_LOGGED and request.url.path != "/api/v1/live":
+            cls._logged += 1
+            peer = request.client.host if request.client else "unknown"
+            logger.warning(
+                "PEER-DIAG %d/%d peer=%s x-forwarded-for=%r path=%s",
+                cls._logged,
+                self.MAX_LOGGED,
+                peer,
+                request.headers.get("x-forwarded-for"),
+                request.url.path,
+            )
+        return await call_next(request)

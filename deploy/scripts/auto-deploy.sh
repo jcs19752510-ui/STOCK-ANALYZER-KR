@@ -33,7 +33,7 @@ is_ignored_path() {
     deploy/scripts/backup.sh | deploy/scripts/restore.sh) return 1 ;;
     docs/* | tests/* | TEST/* | 99.* | templates/* | automation/* | .github/*) return 0 ;;
     정찬욱*) return 0 ;;
-    deploy/tests/* | deploy/scripts/* | deploy/crontab.example | deploy/logrotate.stock-analyzer | deploy/.env.production.example) return 0 ;;
+    deploy/render/* | render.yaml | deploy/tests/* | deploy/scripts/* | deploy/crontab.example | deploy/logrotate.stock-analyzer | deploy/.env.production.example) return 0 ;;
     frontend/scripts/qa/* | frontend/scripts/check-*.mjs) return 0 ;;
     scripts/*.ps1) return 0 ;;
     .gitignore | pyproject.toml | requirements-dev.txt) return 0 ;;

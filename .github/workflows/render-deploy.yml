@@ -1,0 +1,87 @@
+# Render + Neon 베타 배포 (DEC-063). PROD_SCH에 코드가 푸시되면:
+#   1) Neon DB 백업(R2) → 2) 스키마 마이그레이션(alembic) → 3) Render에 배포 요청(API, 웹)
+# 문서/테스트만 바뀐 푸시는 건너뛴다. 실패하면 Render 배포를 요청하지 않으므로 기존 버전이 그대로 유지된다.
+# 필요한 Secrets: NEON_OWNER_URL, RENDER_DEPLOY_HOOK_API, RENDER_DEPLOY_HOOK_WEB
+#   (선택, 백업용 5종) AGE_RECIPIENT, R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT
+# Secrets가 아직 없으면 실패하지 않고 "건너뜀"으로 끝난다(설정 전 푸시가 빨간 불을 만들지 않게).
+name: render-deploy
+
+on:
+  push:
+    branches: [PROD_SCH]
+    paths-ignore:
+      - "docs/**"
+      - "tests/**"
+      - "TEST/**"
+      - "templates/**"
+      - "automation/**"
+      - "deploy/tests/**"
+      - "frontend/scripts/qa/**"
+      - "**/*.md"
+      - "**/*.png"
+      - "**/*.jpg"
+      - "**/*.jpeg"
+      - "**/*.webp"
+  workflow_dispatch:
+
+concurrency:
+  group: render-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      NEON_OWNER_URL: ${{ secrets.NEON_OWNER_URL }}
+      RENDER_DEPLOY_HOOK_API: ${{ secrets.RENDER_DEPLOY_HOOK_API }}
+      RENDER_DEPLOY_HOOK_WEB: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
+      AGE_RECIPIENT: ${{ secrets.AGE_RECIPIENT }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+    steps:
+      - name: Check secrets
+        id: gate
+        run: |
+          missing=""
+          for v in NEON_OWNER_URL RENDER_DEPLOY_HOOK_API RENDER_DEPLOY_HOOK_WEB; do
+            [ -n "${!v}" ] || missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then
+            echo "::notice::Secrets not set (${missing# }) -> deploy skipped. See docs/ops/render-neon-guide.md"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.ready == 'true'
+
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.ready == 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install tools
+        if: steps.gate.outputs.ready == 'true'
+        run: |
+          pip install -r requirements.txt
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq age rclone postgresql-client-16
+
+      - name: Backup + migrate (Neon)
+        if: steps.gate.outputs.ready == 'true'
+        run: bash deploy/render/pre-deploy.sh
+
+      - name: Ask Render to deploy (API, then web)
+        if: steps.gate.outputs.ready == 'true'
+        run: |
+          curl -fsS -m 30 -X POST "$RENDER_DEPLOY_HOOK_API" >/dev/null && echo "API deploy requested"
+          curl -fsS -m 30 -X POST "$RENDER_DEPLOY_HOOK_WEB" >/dev/null && echo "web deploy requested"

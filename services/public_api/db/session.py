@@ -6,7 +6,11 @@ from functools import lru_cache
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from services.public_api.core.config import get_settings
+from services.public_api.core.config import (
+    get_db_connect_timeout_seconds,
+    get_db_statement_timeout_ms,
+    get_settings,
+)
 
 # 03-system-design.md §5-4(Must): "DB 커넥션 풀 고갈/쿼리 타임아웃 등 일시적
 # 인프라 장애... 쿼리 타임아웃 5초, 초과 시 503 SERVICE_UNAVAILABLE 반환".
@@ -18,8 +22,7 @@ from services.public_api.core.config import get_settings
 # main.py의 요청 타임아웃(4.5초)보다 작게 잡아, 정상적인 DB 장애 시나리오는
 # 애플리케이션 레벨 백업 타임아웃에 기대지 않고도 자체적으로 §5-4의 "5초
 # 이내" 목표를 만족한다.
-_CONNECT_TIMEOUT_SECONDS = 3
-_STATEMENT_TIMEOUT_MS = 3000
+# 기본값(연결 3초, 쿼리 3초)은 core/config.py의 환경변수로 늘릴 수 있다(DEC-063).
 
 
 @lru_cache(maxsize=1)
@@ -29,8 +32,8 @@ def get_engine() -> Engine:
         settings.database_url,
         pool_pre_ping=True,
         connect_args={
-            "connect_timeout": _CONNECT_TIMEOUT_SECONDS,
-            "options": f"-c statement_timeout={_STATEMENT_TIMEOUT_MS}",
+            "connect_timeout": get_db_connect_timeout_seconds(),
+            "options": f"-c statement_timeout={get_db_statement_timeout_ms()}",
         },
     )
 

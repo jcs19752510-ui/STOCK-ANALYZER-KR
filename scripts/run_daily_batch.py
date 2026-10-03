@@ -30,6 +30,7 @@
     python scripts/run_daily_batch.py
     python scripts/run_daily_batch.py --dry-run   # 수집만 --dry-run으로 검증, 가공 스킵
     python scripts/run_daily_batch.py --no-catchup  # 따라잡기 없이 직전 거래일만(기존 동작)
+    python scripts/run_daily_batch.py --no-lock     # 중복 실행 방지 락을 쓰지 않음(DEC-063)
 
 **(2026-10-02, DEC-047) 따라잡기·재시도 설계**: 매 실행이 최근 N(기본 10,
 `DAILY_BATCH_CATCHUP_DAYS`) 거래일 중 가공이 끝나지 않은 날짜를 오래된 순으로 채운다
@@ -144,7 +145,24 @@ def _run_with_catchup(pending: list[date], target: date) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """중복 실행 방지 락(DEC-063)을 잡고 배치를 실행한다. 다른 실행이 있으면 양보(종료코드 0)."""
     argv = sys.argv[1:] if argv is None else argv
+    if "--dry-run" in argv or "--no-lock" in argv:
+        return _main_locked(argv)
+
+    from shared.batch_lock import LockState, daily_batch_lock
+
+    with daily_batch_lock(os.environ.get("BATCH_DATABASE_URL")) as state:
+        if state is LockState.HELD:
+            print(
+                "[정보] 다른 일일 배치가 이미 실행 중이라 이번 실행은 건너뜁니다"
+                "(PC와 GitHub Actions 중복 방지). 정상 종료합니다."
+            )
+            return 0
+        return _main_locked(argv)
+
+
+def _main_locked(argv: list[str]) -> int:
     dry_run = "--dry-run" in argv
 
     planned = None

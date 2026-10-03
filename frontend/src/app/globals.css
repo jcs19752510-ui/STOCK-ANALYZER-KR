@@ -2479,3 +2479,14 @@ main {
   background: #e6f4f1;
   font-weight: 700;
 }
+
+/* ── 무료 호스팅 "서버 깨우는 중" 안내(DEC-063) ─────────────────────────────────────────── */
+.wake-notice {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  background: #fff7e6;
+  color: #7a4b00;
+  border-bottom: 1px solid #f0c36d;
+  font-size: 14px;
+  text-align: center;
+}

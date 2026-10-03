@@ -1,0 +1,68 @@
+# Render Blueprint — 무료 베타 (DEC-063). 설명서: docs/ops/render-neon-guide.md
+# * DB는 Neon(외부)이라 여기에 없다. 비밀값은 모두 sync:false (Render 화면에서 직접 입력, 저장소에는 쓰지 않는다).
+# * 코드 푸시로 자동 배포하지 않는다(autoDeployTrigger: off). GitHub Actions(render-deploy.yml)가
+#   "백업 → DB 마이그레이션"을 끝낸 뒤 Deploy Hook으로 배포를 요청한다(스키마가 먼저 준비되도록).
+# * 서비스 이름을 바꾸면 onrender.com 주소가 바뀐다. 이름이 이미 쓰이고 있으면 뒤에 숫자가 붙을 수 있으니
+#   만든 뒤 실제 주소를 확인해 CORS/NEXT_PUBLIC_API_BASE_URL에 넣는다.
+services:
+  - type: web
+    name: stock-analyzer-api
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: PROD_SCH
+    dockerfilePath: ./deploy/backend.Dockerfile
+    dockerContext: .
+    autoDeployTrigger: "off"
+    healthCheckPath: /api/v1/live      # DB를 조회하지 않는 경로: Neon을 깨우지 않는다
+    envVars:
+      - key: PUBLIC_API_DATABASE_URL   # postgresql+psycopg://api_service:비번@(직접 접속 주소)/neondb?sslmode=require
+        sync: false
+      - key: PUBLIC_API_CORS_ALLOWED_ORIGINS   # 웹 서비스 주소 예: https://stock-analyzer-web.onrender.com
+        sync: false
+      - key: PUBLIC_API_INTERNAL_TOKEN         # 웹 서비스와 같은 값(긴 무작위 문자열)
+        sync: false
+      - key: PUBLIC_API_TRUSTED_PROXY_IPS      # Render 프록시 대역(CIDR). 확인 전에는 비워 둔다 → 절차서 §7
+        sync: false
+      - key: PUBLIC_API_REQUIRE_TRUSTED_PROXY  # 확인 전 false(+LOG_PEER_IPS=1), 대역 입력 후 true
+        sync: false
+      - key: PUBLIC_API_LOG_PEER_IPS           # 대역 확인하는 동안만 1
+        sync: false
+      - key: PUBLIC_API_HOST
+        value: 0.0.0.0
+      - key: PUBLIC_API_PORT
+        value: "10000"
+      - key: PUBLIC_API_DB_CONNECT_TIMEOUT_SECONDS   # Neon이 잠든 상태에서 깨어나는 시간 여유
+        value: "10"
+      - key: PUBLIC_API_DB_STATEMENT_TIMEOUT_MS
+        value: "8000"
+      - key: PUBLIC_API_REQUEST_TIMEOUT_SECONDS
+        value: "15"
+      - key: PUBLIC_API_PRICE_EXPOSURE_ENABLED
+        value: "false"
+      - key: PATTERN_SCREEN_ENABLED
+        value: "true"
+
+  - type: web
+    name: stock-analyzer-web
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: PROD_SCH
+    dockerfilePath: ./deploy/frontend.Dockerfile
+    dockerContext: .
+    autoDeployTrigger: "off"
+    healthCheckPath: /
+    envVars:
+      - key: NEXT_PUBLIC_API_BASE_URL   # API 서비스 주소 예: https://stock-analyzer-api.onrender.com (빌드 때 코드에 들어간다)
+        sync: false
+      - key: PUBLIC_API_INTERNAL_TOKEN  # API 서비스와 같은 값
+        sync: false
+      - key: NEXT_PUBLIC_PRICE_EXPOSURE_ENABLED
+        value: "false"
+      - key: NEXT_PUBLIC_PATTERN_SCREEN_ENABLED
+        value: "true"
+      - key: PORT
+        value: "3000"
+      - key: FRONTEND_TRUSTED_PROXY_HOPS   # 0 = 방문자 IP 헤더를 신뢰하지 않음(Render 프록시 구조 확인 전 안전값)
+        value: "0"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -24,9 +25,10 @@ from services.public_api.api import (
     screen,
     stocks,
 )
-from services.public_api.core.config import get_cors_allowed_origins
+from services.public_api.core.config import get_cors_allowed_origins, get_request_timeout_seconds
 from services.public_api.errors import ApiError
 from services.public_api.middleware import (
+    PeerDiagnosticsMiddleware,
     RequestTimeoutMiddleware,
     SecurityHeadersMiddleware,
     UnhandledExceptionMiddleware,
@@ -71,9 +73,12 @@ app = FastAPI(title="Stock Screener Public API", version="0.1.0")
 #   않는다. 이번 재배치로도 CORS는 여전히 최후단(가장 바깥)에 남아, 이
 #   전제는 그대로 유지된다.
 app.add_middleware(UnhandledExceptionMiddleware)
-app.add_middleware(RequestTimeoutMiddleware)
+app.add_middleware(RequestTimeoutMiddleware, timeout_seconds=get_request_timeout_seconds())
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
+# 프록시 뒤 배포에서 신뢰할 프록시 대역을 확인하기 위한 임시 진단(기본 꺼짐, DEC-063).
+if os.environ.get("PUBLIC_API_LOG_PEER_IPS", "").strip().lower() in {"1", "true", "yes"}:
+    app.add_middleware(PeerDiagnosticsMiddleware)
 # 03-system-design.md §6-3: CORS는 자사 프론트엔드 오리진으로만 제한. 이 API는
 # 인증/쿠키가 없으므로(§6-1 REQ-016 Out-of-Scope) allow_credentials=False, 모든
 # 엔드포인트가 읽기 전용 GET만 제공하므로(§1-2) allow_methods도 GET만 허용한다.

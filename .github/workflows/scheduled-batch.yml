@@ -1,0 +1,98 @@
+# 보조 스케줄러 (DEC-063). 주 실행은 사용자의 PC(Windows 작업 스케줄러)이고, 이 워크플로는 PC가 꺼져 있을 때를 대비한 보조다.
+# 두 곳이 겹쳐도 배치가 PostgreSQL 잠금(shared/batch_lock.py)으로 한쪽만 실행한다.
+# GitHub 스케줄은 UTC이며 15~30분 늦게 시작될 수 있다. 저장소에 60일간 활동이 없으면 GitHub가 스케줄을 끈다.
+# 시각(KST): 배치 14:50, 18:50 / 신선도 09:10 / 백업 03:20 (PC보다 20분 뒤에 둔다 = PC가 먼저 실행)
+# Secrets: BATCH_DATABASE_URL(직접 접속 주소), GOV_DATA_PORTAL_SERVICE_KEY, DART_API_KEY,
+#          (선택) DATA_FRESHNESS_WEBHOOK_URL, NEON_OWNER_URL + 백업 5종
+name: scheduled-batch
+
+on:
+  schedule:
+    - cron: "50 5 * * *"    # 14:50 KST 일일 배치
+    - cron: "50 9 * * *"    # 18:50 KST 일일 배치
+    - cron: "10 0 * * *"    # 09:10 KST 데이터 신선도 점검
+    - cron: "40 18 * * *"   # 03:40 KST DB 백업
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "실행할 작업"
+        type: choice
+        options: [daily-batch, freshness, backup, dry-run]
+        default: dry-run
+
+concurrency:
+  group: scheduled-batch-${{ github.event.schedule || github.event.inputs.task }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      TASK: ${{ github.event.inputs.task || (github.event.schedule == '10 0 * * *' && 'freshness') || (github.event.schedule == '40 18 * * *' && 'backup') || 'daily-batch' }}
+      BATCH_DATABASE_URL: ${{ secrets.BATCH_DATABASE_URL }}
+      GOV_DATA_PORTAL_SERVICE_KEY: ${{ secrets.GOV_DATA_PORTAL_SERVICE_KEY }}
+      DART_API_KEY: ${{ secrets.DART_API_KEY }}
+      DATA_FRESHNESS_WEBHOOK_URL: ${{ secrets.DATA_FRESHNESS_WEBHOOK_URL }}
+      NEON_OWNER_URL: ${{ secrets.NEON_OWNER_URL }}
+      AGE_RECIPIENT: ${{ secrets.AGE_RECIPIENT }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      TZ: Asia/Seoul
+    steps:
+      - name: Check secrets
+        id: gate
+        run: |
+          need="BATCH_DATABASE_URL"
+          [ "$TASK" = backup ] && need="NEON_OWNER_URL"
+          if [ "$TASK" = daily-batch ] || [ "$TASK" = dry-run ]; then need="$need GOV_DATA_PORTAL_SERVICE_KEY DART_API_KEY"; fi
+          missing=""
+          for v in $need; do [ -n "${!v}" ] || missing="$missing $v"; done
+          if [ -n "$missing" ]; then
+            echo "::notice::Task '$TASK': Secrets not set (${missing# }) -> skipped. See docs/ops/render-neon-guide.md"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.ready == 'true'
+
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.ready == 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install tools
+        if: steps.gate.outputs.ready == 'true'
+        run: |
+          pip install -r requirements.txt
+          if [ "$TASK" = backup ]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq age rclone postgresql-client-16
+          fi
+
+      - name: Run
+        if: steps.gate.outputs.ready == 'true'
+        run: |
+          set +e   # 종료코드를 직접 판단한다(기본 -e면 실패 시 바로 중단됨)
+          case "$TASK" in
+            daily-batch) python scripts/run_daily_batch.py; rc=$? ;;
+            dry-run)     python scripts/run_daily_batch.py --dry-run; rc=$? ;;
+            freshness)   python scripts/check_data_freshness.py; rc=$? ;;
+            backup)      bash deploy/render/pre-deploy.sh --backup-only; rc=$? ;;
+            *) echo "unknown task $TASK"; exit 2 ;;
+          esac
+          # 종료코드 2 = 대상 거래일 데이터가 아직 배포 전(정상). 다음 실행이 다시 시도한다.
+          if [ "$rc" -eq 2 ] && [ "$TASK" = daily-batch ]; then
+            echo "::notice::공공데이터 미배포(종료코드 2) - 다음 실행에서 다시 시도합니다."
+            exit 0
+          fi
+          exit "$rc"
