@@ -17,7 +17,9 @@ export type EmptyStateVariant =
   | "no-screen-conditions"
   | "no-screen-result"
   | "no-query"
-  | "no-search-result";
+  | "no-search-result"
+  | "pattern-data-not-ready"
+  | "pattern-no-result";
 
 interface EmptyStateProps {
   variant: EmptyStateVariant;
@@ -33,6 +35,9 @@ const STATIC_VARIANT_MESSAGE: Record<
   "no-screen-conditions": copy.emptyState.noScreenConditionsTitle,
   "no-screen-result": copy.emptyState.noScreenResultTitle,
   "no-query": copy.emptyState.noQueryTitle,
+  // 패턴 스크리닝(REQ-033/035). `pattern-data-not-ready`는 에러(빨강)가 아니라 정상적인 준비 단계다.
+  "pattern-data-not-ready": copy.pattern.notReady,
+  "pattern-no-result": copy.pattern.emptyResult,
 };
 
 export function EmptyState({ variant, query }: EmptyStateProps) {

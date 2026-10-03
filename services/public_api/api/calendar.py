@@ -40,7 +40,7 @@ def last_trading_day(
         raise ApiError(
             status_code=400,
             code="INVALID_PARAMETER",
-            message=f"market은 {VALID_MARKETS} 중 하나여야 합니다: {market!r}",
+            message=f"market은 {VALID_MARKETS} 중 하나여야 합니다.",
         )
     market_typed: Market = market  # type: ignore[assignment]
 

@@ -1,3 +1,4 @@
+import { serverApiHeaders } from "@/lib/serverApiHeaders";
 import type { DataFreshness, Envelope, StockMetricsData } from "@/lib/types";
 
 /**
@@ -33,7 +34,10 @@ export async function fetchStockMetrics(
   try {
     // 지연 데이터 기반 배치 서비스라 캐시하면 안 됨(§3-4 "자체 계산하지 않는다"와
     // 같은 취지 — 매 요청마다 서버가 계산한 최신 신선도 값을 그대로 신뢰).
-    response = await fetch(url.toString(), { cache: "no-store" });
+    response = await fetch(url.toString(), {
+      cache: "no-store",
+      headers: await serverApiHeaders(),
+    });
   } catch {
     return { kind: "error", code: "NETWORK_ERROR", message: "네트워크 오류가 발생했습니다." };
   }

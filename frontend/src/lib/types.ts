@@ -91,6 +91,83 @@ export interface MarketSummaryData extends MarketSummaryItem {
   by_market: MarketSummaryItem[] | null;
 }
 
+/**
+ * `GET /api/v1/screen/pattern` 응답(REQ-032, docs/pattern-screening/02-system-design.md §5-2).
+ * 서버 응답 화이트리스트와 **같은 필드만** 선언한다 — 가격·거래량 원값·`*_raw`·시가총액 원값은
+ * 서버 응답에 없으므로 이 타입에도 없다(§4-3). 점수·순위 필드도 없다(REQ-034).
+ */
+export type PatternConditionId = "c1" | "c2" | "c3" | "c4" | "c5" | "c9";
+
+export interface PatternConditionResult {
+  /** true=충족, false=미충족, null=산정 불가 */
+  met: boolean | null;
+  /** met=null일 때만: INSUFFICIENT_HISTORY | SUSPECT_PRICE_JUMP | METRIC_UNAVAILABLE */
+  reason: string | null;
+}
+
+export interface PatternMetrics {
+  sideways_range_pct: number | null;
+  sideways_net_change_pct: number | null;
+  ma_convergence_pct: number | null;
+  volatility_contraction_ratio: number | null;
+  ma60_gap_pct: number | null;
+  ma20_vs_ma60_gap_pct: number | null;
+  ma60_slope_pct: number | null;
+  ma60_cross_up_days: number | null;
+  volume_ratio_5_60: number | null;
+  volume_anomaly_score: number | null;
+  recent_surge_flag: boolean | null;
+}
+
+export interface PatternItem {
+  stock_code: string;
+  name: string;
+  market: string;
+  conditions: Record<PatternConditionId, PatternConditionResult>;
+  metrics: PatternMetrics;
+  /** c4 화면 문구용 단계(서버가 c4와 같은 경계로 산출 — 프런트는 재계산하지 않는다) */
+  ma60_stage: string | null;
+}
+
+export interface PatternDefinition {
+  version: string;
+  thresholds: {
+    range_max_pct: number;
+    net_change_max_pct: number;
+    convergence_max_pct: number;
+    volatility_contraction_max: number;
+    ma60_approach_band_pct: number;
+    ma60_early_max_gap_pct: number;
+    cross_early_max_days: number;
+    volume_ratio_min: number;
+    volume_ratio_max: number;
+    volume_anomaly_max: number;
+  };
+  calc: {
+    lookback_days: number;
+    ma60_window: number;
+    cross_lookback_days: number;
+    surge_lookback_days: number;
+    surge_return_pct: number;
+    surge_volume_mult: number;
+  };
+  universe: { excluded_types: string[] };
+}
+
+export interface PatternReadiness {
+  evaluated_count: number;
+  total_count: number;
+  ready_ratio: number;
+}
+
+export interface PatternScreenData {
+  items: PatternItem[];
+  total_count: number;
+  page: number;
+  definition: PatternDefinition;
+  readiness: PatternReadiness;
+}
+
 export interface ApiErrorDetail {
   code: string;
   message: string;
@@ -104,4 +181,127 @@ export interface Envelope<T> {
   };
   data: T | null;
   error: ApiErrorDetail | null;
+}
+
+/** 일봉 1개(`GET /stocks/{code}/prices`, DEC-041). 일 단위 종가 기준이며 실시간 시세가 아니다. */
+export interface StockPricePoint {
+  trade_date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  trading_value: number;
+  change: number | null;
+  change_pct: number | null;
+}
+
+export interface StockPricesData {
+  stock_code: string;
+  name: string;
+  market: string;
+  prices: StockPricePoint[]; // 거래일 오름차순
+}
+
+/** `GET /stocks/{code}/pattern-check` — `item`이 null이면 평가 대상이 아니거나 데이터가 없다. */
+export interface PatternCheckData {
+  trade_date: string;
+  item: PatternItem | null;
+  definition: PatternDefinition;
+}
+
+/** `GET /stocks/{code}/earnings` — DART 사업보고서 연간 공시 수치(원). 찾지 못한 항목은 null(0 아님). */
+export interface EarningsYear {
+  fiscal_year: number;
+  fs_div: "CFS" | "OFS";
+  revenue: number | null;
+  operating_income: number | null;
+  net_income: number | null;
+}
+
+export interface StockEarningsData {
+  stock_code: string;
+  name: string;
+  market: string;
+  earnings: EarningsYear[]; // 연도 오름차순
+}
+
+/** `GET /stocks/quotes` 항목 — 목록용 최신 종가·전일대비(일 단위 종가 기준). */
+export interface StockQuote {
+  stock_code: string;
+  trade_date: string;
+  close: number;
+  change: number | null;
+  change_pct: number | null;
+  // 목록 행 미니 캔들·거래량 표시용(DEC-051). 값이 없으면 null.
+  open?: number | null;
+  high?: number | null;
+  low?: number | null;
+  volume?: number | null;
+}
+
+// ── 개인 로컬 모드 장중 시세(DEC-052): 분봉·체결·호가 ─────────────────────────────────────────
+export interface IntradayMinuteBar {
+  time: string; // "HH:MM"
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export interface IntradayMinutesData {
+  stock_code: string;
+  date: string;
+  interval: number;
+  bars: IntradayMinuteBar[];
+  source: string;
+}
+
+export interface IntradayTick {
+  time: string; // "HH:MM:SS"
+  price: number;
+  change: number | null;
+  change_pct: number | null;
+  volume: number;
+  strength: number | null;
+}
+
+export interface IntradayTicksData {
+  stock_code: string;
+  ticks: IntradayTick[]; // 최근 체결이 앞
+  truncated: boolean;
+  source: string;
+}
+
+export interface IntradayBookLevel {
+  price: number;
+  quantity: number;
+}
+
+export interface IntradayOrderBookData {
+  stock_code: string;
+  time: string | null;
+  asks: IntradayBookLevel[]; // 매도 1단계(가장 낮은 가격)부터
+  bids: IntradayBookLevel[]; // 매수 1단계(가장 높은 가격)부터
+  total_ask_quantity: number;
+  total_bid_quantity: number;
+  expected: { price: number; change: number | null; change_pct: number | null; volume: number | null } | null;
+  source: string;
+}
+
+export interface IntradayInvestorDay {
+  date: string; // "YYYY-MM-DD"
+  personal_quantity: number | null; // 순매수 수량(주), 순매도는 음수
+  foreign_quantity: number | null;
+  institution_quantity: number | null;
+  personal_amount_million: number | null; // 순매수 거래대금(백만원, 증권사 단위)
+  foreign_amount_million: number | null;
+  institution_amount_million: number | null;
+}
+
+export interface IntradayInvestorData {
+  stock_code: string;
+  rows: IntradayInvestorDay[]; // 최근 거래일이 앞
+  source: string;
 }

@@ -12,14 +12,14 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from services.ingestion_batch.dart_client import CorpFinancialsRecord
 from services.ingestion_batch.gov_data_client import RawFundamentalsRecord, RawOhlcvRecord
 from services.ingestion_batch.models import RawCorpFinancials, RawFundamentals, RawOhlcv
-from shared.db_models.public_serving import StockMaster
+from shared.db_models.public_serving import CorpEarnings, StockMaster
 
 
 def upsert_ohlcv(
@@ -230,6 +230,36 @@ def upsert_fundamentals(
                 "market_cap": stmt.excluded.market_cap,
                 "ingested_at": stmt.excluded.ingested_at,
                 "source_batch_id": stmt.excluded.source_batch_id,
+            },
+        )
+        session.execute(stmt)
+        affected += 1
+    return affected
+
+
+def upsert_annual_earnings(session: Session, stock_code: str, records) -> int:
+    """연간 실적(`public_serving.corp_earnings`)을 (종목, 연도) 키로 멱등 upsert한다(DEC-041).
+
+    같은 종목·연도는 최신 보고서 값으로 덮어쓴다(정정공시 반영). 처리 행 수를 반환한다.
+    """
+    affected = 0
+    for r in records:
+        stmt = pg_insert(CorpEarnings).values(
+            stock_code=stock_code,
+            fiscal_year=r.fiscal_year,
+            fs_div=r.fs_div,
+            revenue=r.revenue,
+            operating_income=r.operating_income,
+            net_income=r.net_income,
+        )
+        stmt = stmt.on_conflict_do_update(
+            index_elements=[CorpEarnings.stock_code, CorpEarnings.fiscal_year],
+            set_={
+                "fs_div": stmt.excluded.fs_div,
+                "revenue": stmt.excluded.revenue,
+                "operating_income": stmt.excluded.operating_income,
+                "net_income": stmt.excluded.net_income,
+                "updated_at": func.now(),
             },
         )
         session.execute(stmt)

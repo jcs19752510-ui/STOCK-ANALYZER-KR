@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -11,7 +12,18 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.exc import TimeoutError as SATimeoutError
 
-from services.public_api.api import calendar, health, market_summary, metrics, screen, stocks
+from services.public_api.api import (
+    calendar,
+    earnings,
+    health,
+    local_intraday,
+    market_summary,
+    metrics,
+    pattern,
+    prices,
+    screen,
+    stocks,
+)
 from services.public_api.core.config import get_cors_allowed_origins
 from services.public_api.errors import ApiError
 from services.public_api.middleware import (
@@ -78,7 +90,14 @@ app.include_router(calendar.router, prefix="/api/v1")
 app.include_router(stocks.router, prefix="/api/v1")
 app.include_router(metrics.router, prefix="/api/v1")
 app.include_router(screen.router, prefix="/api/v1")
+# 패턴 스크리닝 "급등 전 압축주"(REQ-032). 기능 스위치 `PATTERN_SCREEN_ENABLED=false`면 이 경로는
+# 404 FEATURE_DISABLED를 반환한다. `PATTERN_*` 설정 오류는 위 import 시점에 기동 실패로 드러난다.
+app.include_router(pattern.router, prefix="/api/v1")
+app.include_router(prices.router, prefix="/api/v1")  # DEC-041 종목 상세 일봉
+app.include_router(earnings.router, prefix="/api/v1")  # DEC-041 종목 상세 실적
 app.include_router(market_summary.router, prefix="/api/v1")
+# 개인 로컬 모드 장중 시세(DEC-052): 기본 꺼짐, 허용 IP(기본 loopback)에서만 응답.
+app.include_router(local_intraday.router, prefix="/api/v1")
 
 
 def _error_envelope(status_code: int, code: str, message: str) -> JSONResponse:
@@ -95,11 +114,27 @@ async def handle_api_error(request: Request, exc: ApiError) -> JSONResponse:
     return _error_envelope(exc.status_code, exc.code, exc.message)
 
 
+_SAFE_FIELD_NAME = re.compile(r"[A-Za-z0-9_]{1,40}")
+
+
+def _validation_message(exc: RequestValidationError) -> str:
+    """검증 실패 메시지(DEC-046, R2). 사용자가 보낸 값(`input`)·pydantic 상세는 절대 싣지 않고,
+    서버가 선언한 파라미터 이름(`loc`의 마지막 요소)만 안전한 문자 집합일 때 최대 5개 나열한다."""
+    names: list[str] = []
+    for err in exc.errors():
+        loc = err.get("loc") or ()
+        name = str(loc[-1]) if loc else ""
+        if _SAFE_FIELD_NAME.fullmatch(name) and name not in names:
+            names.append(name)
+    base = "요청 파라미터가 올바르지 않습니다."
+    return f"{base} 확인 필요: {', '.join(names[:5])}" if names else base
+
+
 @app.exception_handler(RequestValidationError)
 async def handle_validation_error(
     request: Request, exc: RequestValidationError
 ) -> JSONResponse:
-    return _error_envelope(400, "INVALID_PARAMETER", str(exc.errors()))
+    return _error_envelope(400, "INVALID_PARAMETER", _validation_message(exc))
 
 
 _SERVICE_UNAVAILABLE_MESSAGE = "일시적인 서비스 장애입니다. 잠시 후 다시 시도해 주세요."

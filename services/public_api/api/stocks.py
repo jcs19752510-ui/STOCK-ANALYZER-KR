@@ -44,7 +44,7 @@ def search_stocks(
         raise ApiError(
             status_code=400,
             code="INVALID_PARAMETER",
-            message=f"market은 {VALID_LISTED_MARKET_FILTERS} 중 하나여야 합니다: {market!r}",
+            message=f"market은 {VALID_LISTED_MARKET_FILTERS} 중 하나여야 합니다.",
         )
     market_typed: ListedMarketFilter = market  # type: ignore[assignment]
 

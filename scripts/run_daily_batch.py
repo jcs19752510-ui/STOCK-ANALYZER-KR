@@ -29,6 +29,13 @@
 사용법:
     python scripts/run_daily_batch.py
     python scripts/run_daily_batch.py --dry-run   # 수집만 --dry-run으로 검증, 가공 스킵
+    python scripts/run_daily_batch.py --no-catchup  # 따라잡기 없이 직전 거래일만(기존 동작)
+
+**(2026-10-02, DEC-047) 따라잡기·재시도 설계**: 매 실행이 최근 N(기본 10,
+`DAILY_BATCH_CATCHUP_DAYS`) 거래일 중 가공이 끝나지 않은 날짜를 오래된 순으로 채운다
+(며칠 실패·PC 꺼짐 후에도 스스로 복구).
+이미 최신이면 API를 호출하지 않고 종료하므로 하루 여러 번 실행해도 안전하다. 대상 거래일 데이터가
+아직 배포 전이면 종료코드 2(`EXIT_NOT_PUBLISHED`)로 끝나 스케줄러의 다음 실행이 다시 시도한다.
 
 로그는 stdout/stderr로만 내보낸다 — 파일 로그가 필요하면 스케줄러(Windows
 작업 스케줄러의 "출력을 파일로" 옵션, cron의 `>> logfile.log` 리다이렉트)가
@@ -37,14 +44,19 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 KST = ZoneInfo("Asia/Seoul")
 REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
+
+# 따라잡기에서 한 번에 되짚는 최대 거래일 수(공공데이터 호출 한도 보호). DEC-047.
+EXIT_NOT_PUBLISHED = 2  # 대상 거래일 데이터가 아직 배포되지 않음 → 스케줄러가 나중에 다시 실행
 
 
 def _run(args: list[str]) -> int:
@@ -53,9 +65,95 @@ def _run(args: list[str]) -> int:
     return result.returncode
 
 
+def _pending_dates() -> tuple[list[date], date] | None:
+    """(빠진 거래일 오름차순, 대상 거래일). DB·캘린더를 못 읽으면 None(단일 실행 폴백)."""
+    try:
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import Session
+
+        from services.ingestion_batch.calendar_lookup import SqlCalendarRepository
+        from shared.batch_catchup import (
+            DEFAULT_CATCHUP_TRADING_DAYS,
+            fetch_derived_dates,
+            fetch_exhausted_dates,
+            fetch_trading_dates,
+            plan_catchup,
+        )
+        from shared.calendar_service import get_last_trading_day
+
+        url = os.environ.get("BATCH_DATABASE_URL")
+        if not url:
+            return None
+        max_days = int(os.environ.get("DAILY_BATCH_CATCHUP_DAYS", DEFAULT_CATCHUP_TRADING_DAYS))
+        with Session(create_engine(url)) as session:
+            target = get_last_trading_day("KRX", datetime.now(KST), SqlCalendarRepository(session))
+            if target is None:
+                return None
+            trading = fetch_trading_dates(session, market="KRX", target=target, max_days=max_days)
+            since = target - timedelta(days=max_days * 3 + 10)
+            done = fetch_derived_dates(session, since=since)
+            exhausted = [
+                d
+                for d in fetch_exhausted_dates(session, since=since, before=target)
+                if d not in set(done)
+            ]
+        if exhausted:
+            print(
+                "[경고] 반복 실패·부분 성공으로 더 이상 재시도하지 않는 거래일: "
+                + ", ".join(d.isoformat() for d in sorted(exhausted))
+                + " — 필요하면 `--trade-date`로 수동 처리하세요.",
+                file=sys.stderr,
+            )
+        return plan_catchup(trading, [*done, *exhausted], target=target, max_days=max_days), target
+    except Exception as exc:  # 계획 단계 실패가 배치 자체를 막지 않게 한다(기존 동작으로 폴백)
+        print(f"[경고] 따라잡기 계획 실패, 단일 실행으로 진행: {exc}", file=sys.stderr)
+        return None
+
+
+def _run_one_date(trade_date: date | None) -> int:
+    """Ingestion → Derivation 1회. `trade_date`가 None이면 각 CLI가 직전 거래일을 계산한다."""
+    extra = ["--trade-date", trade_date.isoformat()] if trade_date else []
+    ingest_rc = _run([sys.executable, "-m", "services.ingestion_batch.run_ingestion", *extra])
+    if ingest_rc != 0:
+        print(f"[실패] Ingestion 종료코드 {ingest_rc} — Derivation 건너뜀.", file=sys.stderr)
+        return ingest_rc
+    derive_rc = _run([sys.executable, "-m", "services.derivation_batch.run_derivation", *extra])
+    if derive_rc != 0:
+        print(f"[실패] Derivation Batch 종료코드 {derive_rc}.", file=sys.stderr)
+    return derive_rc
+
+
+def _run_with_catchup(pending: list[date], target: date) -> int:
+    if not pending:
+        print(f"[완료] 대상 거래일 {target} 까지 가공이 이미 끝나 있어 할 일이 없습니다.")
+        return 0
+    print(f"[정보] 처리 대상 거래일(오래된 순): {', '.join(d.isoformat() for d in pending)}")
+    for trade_date in pending:
+        rc = _run_one_date(trade_date)
+        if rc != 0:
+            if trade_date == target:
+                print(
+                    f"[대기] {target} 데이터가 아직 배포되지 않았을 수 있습니다. "
+                    f"스케줄러가 나중에 다시 실행하도록 종료코드 {EXIT_NOT_PUBLISHED}로 끝냅니다.",
+                    file=sys.stderr,
+                )
+                return EXIT_NOT_PUBLISHED
+            return rc  # 더 이전 날짜가 막히면 건너뛰지 않고 중단(다음 실행이 이어서 처리)
+    print(f"[완료] {datetime.now(KST):%Y-%m-%d %H:%M:%S} KST 일일 배치 정상 종료.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     dry_run = "--dry-run" in argv
+
+    planned = None
+    if not dry_run and "--no-catchup" not in argv:
+        planned = _pending_dates()
+        if planned is not None and not planned[0]:
+            # 이미 최신이면 종목 마스터 갱신까지 건너뛰어 공공데이터를 전혀
+            # 호출하지 않고 끝낸다(하루 여러 번 실행해도 안전).
+            return _run_with_catchup(*planned)
 
     seed_cmd = [sys.executable, str(REPO_ROOT / "scripts" / "seed_stock_master.py")]
     if dry_run:
@@ -67,6 +165,9 @@ def main(argv: list[str] | None = None) -> int:
             "그날의 시세 수집은 계속 진행합니다(핵심 기능 아님).",
             file=sys.stderr,
         )
+
+    if planned is not None:
+        return _run_with_catchup(*planned)
 
     ingest_cmd = [sys.executable, "-m", "services.ingestion_batch.run_ingestion"]
     if dry_run:

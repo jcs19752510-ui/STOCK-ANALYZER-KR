@@ -1531,3 +1531,22 @@ def test_request_timeout_middleware_allows_fast_requests():
 
     assert resp.status_code == 200
     assert resp.text == "ok"
+
+
+def test_validation_error_message_does_not_reflect_user_input():
+    """R2(DEC-046): 400 응답 메시지가 잘못된 입력값을 그대로 되돌려주지 않는다."""
+    repo = FakeStockSearchRepository([])
+    app.dependency_overrides[get_stock_search_repository] = _override_stock_repository(repo)
+    client = TestClient(app)
+    payload = "<script>alert(1)</script>'; DROP TABLE x;--"
+
+    resp = client.get("/api/v1/stocks", params={"query": "삼성", "market": payload})
+
+    app.dependency_overrides.clear()
+    assert resp.status_code == 400
+    body = resp.json()
+    assert body["error"]["code"] == "INVALID_PARAMETER"
+    assert "script" not in body["error"]["message"]
+    assert "DROP" not in body["error"]["message"]
+    assert "input" not in body["error"]["message"]
+    assert payload not in body["error"]["message"]

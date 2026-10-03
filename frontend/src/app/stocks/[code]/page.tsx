@@ -3,11 +3,15 @@ import { DataFreshnessBadge } from "@/components/DataFreshnessBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
 import { MetricCard } from "@/components/MetricCard";
+import { StockDetailTabs } from "@/components/StockDetailTabs";
+import { StockQuoteHeader } from "@/components/StockQuoteHeader";
 import { ValuationMetricCard } from "@/components/ValuationMetricCard";
 import copy from "@/content/copy.ko.json";
 import { mapApiErrorCodeToDisplay } from "@/lib/errorMapping";
 import { formatSignedPercent, percentDirectionLabel, percentValueClassName } from "@/lib/formatPercent";
+import { PRICE_EXPOSURE_ENABLED } from "@/lib/priceExposure";
 import { fetchStockMetrics } from "@/lib/stockMetrics";
+import { fetchStockPrices } from "@/lib/stockDetailApi";
 
 interface StockDetailPageProps {
   params: Promise<{ code: string }>;
@@ -24,7 +28,12 @@ interface StockDetailPageProps {
 export default async function StockDetailPage({ params, searchParams }: StockDetailPageProps) {
   const { code } = await params;
   const { date } = await searchParams;
-  const result = await fetchStockMetrics(code, date);
+  // 서버 호출은 2건만(첫 화면에 필요한 것). 실적·조건 체크는 탭을 열 때 브라우저가 호출한다.
+  // 시세 원값 비공개(DEC-048, 기본)면 일봉을 호출하지 않는다.
+  const [result, pricesResult] = await Promise.all([
+    fetchStockMetrics(code, date),
+    PRICE_EXPOSURE_ENABLED ? fetchStockPrices(code) : Promise.resolve(null),
+  ]);
 
   if (result.kind === "not_found") {
     notFound();
@@ -41,17 +50,52 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
   }
 
   const { data, freshness } = result;
-
+  const prices = pricesResult?.kind === "success" ? pricesResult.data.prices : [];
+  const latest = prices.length > 0 ? prices[prices.length - 1] : null;
   return (
-    <section>
-      <header className="stock-detail-header">
-        <h1 className="stock-detail-header__title">
-          {data.name} <span className="stock-detail-header__code">({data.stock_code})</span>
-        </h1>
-        <span className="market-badge">{data.market}</span>
-      </header>
+    <section className="stock-detail-page">
+      {latest ? (
+        <StockQuoteHeader
+          name={data.name}
+          stockCode={data.stock_code}
+          market={data.market}
+          close={latest.close}
+          change={latest.change}
+          changePct={latest.change_pct}
+          tradeDate={latest.trade_date}
+        />
+      ) : (
+        <header className="stock-detail-header">
+          <h1 className="stock-detail-header__title">
+            {data.name} <span className="stock-detail-header__code">({data.stock_code})</span>
+          </h1>
+          <span className="market-badge">{data.market}</span>
+        </header>
+      )}
+      {latest && (
+        <p className="stock-quote__basis">
+          <span className="market-badge">{data.market}</span> {data.stock_code} ·{" "}
+          {copy.stockDetail.priceBasis.replace("{date}", latest.trade_date)} ·{" "}
+          {copy.stockDetail.priceBasisNote}
+        </p>
+      )}
 
       <DataFreshnessBadge freshness={freshness} />
+
+      {!PRICE_EXPOSURE_ENABLED ? (
+        <>
+          <p className="stock-quote__basis">{copy.stockDetail.pricesHiddenNote}</p>
+          <StockDetailTabs stockCode={data.stock_code} stockName={data.name} prices={[]} showPrices={false} />
+        </>
+      ) : pricesResult?.kind === "success" && prices.length > 0 ? (
+        <StockDetailTabs stockCode={data.stock_code} stockName={data.name} prices={prices} />
+      ) : (
+        <p className="stock-tabs__pending">
+          {pricesResult?.kind === "success"
+            ? copy.stockDetail.pricesEmpty
+            : copy.stockDetail.pricesUnavailable}
+        </p>
+      )}
 
       <div className="metric-card-grid">
         <MetricCard

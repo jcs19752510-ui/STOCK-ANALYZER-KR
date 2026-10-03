@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ScreenerClient } from "@/components/ScreenerClient";
+import { ScreeningModeNav } from "@/components/ScreeningModeNav";
 
 export const metadata: Metadata = {
   title: "조건 스크리닝 | 국내주식 조건 스크리닝 정보 서비스",
@@ -13,5 +14,10 @@ export const metadata: Metadata = {
  * `metadata`를 export할 수 없기 때문에 이렇게 분리했다.
  */
 export default function ScreenerPage() {
-  return <ScreenerClient />;
+  return (
+    <>
+      <ScreeningModeNav current="manual" />
+      <ScreenerClient />
+    </>
+  );
 }

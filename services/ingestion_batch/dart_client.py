@@ -107,6 +107,65 @@ class CorpFinancialsRecord:
     equity: Decimal | None
 
 
+@dataclass(frozen=True)
+class AnnualEarningsRecord:
+    """연간 실적 1개 연도(DEC-041 실적 탭). 금액은 원(KRW). 찾지 못한 항목은 None(0이 아님)."""
+
+    fiscal_year: int
+    fs_div: str
+    revenue: Decimal | None
+    operating_income: Decimal | None
+    net_income: Decimal | None
+
+
+_REVENUE_ACCOUNT_IDS = ("ifrs-full_Revenue",)
+_OPERATING_INCOME_ACCOUNT_IDS = (
+    "dart_OperatingIncomeLoss",
+    "ifrs-full_ProfitLossFromOperatingActivities",
+)
+# 사업보고서 1건에 당기(thstrm)·전기(frmtrm)·전전기(bfefrmtrm) 3개 연도가 함께 담겨 있다.
+_ANNUAL_AMOUNT_FIELDS = (("thstrm_amount", 0), ("frmtrm_amount", 1), ("bfefrmtrm_amount", 2))
+
+
+def parse_annual_earnings(
+    items: list[dict], *, bsns_year: str, fs_div: str
+) -> list[AnnualEarningsRecord]:
+    """`fnlttSinglAcntAll`(사업보고서) 응답에서 최대 3개 연도의 매출·영업이익·순이익을 뽑는다.
+
+    손익 항목은 IS 또는 CIS에서만 찾는다(재무상태표의 같은 계정ID와 섞이지 않게). 세 값이 모두
+    없는 연도는 만들지 않는다. 금융회사처럼 표준 매출 계정이 없으면 매출은 None으로 남긴다.
+    """
+    records: list[AnnualEarningsRecord] = []
+    for field, back in _ANNUAL_AMOUNT_FIELDS:
+        revenue = _find_account_amount(
+            items, sj_div=_NET_INCOME_SJ_DIVS, account_ids=_REVENUE_ACCOUNT_IDS, amount_field=field
+        )
+        operating = _find_account_amount(
+            items,
+            sj_div=_NET_INCOME_SJ_DIVS,
+            account_ids=_OPERATING_INCOME_ACCOUNT_IDS,
+            amount_field=field,
+        )
+        net = _find_account_amount(
+            items,
+            sj_div=_NET_INCOME_SJ_DIVS,
+            account_ids=_NET_INCOME_ACCOUNT_IDS,
+            amount_field=field,
+        )
+        if revenue is None and operating is None and net is None:
+            continue
+        records.append(
+            AnnualEarningsRecord(
+                fiscal_year=int(bsns_year) - back,
+                fs_div=fs_div,
+                revenue=revenue,
+                operating_income=operating,
+                net_income=net,
+            )
+        )
+    return sorted(records, key=lambda r: r.fiscal_year)
+
+
 # sj_div(재무제표 구분)로 먼저 좁힌 뒤 이 순서대로 account_id를 찾는다.
 # 1순위: 지배기업 소유주지분 기준(비지배지분 제외). 2순위: 총계(개별 재무제표이거나
 # 완전자회사만 있어 지배지분 세부 계정이 없는 경우).
@@ -324,6 +383,24 @@ class DartClient:
             net_income=net_income,
             equity=equity,
         )
+
+    def fetch_annual_earnings(
+        self, corp_code: str, *, bsns_year: str, fs_div: str
+    ) -> list[AnnualEarningsRecord] | None:
+        """사업보고서(11011) 1건으로 최근 3개 연도 실적을 받는다. 제출 내역이 없으면 None."""
+        items = self._request_json_list(
+            "fnlttSinglAcntAll.json",
+            params={
+                "crtfc_key": self._api_key,
+                "corp_code": corp_code,
+                "bsns_year": bsns_year,
+                "reprt_code": "11011",
+                "fs_div": fs_div,
+            },
+        )
+        if items is None:
+            return None
+        return parse_annual_earnings(items, bsns_year=bsns_year, fs_div=fs_div)
 
     def _request_json(self, path: str, *, params: dict[str, str]) -> dict | None:
         content = self._request_bytes(path, params=params)
