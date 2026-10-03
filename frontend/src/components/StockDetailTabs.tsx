@@ -15,6 +15,7 @@ import { conditionTitle, evidenceText } from "@/lib/patternFormat";
 import { useLazyApi, type LazyState } from "@/lib/useLazyApi";
 import { formatEok } from "@/lib/formatEok";
 import { useIntradayPoll } from "@/lib/useIntradayPoll";
+import { setIntradayFlag } from "@/lib/viewBasis";
 import type {
   IntradayInvestorData,
   PatternCheckData,
@@ -93,6 +94,13 @@ export function StockDetailTabs({
     opened.check === true,
   );
   const baseId = useId();
+
+  // 로컬 모드에서 호가·체결 탭을 보는 동안은 위쪽 기준 안내를 증권사 시세 안내로 바꾼다(DEC-056).
+  const liveTab = localMode && (tab === "book" || tab === "ticks");
+  useEffect(() => {
+    setIntradayFlag("tab", liveTab);
+    return () => setIntradayFlag("tab", false);
+  }, [liveTab]);
 
   const selectTab = (id: TabId) => {
     setTab(id);

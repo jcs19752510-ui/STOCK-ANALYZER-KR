@@ -17,6 +17,7 @@ import {
   type Timeframe,
 } from "@/lib/chartIndicators";
 import { useIntradayPoll } from "@/lib/useIntradayPoll";
+import { setIntradayFlag } from "@/lib/viewBasis";
 import type { IntradayMinutesData, IntradayTicksData } from "@/lib/types";
 
 /**
@@ -162,6 +163,11 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
     intraPath,
     intra?.mode === "tick" ? 5000 : 10000,
   );
+  const intradayOn = localMode && intra !== null;
+  useEffect(() => {
+    setIntradayFlag("chart", intradayOn);
+    return () => setIntradayFlag("chart", false);
+  }, [intradayOn]);
   const intraCandles = useMemo<Candle[] | null>(() => {
     if (!intra || !poll.data) return null;
     if (intra.mode === "minute") {

@@ -1,0 +1,33 @@
+// DEC-056 점검: 장중 보기에서 기준 안내 문구 전환, PER/PBR 산정 불가 문구, 파비콘 404 없음.
+// 전제: features-oct3.mjs 와 같다(로컬 모드 켜짐).
+import { BASE, launch } from "./common.mjs";
+const b = await launch();
+const res = [];
+const rec = (n, ok, note = "") => { res.push(ok); console.log(`${ok ? "PASS" : "FAIL"}  ${n}  ${note}`); };
+const p = await (await b.newContext({ viewport: { width: 390, height: 900 } })).newPage();
+const bad = [];
+p.on("response", (r) => { if (r.status() >= 400 && !r.url().includes("/api/v1/local/")) bad.push(`${r.status()} ${r.url()}`); });
+await p.goto(BASE + "/stocks/T00001", { waitUntil: "networkidle" });
+const basis = () => p.$eval(".stock-quote__basis", (e) => e.textContent.replace(/\s+/g, " "));
+rec("기본: 일 단위 종가 기준 안내", /일 단위 종가 기준 시세이며 실시간 시세가 아닙니다/.test(await basis()));
+await p.getByRole("tab", { name: "호가", exact: true }).click();
+await p.waitForTimeout(500);
+rec("호가 탭: 내 증권사 시세 안내로 전환", /내 증권사 시세입니다.*일 단위 종가 기준입니다/.test(await basis()), (await basis()).slice(-70));
+await p.getByRole("tab", { name: "차트", exact: true }).click();
+await p.waitForTimeout(500);
+rec("차트 일봉: 원래 안내로 복귀", /일 단위 종가 기준 시세이며/.test(await basis()));
+await p.getByRole("button", { name: "분봉 간격 선택" }).click();
+await p.getByRole("menuitem", { name: "5분", exact: true }).click();
+await p.waitForTimeout(800);
+rec("분봉 선택: 증권사 시세 안내", /내 증권사 시세입니다/.test(await basis()));
+await p.getByRole("button", { name: "일", exact: true }).click();
+await p.waitForTimeout(500);
+rec("일 선택: 원래 안내로 복귀", /일 단위 종가 기준 시세이며/.test(await basis()));
+const val = await p.$$eval(".valuation-card__row dd", (e) => e.map((x) => x.textContent));
+const pbrRow = await p.$$eval(".valuation-card__row", (e) => e.map((x) => x.textContent.replace(/\s+/g, " ")));
+rec("PER/PBR 문구: 'PER'가 PBR 행에 반복되지 않고 적자 단정 없음", !pbrRow.some((t) => /PBR.*PER 산정/.test(t)) && !val.some((t) => t.includes("적자기업")), pbrRow.join(" | ").slice(0, 120));
+const fav = await p.evaluate(async () => { const l = document.querySelector('link[rel~="icon"]'); if (!l) return "no-link"; const r = await fetch(l.href); return `${r.status} ${l.getAttribute("href")}`; });
+rec("파비콘 링크와 응답 200", fav.startsWith("200"), fav);
+rec("404 응답 없음(로컬 API 제외)", bad.length === 0, bad.join(" | "));
+await b.close();
+process.exit(res.every(Boolean) ? 0 : 1);

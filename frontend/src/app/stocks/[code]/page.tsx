@@ -3,6 +3,7 @@ import { DataFreshnessBadge } from "@/components/DataFreshnessBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
 import { MetricCard } from "@/components/MetricCard";
+import { PriceBasisNote } from "@/components/PriceBasisNote";
 import { StockDetailTabs } from "@/components/StockDetailTabs";
 import { StockQuoteHeader } from "@/components/StockQuoteHeader";
 import { ValuationMetricCard } from "@/components/ValuationMetricCard";
@@ -76,7 +77,7 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
         <p className="stock-quote__basis">
           <span className="market-badge">{data.market}</span> {data.stock_code} ·{" "}
           {copy.stockDetail.priceBasis.replace("{date}", latest.trade_date)} ·{" "}
-          {copy.stockDetail.priceBasisNote}
+          <PriceBasisNote />
         </p>
       )}
 
