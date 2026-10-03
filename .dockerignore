@@ -1,0 +1,27 @@
+# Docker build context filter (keeps secrets and junk out of images)
+.git
+.github
+.env
+.env.*
+**/.env
+**/.env.*
+.local
+logs
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.ruff_cache
+.venv
+venv
+.harness-tmp
+docs
+tests
+TEST
+99.화면오류
+정찬욱주식현황요청_카톡
+frontend/node_modules
+frontend/.next
+frontend/out
+frontend/*.tsbuildinfo
+frontend/.env.local
+deploy/.env

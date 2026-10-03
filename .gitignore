@@ -34,3 +34,8 @@ frontend/.env.local
 
 # 개인 로컬 모드(증권사 앱키 토큰 캐시 등) — 로컬 전용, 커밋 금지
 .local/
+
+# 운영 서버 배포 설정(비밀번호·키 포함) — 절대 커밋 금지
+deploy/.env
+deploy/.current_tag
+deploy/.previous_tag

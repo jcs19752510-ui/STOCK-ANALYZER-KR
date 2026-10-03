@@ -1,0 +1,9 @@
+# Install:  sudo cp deploy/logrotate.stock-analyzer /etc/logrotate.d/stock-analyzer   (edit the path to your user)
+/home/ubuntu/stock-logs/*.log {
+    weekly
+    rotate 8
+    compress
+    missingok
+    notifempty
+    copytruncate
+}

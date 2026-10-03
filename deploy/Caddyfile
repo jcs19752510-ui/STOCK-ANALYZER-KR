@@ -1,0 +1,35 @@
+# Reverse proxy + automatic HTTPS (Let's Encrypt). Values come from deploy/.env via the compose file.
+{
+	email {$ACME_EMAIL}
+}
+
+{$SITE_HOST} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=15552000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# The service is read-only (GET). Reject anything large.
+	request_body {
+		max_size 1MB
+	}
+
+	# Only /api/* reaches the API. API docs (/docs, /openapi.json) are NOT exposed.
+	@api path /api/*
+	handle @api {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

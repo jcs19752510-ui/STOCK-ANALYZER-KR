@@ -1,0 +1,188 @@
+# Production stack for ONE Linux server (Oracle Cloud free VM).
+# Run every command from this deploy/ directory:   cd deploy && docker compose ...
+# Settings come from deploy/.env (create it with scripts/init-env.sh; never commit it).
+name: stock-analyzer
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: stock_admin
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?set in deploy/.env}
+      POSTGRES_DB: stock_screener
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C.UTF-8"
+      MIGRATOR_PASSWORD: ${MIGRATOR_PASSWORD:?set in deploy/.env}
+      BATCH_WORKER_PASSWORD: ${BATCH_WORKER_PASSWORD:?set in deploy/.env}
+      API_SERVICE_PASSWORD: ${API_SERVICE_PASSWORD:?set in deploy/.env}
+    command:
+      - postgres
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=2GB
+      - -c
+      - work_mem=16MB
+      - -c
+      - max_connections=60
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stock_admin -d stock_screener"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # No "ports:" on purpose: the database is reachable only from other containers.
+
+  api:
+    image: stock-analyzer-backend:${APP_TAG:-latest}
+    build:
+      context: ..
+      dockerfile: deploy/backend.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PUBLIC_API_DATABASE_URL: postgresql+psycopg://api_service:${API_SERVICE_PASSWORD}@db:5432/stock_screener
+      PUBLIC_API_CORS_ALLOWED_ORIGINS: https://${SITE_HOST:?set in deploy/.env}
+      PUBLIC_API_INTERNAL_TOKEN: ${PUBLIC_API_INTERNAL_TOKEN:?set in deploy/.env}
+      PUBLIC_API_HOST: 0.0.0.0
+      PUBLIC_API_PORT: "8000"
+      # Only the Caddy proxy (fixed IP below) may set X-Forwarded-For. See scripts/run_public_api.py.
+      PUBLIC_API_TRUSTED_PROXY_IPS: 172.28.0.10
+      PUBLIC_API_PRICE_EXPOSURE_ENABLED: ${PRICE_EXPOSURE_ENABLED:-false}
+      PATTERN_SCREEN_ENABLED: ${PATTERN_SCREEN_ENABLED:-true}
+      # Personal local mode (KIS) must stay OFF here: LOCAL_INTRADAY_ENABLED / KIS_APP_KEY / KIS_APP_SECRET are never passed.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=5).status == 200 else 1)"]
+      interval: 15s
+      timeout: 8s
+      retries: 6
+      start_period: 20s
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+  web:
+    image: stock-analyzer-frontend:${APP_TAG:-latest}
+    build:
+      context: ..
+      dockerfile: deploy/frontend.Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: https://${SITE_HOST:?set in deploy/.env}
+        NEXT_PUBLIC_PRICE_EXPOSURE_ENABLED: ${PRICE_EXPOSURE_ENABLED:-false}
+        NEXT_PUBLIC_PATTERN_SCREEN_ENABLED: ${PATTERN_SCREEN_ENABLED:-true}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PUBLIC_API_INTERNAL_TOKEN: ${PUBLIC_API_INTERNAL_TOKEN}
+      # One trusted proxy (Caddy) in front of the frontend.
+      FRONTEND_TRUSTED_PROXY_HOPS: "1"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 8s
+      retries: 6
+      start_period: 30s
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next/cache
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_HOST: ${SITE_HOST}
+      ACME_EMAIL: ${ACME_EMAIL:?set in deploy/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      default:
+        ipv4_address: 172.28.0.10
+        # Containers (the Next.js server) reach the site by its public name through Caddy
+        # without leaving the machine (avoids "hairpin" routing problems).
+        aliases:
+          - ${SITE_HOST}
+
+  # ---- one-off jobs (not started by "up"; run with: docker compose run --rm <name> ...) ----
+  migrate:
+    image: stock-analyzer-backend:${APP_TAG:-latest}
+    profiles: ["tools"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ALEMBIC_DATABASE_URL: postgresql+psycopg://migrator:${MIGRATOR_PASSWORD}@db:5432/stock_screener
+    command: ["python", "-m", "alembic", "upgrade", "head"]
+
+  batch:
+    image: stock-analyzer-backend:${APP_TAG:-latest}
+    profiles: ["tools"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      BATCH_DATABASE_URL: postgresql+psycopg://batch_worker:${BATCH_WORKER_PASSWORD}@db:5432/stock_screener
+      GOV_DATA_PORTAL_SERVICE_KEY: ${GOV_DATA_PORTAL_SERVICE_KEY:?set in deploy/.env}
+      DART_API_KEY: ${DART_API_KEY:?set in deploy/.env}
+      DATA_FRESHNESS_WEBHOOK_URL: ${DATA_FRESHNESS_WEBHOOK_URL:-}
+    command: ["python", "scripts/run_daily_batch.py"]
+
+  backup:
+    image: stock-analyzer-backup:${APP_TAG:-latest}
+    build:
+      context: ..
+      dockerfile: deploy/backup.Dockerfile
+    profiles: ["tools"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: stock_screener
+      PGUSER: migrator
+      PGPASSWORD: ${MIGRATOR_PASSWORD}
+      PGADMIN_USER: stock_admin
+      PGADMIN_PASSWORD: ${POSTGRES_ADMIN_PASSWORD}
+      AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:?set in deploy/.env}
+      R2_BUCKET: ${R2_BUCKET:?set in deploy/.env}
+      RCLONE_CONFIG_R2_TYPE: s3
+      RCLONE_CONFIG_R2_PROVIDER: Cloudflare
+      RCLONE_CONFIG_R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:?set in deploy/.env}
+      RCLONE_CONFIG_R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:?set in deploy/.env}
+      RCLONE_CONFIG_R2_ENDPOINT: ${R2_ENDPOINT:?set in deploy/.env}
+      RCLONE_CONFIG_R2_ACL: private
+      BACKUP_KEEP_DAILY_DAYS: ${BACKUP_KEEP_DAILY_DAYS:-14}
+      BACKUP_KEEP_WEEKLY_DAYS: ${BACKUP_KEEP_WEEKLY_DAYS:-60}
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

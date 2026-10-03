@@ -122,6 +122,11 @@ def test_fixture_series_match_design_intent():
 # ── D01·D03: 마이그레이션 가역성·구 행 보존 ──────────────────────────────────────
 def test_d01_d03_migration_is_reversible_and_preserves_legacy_rows():
     """독립 임시 DB에서 head → downgrade 0010 → (구 행 삽입) → upgrade head."""
+    try:
+        with temp_database():
+            pass
+    except TempDbUnavailable as exc:
+        pytest.skip(f"임시 DB를 만들 수 없어 건너뜀(통과로 세지 않음): {exc}")
     with temp_database() as tdb:
         mig = create_engine(TempDb.render(tdb.migrator_url))
 

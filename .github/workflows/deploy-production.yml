@@ -1,0 +1,90 @@
+# Production deployment: push to "release" -> automatic checks -> HUMAN APPROVAL -> deploy over SSH.
+#
+# The approval comes from the GitHub "production" environment (Settings > Environments > production >
+# Required reviewers). Without that setting the deploy job would NOT wait - set it up first (guide section 9).
+# Also required: repository variable DEPLOY_ENABLED=true (kill switch; unset = never deploys).
+# Required secrets (repository or environment secrets): DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS.
+# No third-party actions are used for the SSH step on purpose (fewer supply-chain risks).
+name: deploy-production
+
+on:
+  push:
+    branches: ["release"]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Backend lint and tests
+        run: |
+          pip install -r requirements-dev.txt
+          ruff check services shared scripts tests db
+          # Tests that need the local Docker PostgreSQL skip themselves here; they are run in the dev environment.
+          pytest -q
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Frontend checks and build
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_BASE_URL: https://example.invalid
+        run: |
+          npm ci
+          npx tsc --noEmit
+          npx eslint .
+          npm run lint:copy
+          node --experimental-strip-types --test scripts/*.mjs
+          npm run build
+
+      - name: Validate the production compose file
+        working-directory: deploy
+        run: |
+          cp .env.production.example /tmp/ci.env
+          sed -i 's/=FILL_ME/=x/; s/=CHANGE_ME/=x/' /tmp/ci.env
+          docker compose --env-file /tmp/ci.env config -q
+          bash -n scripts/*.sh db/init/01-roles.sh
+
+  deploy:
+    needs: checks
+    # Safe default: nothing is deployed until you set the repository variable DEPLOY_ENABLED=true (guide section 11).
+    if: github.ref == 'refs/heads/release' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 40
+    steps:
+      - name: Prepare SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Deploy on the server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+              "$DEPLOY_USER@$DEPLOY_HOST" 'bash "$HOME/stock-analyzer-kr/deploy/scripts/deploy.sh" release'

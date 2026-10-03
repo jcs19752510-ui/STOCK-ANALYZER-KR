@@ -1,5 +1,7 @@
 # 배포 전 사용자 확인 체크리스트 (2026-10-02)
 
+> **배포 방법(Oracle 무료 VM + R2 백업 + 승인형 자동 배포)은 `docs/ops/oracle-deploy-guide.md`** 를 따른다(DEC-060). 이 체크리스트의 A~D는 그 문서의 1번·13번과 함께 확인한다.
+
 개발 쪽에서 끝낸 일은 `docs/stock-detail/02-test-report.md`·`docs/ops/daily-batch-runbook.md` 참조.
 아래는 **사용자만 할 수 있는** 항목이다. 하나라도 미결이면 배포(12단계)를 진행하지 않는다.
 

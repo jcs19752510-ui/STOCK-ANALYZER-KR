@@ -1,0 +1,16 @@
+# Server crontab for the deploy user (install with:  crontab deploy/crontab.example  after editing the path).
+# Times are KST (the guide sets the server timezone to Asia/Seoul; CRON_TZ below is a second safeguard). flock prevents overlapping runs. Logs go to ~/stock-logs (rotate with deploy/logrotate.stock-analyzer).
+CRON_TZ=Asia/Seoul
+SHELL=/bin/bash
+D=/home/ubuntu/stock-analyzer-kr/deploy
+L=/home/ubuntu/stock-logs
+
+# Daily batch (same two times as the Windows scheduler; safe to run twice, catches up missed days)
+30 14 * * * flock -n /tmp/stock-batch.lock bash -c 'cd $D && docker compose --profile tools run --rm -T batch python scripts/run_daily_batch.py' >> $L/daily_batch.log 2>&1
+30 18 * * * flock -n /tmp/stock-batch.lock bash -c 'cd $D && docker compose --profile tools run --rm -T batch python scripts/run_daily_batch.py' >> $L/daily_batch.log 2>&1
+
+# Data freshness check (read-only, webhook alert when stale)
+10 9 * * * bash -c 'cd $D && docker compose --profile tools run --rm -T batch python scripts/check_data_freshness.py' >> $L/freshness.log 2>&1
+
+# Database backup to R2 (03:20 KST every day)
+20 3 * * * flock -n /tmp/stock-backup.lock bash -c 'cd $D && docker compose --profile tools run --rm -T backup' >> $L/backup.log 2>&1
