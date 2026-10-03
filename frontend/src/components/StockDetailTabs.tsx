@@ -353,7 +353,7 @@ function ExtraChecks({
   const flowFallback = flow.error ? copy.stockDetail.extraFlowError : copy.stockDetail.extraFlowLoading;
   return (
     <>
-      <h3 className="pattern-check__lead">{copy.stockDetail.extraHeading}</h3>
+      <p className="pattern-check__lead">{copy.stockDetail.extraHeading}</p>
       <dl className="pattern-list__conditions">
         <ExtraRow title={copy.stockDetail.extraEarnings} item={earningsItem} fallback={earningsFallback} />
         {localMode ? (
