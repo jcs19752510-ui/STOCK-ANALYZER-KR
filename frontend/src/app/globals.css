@@ -538,9 +538,13 @@ main {
 
   .screener-page__layout {
     display: grid;
-    grid-template-columns: 280px 1fr;
+    grid-template-columns: 280px minmax(0, 1fr); /* minmax(0,…): 넓은 표가 열을 밀어내지 않게 */
     gap: var(--space-8);
     align-items: start;
+  }
+
+  .screener-page__layout > * {
+    min-width: 0;
   }
 }
 
@@ -549,6 +553,7 @@ main {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  min-width: 0;
 }
 
 .condition-field__label {
@@ -561,10 +566,13 @@ main {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  min-width: 0;
 }
 
 .condition-field__input {
   flex: 1;
+  min-width: 0; /* 입력칸 기본 폭(약 170px)이 좁은 열을 밀어내 옆 영역과 겹치지 않게 한다 */
+  width: 100%;
   min-height: 44px;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-border-default);
@@ -609,6 +617,7 @@ main {
 
 .condition-field-group__row .condition-field {
   flex: 1;
+  min-width: 0;
 }
 
 /* `MarketFilterControl` — 세그먼트 버튼(스크리닝) */
@@ -1490,9 +1499,10 @@ main {
 
 .quote-band__price {
   display: flex;
+  flex-wrap: wrap; /* 아이콘이 3개(←·★·검색)가 된 320px에서 등락률이 밖으로 나가지 않게 줄바꿈 허용 */
   justify-content: center;
   align-items: baseline;
-  gap: 10px;
+  gap: 0 10px;
   margin: 2px 0 0;
   font-size: 20px;
   font-weight: 600;
