@@ -143,6 +143,15 @@ class DerivedMetricsDaily(Base):
             "pattern_metrics_status IN ('OK', 'INSUFFICIENT_HISTORY', 'SUSPECT_PRICE_JUMP')",
             name="ck_derived_metrics_daily_pattern_metrics_status",
         ),
+        # PER/PBR 산정 불가 사유(0014). NULL = 값이 있거나 사유 도입 이전 배치 행.
+        CheckConstraint(
+            "per_unavailable_reason IN ('LOSS', 'NO_DATA')",
+            name="ck_derived_metrics_daily_per_unavailable_reason",
+        ),
+        CheckConstraint(
+            "pbr_unavailable_reason IN ('LOSS', 'NO_DATA')",
+            name="ck_derived_metrics_daily_pbr_unavailable_reason",
+        ),
         {"schema": "public_serving"},
     )
 
@@ -178,6 +187,9 @@ class DerivedMetricsDaily(Base):
     volume_ratio_5_60: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
     recent_surge_flag: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     pattern_metrics_status: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    # PER/PBR 산정 불가 사유(0014): LOSS=분모(순이익/자본총계) 0 이하, NO_DATA=재무·시가총액 없음.
+    per_unavailable_reason: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    pbr_unavailable_reason: Mapped[str | None] = mapped_column(String(12), nullable=True)
     computed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

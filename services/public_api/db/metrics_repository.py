@@ -36,6 +36,8 @@ class DerivedMetricsRow:
     per_percentile: Decimal | None
     pbr_percentile: Decimal | None
     market_cap_percentile: Decimal | None
+    per_unavailable_reason: str | None = None
+    pbr_unavailable_reason: str | None = None
 
 
 class StockMetricsRepository(Protocol):
@@ -77,6 +79,8 @@ class SqlStockMetricsRepository:
             per_percentile=row.per_percentile,
             pbr_percentile=row.pbr_percentile,
             market_cap_percentile=row.market_cap_percentile,
+            per_unavailable_reason=row.per_unavailable_reason,
+            pbr_unavailable_reason=row.pbr_unavailable_reason,
         )
 
 

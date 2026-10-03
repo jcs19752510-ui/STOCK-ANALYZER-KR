@@ -51,4 +51,13 @@ raw_fundamentals_table = sa.Table(
     sa.Column("market_cap", sa.BigInteger),
 )
 
-__all__ = ["raw_fundamentals_table", "raw_ohlcv_table"]
+# PER/PBR 산정 불가 사유 판정용(적자 vs 데이터 없음). 읽기 전용 프로젝션.
+raw_corp_financials_table = sa.Table(
+    "raw_corp_financials",
+    _metadata,
+    sa.Column("stock_code", sa.String(6), primary_key=True),
+    sa.Column("net_income", sa.Numeric),
+    sa.Column("equity", sa.Numeric),
+)
+
+__all__ = ["raw_corp_financials_table", "raw_fundamentals_table", "raw_ohlcv_table"]

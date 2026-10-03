@@ -17,7 +17,11 @@ from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from services.derivation_batch.raw_models import raw_fundamentals_table, raw_ohlcv_table
+from services.derivation_batch.raw_models import (
+    raw_corp_financials_table,
+    raw_fundamentals_table,
+    raw_ohlcv_table,
+)
 from shared.db_models.public_serving import (
     CurrentPublishedBatch,
     DerivedMetricsDaily,
@@ -52,6 +56,12 @@ class FundamentalsRow:
     per: Decimal | None
     pbr: Decimal | None
     market_cap: int | None
+
+
+@dataclass(frozen=True)
+class CorpFinancialsRow:
+    net_income: Decimal | None
+    equity: Decimal | None
 
 
 def fetch_active_stocks(session: Session) -> list[ActiveStock]:
@@ -94,6 +104,19 @@ def fetch_fundamentals_map(session: Session, trade_date: date) -> dict[str, Fund
     }
 
 
+def fetch_corp_financials_map(session: Session) -> dict[str, CorpFinancialsRow]:
+    """DART 재무 원문(종목당 1행). PER/PBR이 비는 이유(적자 vs 데이터 없음)를 가르는 데만 쓴다."""
+    stmt = select(
+        raw_corp_financials_table.c.stock_code,
+        raw_corp_financials_table.c.net_income,
+        raw_corp_financials_table.c.equity,
+    )
+    return {
+        row.stock_code: CorpFinancialsRow(net_income=row.net_income, equity=row.equity)
+        for row in session.execute(stmt).all()
+    }
+
+
 @dataclass(frozen=True)
 class DerivedMetricsInput:
     stock_code: str
@@ -123,6 +146,8 @@ class DerivedMetricsInput:
     volume_ratio_5_60: Decimal | None = None
     recent_surge_flag: bool | None = None
     pattern_metrics_status: str | None = None
+    per_unavailable_reason: str | None = None
+    pbr_unavailable_reason: str | None = None
 
 
 def upsert_derived_metrics(
@@ -158,6 +183,8 @@ def upsert_derived_metrics(
             volume_ratio_5_60=row.volume_ratio_5_60,
             recent_surge_flag=row.recent_surge_flag,
             pattern_metrics_status=row.pattern_metrics_status,
+            per_unavailable_reason=row.per_unavailable_reason,
+            pbr_unavailable_reason=row.pbr_unavailable_reason,
             computed_at=computed_at,
             batch_run_id=batch_run_id,
         )
@@ -191,6 +218,8 @@ def upsert_derived_metrics(
                 "volume_ratio_5_60": stmt.excluded.volume_ratio_5_60,
                 "recent_surge_flag": stmt.excluded.recent_surge_flag,
                 "pattern_metrics_status": stmt.excluded.pattern_metrics_status,
+                "per_unavailable_reason": stmt.excluded.per_unavailable_reason,
+                "pbr_unavailable_reason": stmt.excluded.pbr_unavailable_reason,
                 "computed_at": stmt.excluded.computed_at,
                 "batch_run_id": stmt.excluded.batch_run_id,
             },

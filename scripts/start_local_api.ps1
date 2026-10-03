@@ -15,6 +15,7 @@ $envFile = Join-Path $repoRoot ".env"
 if (-not (Test-Path $envFile)) { Write-Host "[ERROR] .env not found: $envFile"; exit 1 }
 
 $keys = @(
+  "ALEMBIC_DATABASE_URL",
   "PUBLIC_API_DATABASE_URL",
   "PUBLIC_API_CORS_ALLOWED_ORIGINS",
   "PUBLIC_API_INTERNAL_TOKEN",
@@ -37,6 +38,15 @@ foreach ($line in (Get-Content $envFile -Encoding UTF8)) {
 }
 
 if (-not $env:PUBLIC_API_PORT) { $env:PUBLIC_API_PORT = "4001" }
+
+# Apply pending DB migrations first (idempotent). A new column that the API reads but the DB lacks makes the API fail.
+if ($env:ALEMBIC_DATABASE_URL) {
+  Write-Host "Applying DB migrations (alembic upgrade head) ..."
+  py -3.12 -m alembic upgrade head
+  if ($LASTEXITCODE -ne 0) { Write-Host "[ERROR] alembic upgrade head failed (exit $LASTEXITCODE). Fix this before using the API."; exit 1 }
+} else {
+  Write-Host "[WARN] ALEMBIC_DATABASE_URL is missing in .env: DB migrations were NOT applied."
+}
 
 Write-Host "Loaded from .env (values hidden):"
 foreach ($k in $keys) {

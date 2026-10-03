@@ -28,3 +28,7 @@ class StockMetricsData(BaseModel):
     per_percentile: float | None
     pbr_percentile: float | None
     market_cap_percentile: float | None
+    # PER/PBR이 null인 이유(DEC-057): LOSS=적자·자본잠식, NO_DATA=재무·시가총액 없음,
+    # null=알 수 없음(이전 배치 행) 또는 값이 있음.
+    per_unavailable_reason: str | None = None
+    pbr_unavailable_reason: str | None = None

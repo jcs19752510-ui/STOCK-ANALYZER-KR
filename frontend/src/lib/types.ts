@@ -31,6 +31,9 @@ export interface StockMetricsData {
   per_percentile: number | null;
   pbr_percentile: number | null;
   market_cap_percentile: number | null;
+  /** PER/PBR이 null인 이유: LOSS=적자·자본잠식, NO_DATA=재무 데이터 없음, null/없음=알 수 없음(DEC-057) */
+  per_unavailable_reason?: "LOSS" | "NO_DATA" | null;
+  pbr_unavailable_reason?: "LOSS" | "NO_DATA" | null;
 }
 
 /**

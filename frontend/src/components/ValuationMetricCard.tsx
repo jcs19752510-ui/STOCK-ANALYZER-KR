@@ -18,10 +18,18 @@ interface ValuationMetricCardProps {
   perPercentile: number | null;
   pbrPercentile: number | null;
   marketCapPercentile: number | null;
+  perReason?: "LOSS" | "NO_DATA" | null;
+  pbrReason?: "LOSS" | "NO_DATA" | null;
 }
 
-function formatPercentileOrUnavailable(value: number | null): string {
+function formatPercentileOrUnavailable(
+  value: number | null,
+  reason?: "LOSS" | "NO_DATA" | null,
+): string {
   if (value === null) {
+    // 사유를 알 때만 구체적으로, 모르면(이전 배치 행) 원인을 단정하지 않는 문구(DEC-056, DEC-057)
+    if (reason === "LOSS") return copy.stockDetail.valuationUnavailableLoss;
+    if (reason === "NO_DATA") return copy.stockDetail.valuationUnavailableNoData;
     return copy.stockDetail.valuationUnavailableText;
   }
   return `${copy.stockDetail.percentileUpPrefix} ${value}%`;
@@ -31,6 +39,8 @@ export function ValuationMetricCard({
   perPercentile,
   pbrPercentile,
   marketCapPercentile,
+  perReason,
+  pbrReason,
 }: ValuationMetricCardProps) {
   return (
     <div className="metric-card">
@@ -38,11 +48,11 @@ export function ValuationMetricCard({
       <dl className="valuation-card__list">
         <div className="valuation-card__row">
           <dt>{copy.stockDetail.perLabel}</dt>
-          <dd>{formatPercentileOrUnavailable(perPercentile)}</dd>
+          <dd>{formatPercentileOrUnavailable(perPercentile, perReason)}</dd>
         </div>
         <div className="valuation-card__row">
           <dt>{copy.stockDetail.pbrLabel}</dt>
-          <dd>{formatPercentileOrUnavailable(pbrPercentile)}</dd>
+          <dd>{formatPercentileOrUnavailable(pbrPercentile, pbrReason)}</dd>
         </div>
         <div className="valuation-card__row">
           <dt>{copy.stockDetail.marketCapLabel}</dt>

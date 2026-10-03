@@ -134,6 +134,8 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
           perPercentile={data.per_percentile}
           pbrPercentile={data.pbr_percentile}
           marketCapPercentile={data.market_cap_percentile}
+          perReason={data.per_unavailable_reason}
+          pbrReason={data.pbr_unavailable_reason}
         />
       </div>
     </section>

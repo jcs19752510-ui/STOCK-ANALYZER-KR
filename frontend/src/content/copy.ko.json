@@ -112,6 +112,8 @@
     "marketCapLabel": "시가총액 백분위",
     "valuationHelper": "PER·PBR은 낮을수록, 시가총액은 클수록 상위 %가 낮게 표시됩니다",
     "valuationUnavailableText": "산정 불가(적자이거나 재무 데이터 없음)",
+    "valuationUnavailableLoss": "산정 불가(적자·자본잠식)",
+    "valuationUnavailableNoData": "산정 불가(재무 데이터 없음)",
     "missingDataText": "데이터 부족 (상장 20영업일 미만)",
     "notFoundHeading": "요청하신 종목 정보를 찾을 수 없습니다",
     "backToSearchCta": "종목 검색으로 돌아가기",

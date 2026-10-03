@@ -51,11 +51,13 @@ from services.derivation_batch.core.config import ConfigError, get_settings  # n
 from services.derivation_batch.repository import (  # noqa: E402
     VOLUME_BASELINE_WINDOW,
     ActiveStock,
+    CorpFinancialsRow,
     DerivedMetricsInput,
     FundamentalsRow,
     MarketSummaryUpsertInput,
     OhlcvPoint,
     fetch_active_stocks,
+    fetch_corp_financials_map,
     fetch_fundamentals_map,
     fetch_ohlcv_window,
     fetch_sector_map,
@@ -120,6 +122,23 @@ class StockDayMetrics:
     volume_ratio_5_60: Decimal | None = None
     recent_surge_flag: bool | None = None
     pattern_metrics_status: str | None = None
+    per_unavailable_reason: str | None = None
+    pbr_unavailable_reason: str | None = None
+
+
+def valuation_unavailable_reason(
+    value: Decimal | None, denominator: Decimal | None
+) -> str | None:
+    """PER/PBR 값이 없을 때만 사유를 돌려준다.
+
+    분모(당기순이익/자본총계)가 있고 0 이하면 `LOSS`(적자·자본잠식),
+    그 밖(재무 원문 없음·시가총액 없음)은 `NO_DATA`. 값이 있으면 None.
+    """
+    if value is not None:
+        return None
+    if denominator is not None and denominator <= 0:
+        return "LOSS"
+    return "NO_DATA"
 
 
 def compute_stock_day_metrics(
@@ -128,6 +147,7 @@ def compute_stock_day_metrics(
     fundamentals: FundamentalsRow | None,
     *,
     target_date: date,
+    corp_financials: CorpFinancialsRow | None = None,
 ) -> StockDayMetrics | None:
     """`window`는 `target_date` 이하 최신순(내림차순) 원본 시세다.
 
@@ -180,6 +200,14 @@ def compute_stock_day_metrics(
         volume_ratio_5_60=pattern.volume_ratio_5_60,
         recent_surge_flag=pattern.recent_surge_flag,
         pattern_metrics_status=pattern.pattern_metrics_status,
+        per_unavailable_reason=valuation_unavailable_reason(
+            fundamentals.per if fundamentals else None,
+            corp_financials.net_income if corp_financials else None,
+        ),
+        pbr_unavailable_reason=valuation_unavailable_reason(
+            fundamentals.pbr if fundamentals else None,
+            corp_financials.equity if corp_financials else None,
+        ),
     )
 
 
@@ -236,6 +264,8 @@ def build_derivation_inputs(
             volume_ratio_5_60=r.volume_ratio_5_60,
             recent_surge_flag=r.recent_surge_flag,
             pattern_metrics_status=r.pattern_metrics_status,
+            per_unavailable_reason=r.per_unavailable_reason,
+            pbr_unavailable_reason=r.pbr_unavailable_reason,
         )
         for r in rows
     ]
@@ -353,6 +383,7 @@ def run_once(
         return "FAILED", target_date, error_summary
 
     fundamentals_map = fetch_fundamentals_map(session, target_date)
+    corp_financials_map = fetch_corp_financials_map(session)
 
     day_metrics: list[StockDayMetrics] = []
     for stock in active_stocks:
@@ -360,7 +391,11 @@ def run_once(
             session, stock.stock_code, market=DERIVATION_MARKET, upto_date=target_date
         )
         computed = compute_stock_day_metrics(
-            stock, window, fundamentals_map.get(stock.stock_code), target_date=target_date
+            stock,
+            window,
+            fundamentals_map.get(stock.stock_code),
+            target_date=target_date,
+            corp_financials=corp_financials_map.get(stock.stock_code),
         )
         if computed is not None:
             day_metrics.append(computed)

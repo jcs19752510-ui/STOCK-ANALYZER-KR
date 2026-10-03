@@ -117,6 +117,8 @@ def get_stock_metrics(
         per_percentile=_to_float(metrics.per_percentile if metrics else None),
         pbr_percentile=_to_float(metrics.pbr_percentile if metrics else None),
         market_cap_percentile=_to_float(metrics.market_cap_percentile if metrics else None),
+        per_unavailable_reason=metrics.per_unavailable_reason if metrics else None,
+        pbr_unavailable_reason=metrics.pbr_unavailable_reason if metrics else None,
     )
 
     return Envelope[StockMetricsData](
