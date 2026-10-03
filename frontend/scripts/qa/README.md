@@ -17,3 +17,6 @@ npm i playwright-core axe-core --no-audit --no-fund
 - theme.mjs    : 다크·forced-colors·200% 줌·reduced-motion 캡처
 - local.mjs    : 로컬 모드(NEXT_PUBLIC_LOCAL_INTRADAY_ENABLED=true 빌드) 화면
 - accuracy.mjs : 화면 값 ↔ API 값
+
+## 주의: API 요청 한도(429)
+공개 API는 IP당 분당 60회로 제한된다(`PUBLIC_API_RATE_LIMIT_PER_MINUTE`). QA 스크립트를 연달아 돌리면 한도를 넘어 429가 나고, 화면이 오류 상태가 되어 `관심종목에 추가` 버튼을 못 찾는 등 **간헐적 실패**가 생긴다(2026-10-03 확인: 실패 시 로그에 429). QA용 API는 `PUBLIC_API_RATE_LIMIT_PER_MINUTE=100000`으로 기동한다(운영에는 적용하지 않는다).
