@@ -1673,9 +1673,10 @@ main {
   cursor: pointer;
 }
 
-.chart-tools__btn:disabled {
-  color: #b6bcc5;
-  cursor: not-allowed;
+.chart-tools__btn:disabled,
+.chart-tools__btn--unavailable {
+  color: #8b929c; /* 비활성처럼 보이되 안내를 볼 수 있게 눌릴 수 있다(명암비 3:1 이상) */
+  cursor: help;
 }
 
 .chart-settings {

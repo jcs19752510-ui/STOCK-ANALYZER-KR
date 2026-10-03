@@ -153,6 +153,8 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
   const [panelOn, setPanelOn] = useState<Record<PanelId, boolean>>({ volume: true, macd: true });
   // 개인 로컬 모드가 꺼진 상태에서 분·틱을 눌렀을 때 이유를 보여 주는 안내(눌러도 무반응으로 보이지 않게).
   const [unavailableNotice, setUnavailableNotice] = useState<"minute" | "tick" | null>(null);
+  // 그리기 도구(✎)는 아직 제공하지 않는다. 눌렀을 때 무반응으로 보이지 않게 이유를 보여 준다.
+  const [drawNotice, setDrawNotice] = useState(false);
   const intraPath =
     localMode && intra && stockCode
       ? intra.mode === "minute"
@@ -366,10 +368,13 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
           </button>
           <button
             type="button"
-            className="chart-tools__btn"
-            disabled
+            className="chart-tools__btn chart-tools__btn--unavailable"
+            aria-disabled="true"
+            aria-controls="chart-draw-notice"
+            aria-expanded={drawNotice}
             aria-label={copy.stockDetail.drawDisabled}
             title={copy.stockDetail.drawDisabled}
+            onClick={() => setDrawNotice((v) => !v)}
           >
             <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
               <path
@@ -383,6 +388,12 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
           </button>
         </div>
       </div>
+
+      {drawNotice && (
+        <p id="chart-draw-notice" className="stock-chart__status stock-chart__notice" role="status">
+          {copy.stockDetail.drawUnavailableNotice}
+        </p>
+      )}
 
       {!localMode && unavailableNotice && (
         <p id="chart-intraday-notice" className="stock-chart__status stock-chart__notice" role="status">
