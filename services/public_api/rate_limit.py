@@ -37,6 +37,7 @@ from __future__ import annotations
 import hmac
 import ipaddress
 import os
+import re
 import time
 from collections.abc import Awaitable, Callable
 from datetime import datetime
@@ -64,6 +65,12 @@ DEFAULT_WINDOW_SECONDS = 60.0
 # 불가, DEF-SEC-03과 같은 fail-closed 원칙). 토큰 환경변수가 비어 있으면 기능 자체가 꺼진다.
 INTERNAL_TOKEN_HEADER = "x-internal-token"
 END_USER_IP_HEADER = "x-end-user-ip"
+# 로그인한 회원의 id(DEC-067). 웹 서버가 회원 대신 API를 호출하면 같은 서버 주소에서 모두
+# 오므로, 회원마다 호출 예산을 따로 센다. 내부 토큰이 유효할 때만 신뢰한다(스푸핑 불가).
+AUTH_USER_HEADER = "x-auth-user"
+_UUID_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
 # 토큰은 맞지만 최종 사용자 IP를 알 수 없는 내부 호출(프론트가 프록시 신뢰 설정을 안 한 경우)은
 # 방문자 전체가 공유하는 별도 버킷으로 받되 한도를 넉넉히 둔다(서비스 마비 방지, 완전 무제한 아님).
 INTERNAL_FALLBACK_KEY = "internal-fallback"
@@ -101,6 +108,7 @@ def _internal_token() -> str:
 def _resolve_client(request: Request, default_limit: int, internal_limit: int) -> tuple[str, int]:
     """(카운터 키, 한도)를 정한다.
 
+    - 유효한 내부 토큰 + 유효한 `X-Auth-User`(회원 id) → 그 회원을 키로 일반 한도(DEC-067).
     - 유효한 내부 토큰 + 유효한 `X-End-User-IP` → 그 IP를 키로 일반 한도(브라우저가 직접 호출한
       같은 방문자와 하나의 예산을 공유한다).
     - 유효한 내부 토큰 + IP 없음/형식 오류 → 내부 공용 버킷과 넉넉한 한도.
@@ -113,6 +121,9 @@ def _resolve_client(request: Request, default_limit: int, internal_limit: int) -
         provided.encode("utf-8"), expected.encode("utf-8")
     ):
         return peer, default_limit
+    raw_user = request.headers.get(AUTH_USER_HEADER, "").strip()
+    if _UUID_RE.fullmatch(raw_user):
+        return f"user:{raw_user.lower()}", default_limit
     raw_ip = request.headers.get(END_USER_IP_HEADER, "").strip()
     try:
         return str(ipaddress.ip_address(raw_ip)), default_limit

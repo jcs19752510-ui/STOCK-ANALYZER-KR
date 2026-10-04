@@ -6,7 +6,9 @@ DEF-SEC-02(09-security-audit.md §6, Medium)·DEF-FS-01/REQ-025(High) 대응.
 from __future__ import annotations
 
 import asyncio
+import hmac
 import logging
+import os
 from collections.abc import Awaitable, Callable
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -173,4 +175,34 @@ class PeerDiagnosticsMiddleware(BaseHTTPMiddleware):
                 request.headers.get("x-forwarded-for"),
                 request.url.path,
             )
+        return await call_next(request)
+
+
+class InternalTokenMiddleware(BaseHTTPMiddleware):
+    """내부 토큰 강제(DEC-067). 웹 서버(로그인 회원을 대행하는 서버)만 API를 쓰게 한다.
+
+    `/api/v1/live`(호스팅 헬스체크, DB 미사용)만 열어 두고, 그 외 모든 경로
+    (문서 `/docs`·`/openapi.json` 포함)는 `X-Internal-Token`이 `PUBLIC_API_INTERNAL_TOKEN`과
+    일치해야 한다. 틀리면 이유를 알려 주지 않고 같은 401만 돌려준다. 비교는 시간 차이로 값을
+    추측할 수 없게 `hmac.compare_digest`로 한다. 토큰이 비어 있으면 모두 거부한다(fail closed).
+    """
+
+    OPEN_PATHS = frozenset({"/api/v1/live"})
+
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        if request.url.path in self.OPEN_PATHS:
+            return await call_next(request)
+        expected = os.environ.get("PUBLIC_API_INTERNAL_TOKEN", "").strip()
+        provided = request.headers.get("x-internal-token", "")
+        if not expected or not provided or not hmac.compare_digest(
+            provided.encode("utf-8"), expected.encode("utf-8")
+        ):
+            envelope = Envelope(
+                meta=Meta(generated_at=datetime.now(KST)),
+                data=None,
+                error=ErrorDetail(code="AUTH_REQUIRED", message="인증이 필요합니다."),
+            )
+            return JSONResponse(status_code=401, content=envelope.model_dump(mode="json"))
         return await call_next(request)

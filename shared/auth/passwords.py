@@ -128,6 +128,12 @@ def hash_password(password: str, *, username: str | None = None) -> str:
     return _hasher.hash(password)
 
 
+def hash_password_unchecked(password: str) -> str:
+    """정책 검사 없이 해시한다. **이미 로그인에 성공한 비밀번호를 새 매개변수로 다시 해시할 때만** 쓴다(정책이 강화되기 전에 만든 비밀번호도
+    로그인은 되어야 하므로). 새 비밀번호를 받는 경로(`hash_password`)에는 쓰지 않는다."""
+    return _hasher.hash(password)
+
+
 def verify_password(stored_hash: str, password: str) -> bool:
     """맞으면 True. 틀림·형식 오류·과도하게 긴 입력은 모두 False(예외를 밖으로 내보내지 않는다)."""
     if len(password) > PASSWORD_MAX_LENGTH * 4:  # 비정상적으로 긴 입력은 해시 계산 자체를 하지 않는다

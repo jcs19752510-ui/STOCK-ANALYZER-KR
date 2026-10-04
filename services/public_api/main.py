@@ -17,6 +17,7 @@ from services.public_api.api import (
     calendar,
     earnings,
     health,
+    internal_auth,
     local_intraday,
     market_summary,
     metrics,
@@ -25,9 +26,15 @@ from services.public_api.api import (
     screen,
     stocks,
 )
-from services.public_api.core.config import get_cors_allowed_origins, get_request_timeout_seconds
+from services.public_api.core.config import (
+    get_cors_allowed_origins,
+    get_request_timeout_seconds,
+    internal_token_enforced,
+    validate_auth_config,
+)
 from services.public_api.errors import ApiError
 from services.public_api.middleware import (
+    InternalTokenMiddleware,
     PeerDiagnosticsMiddleware,
     RequestTimeoutMiddleware,
     SecurityHeadersMiddleware,
@@ -39,7 +46,19 @@ from services.public_api.schemas.envelope import Envelope, ErrorDetail, Meta
 KST = ZoneInfo("Asia/Seoul")
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Stock Screener Public API", version="0.1.0")
+# 로그인 기능(DEC-067): 강제 스위치가 켜지면 내부 토큰 없이는 헬스체크(/api/v1/live)만
+# 열리고 문서 경로도 사라진다.
+# 토큰이 약하면 여기서 기동을 거부한다(fail closed).
+validate_auth_config()
+_AUTH_ENFORCED = internal_token_enforced()
+
+app = FastAPI(
+    title="Stock Screener Public API",
+    version="0.1.0",
+    docs_url=None if _AUTH_ENFORCED else "/docs",
+    redoc_url=None if _AUTH_ENFORCED else "/redoc",
+    openapi_url=None if _AUTH_ENFORCED else "/openapi.json",
+)
 
 # 미들웨어 등록 순서(Starlette는 "나중에 add_middleware된 것이 가장 바깥쪽"
 # 이라 요청을 가장 먼저 받고 응답을 가장 나중에 처리한다 — 직접
@@ -75,6 +94,11 @@ app = FastAPI(title="Stock Screener Public API", version="0.1.0")
 app.add_middleware(UnhandledExceptionMiddleware)
 app.add_middleware(RequestTimeoutMiddleware, timeout_seconds=get_request_timeout_seconds())
 app.add_middleware(RateLimitMiddleware)
+# 내부 토큰 강제(DEC-067): 호출 한도 계산보다 바깥에 두어, 토큰 없는 요청은 한도 카운터를
+# 건드리지 않고 바로 401로 거부한다. 보안 헤더 미들웨어보다는 안쪽이라 401 응답에도
+# 보안 헤더가 붙는다.
+if _AUTH_ENFORCED:
+    app.add_middleware(InternalTokenMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 # 프록시 뒤 배포에서 신뢰할 프록시 대역을 확인하기 위한 임시 진단(기본 꺼짐, DEC-063).
 if os.environ.get("PUBLIC_API_LOG_PEER_IPS", "").strip().lower() in {"1", "true", "yes"}:
@@ -103,6 +127,9 @@ app.include_router(earnings.router, prefix="/api/v1")  # DEC-041 종목 상세 �
 app.include_router(market_summary.router, prefix="/api/v1")
 # 개인 로컬 모드 장중 시세(DEC-052): 기본 꺼짐, 허용 IP(기본 loopback)에서만 응답.
 app.include_router(local_intraday.router, prefix="/api/v1")
+# 로그인 내부 경로(DEC-067): 웹 서버 전용. 회원 DB 주소가 없으면 404로 꺼져 있고,
+# 스위치와 무관하게 항상 내부 토큰을 요구한다.
+app.include_router(internal_auth.router, prefix="/api/v1")
 
 
 def _error_envelope(status_code: int, code: str, message: str) -> JSONResponse:

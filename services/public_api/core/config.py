@@ -98,3 +98,43 @@ def get_request_timeout_seconds() -> float:
         minimum=1,
         maximum=60,
     )
+
+
+# --- 로그인(회원 인증, DEC-067) -----------------------------------------------------------------
+# 내부 토큰은 이제 호출 한도 구분용이 아니라 **출입문**이다.
+# 강제 스위치(`PUBLIC_API_REQUIRE_INTERNAL_TOKEN=true`)를 켜면 `/api/v1/live`(호스팅 헬스체크)를
+# 뺀 모든 경로가 이 토큰 없이는 거부되고, 문서 경로(/docs 등)도 사라진다.
+# 토큰이 비었거나 너무 짧으면 **기동을 거부한다**(약한 출입문을 조용히 허용하지 않는다).
+INTERNAL_TOKEN_MIN_LENGTH = 32
+_TRUE_VALUES = {"1", "true", "yes", "on"}
+
+
+def internal_token_enforced() -> bool:
+    return os.environ.get("PUBLIC_API_REQUIRE_INTERNAL_TOKEN", "").strip().lower() in _TRUE_VALUES
+
+
+def get_auth_database_url() -> str | None:
+    """회원 DB(`auth_service` 계정) 접속 주소. 없으면 로그인용 내부 경로는 404로 꺼진다."""
+    value = os.environ.get("PUBLIC_API_AUTH_DATABASE_URL", "").strip()
+    return value or None
+
+
+def validate_auth_config() -> None:
+    if not internal_token_enforced():
+        return
+    token = os.environ.get("PUBLIC_API_INTERNAL_TOKEN", "").strip()
+    if len(token) < INTERNAL_TOKEN_MIN_LENGTH:
+        raise ConfigError(
+            "PUBLIC_API_REQUIRE_INTERNAL_TOKEN이 켜져 있으나 PUBLIC_API_INTERNAL_TOKEN이 없거나 "
+            f"{INTERNAL_TOKEN_MIN_LENGTH}자보다 짧습니다. 긴 무작위 값을 설정하세요."
+        )
+
+
+def get_login_rate_limits() -> tuple[int, int]:
+    """(같은 접속 주소당 분당 로그인 시도 상한, 서버 전체 분당 상한).
+    비밀번호 해시 계산이 CPU를 쓰므로 둘 다 둔다."""
+    per_key = int(_env_number("PUBLIC_API_LOGIN_RATE_PER_MINUTE", 10, minimum=1, maximum=600))
+    global_limit = int(
+        _env_number("PUBLIC_API_LOGIN_GLOBAL_PER_MINUTE", 30, minimum=1, maximum=3000)
+    )
+    return per_key, global_limit
