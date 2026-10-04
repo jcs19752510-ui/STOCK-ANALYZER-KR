@@ -256,6 +256,8 @@ Playwright 항목 요약: 빠른 응답(재시도 없음·안내 없음, API 1�
 - 앞서 두 DB의 `market_summary_daily` 6행이 일치한 것과 모순되지 않는다(다른 테이블 `derived_metrics_daily`의 컬럼).
 - 확인 명령(사용자 실행, 읽기 전용): 두 DB의 최근 거래일별 전체 행 수와 PER·PBR 값이 있는 행 수를 비교한다.
   `SELECT trade_date, count(*) AS rows, count(per_percentile) AS per_n, count(pbr_percentile) AS pbr_n FROM public_serving.derived_metrics_daily GROUP BY trade_date ORDER BY trade_date DESC LIMIT 3;`
+- **확인 결과 1/2 — PC DB(사용자 명령 출력, [명령])**: `derived_metrics_daily` 최근 3거래일 — 2026-10-01: 전체 2,766행, PER 값 1,768, PBR 값 2,589 / 09-30: 2,765행, PER 535, PBR 693 / 09-29: 2,764행, PER 257, PBR 326. 즉 **PC DB에는 PER·PBR 값이 있다**(화면의 로컬 값과 일치). 거래일을 거슬러 갈수록 값이 적어 수집·보충이 진행 중인 모습이다(해석이며 수집 완료 여부는 사용자 확인 필요).
+- **확인 결과 2/2 — Neon: 미확인.** 같은 명령을 `$owner`로 실행했으나 새 터미널이라 `$owner`가 비어 있어 `role "root" does not exist`로 접속 실패했다(변수 소실, 시험 오류). 읽기 전용 계정 주소로 다시 요청했다.
 - 조치(결정 대기): PER·PBR 수집·가공이 끝난 시점에 새 덤프를 Neon에 다시 올린다. 이사를 두 번 하지 않도록 수집 완료 시점을 사용자에게 확인한다.
 
 ### 4-3. 이사 정확성에 대한 정정
