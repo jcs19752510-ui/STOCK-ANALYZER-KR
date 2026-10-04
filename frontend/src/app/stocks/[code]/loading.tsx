@@ -7,7 +7,8 @@ import { LoadingSkeleton } from "@/components/LoadingSkeleton";
  */
 export default function StockDetailLoading() {
   return (
-    <section aria-busy="true">
+    <section aria-busy="true" data-page-loading="true">
+      <h1 className="sr-only">내용을 불러오는 중</h1>
       <p className="sr-only" role="status">
         로딩 중입니다
       </p>

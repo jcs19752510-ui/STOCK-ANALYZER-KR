@@ -6,6 +6,13 @@
 
 export const WAKE_NOTICE_THRESHOLD_MS = 4500;
 
+/**
+ * 서버가 화면 데이터를 받아 오는 동안 보이는 `loading.tsx` 폴백에 붙이는 표시(DEC-065). 폴백은 React가 데이터가 올 때까지
+ * 되살리지(하이드레이션) 않으므로 폴백 안의 클라이언트 코드는 대기 중에 실행되지 않는다. 그래서 이미 되살아난 `ApiWakeNotice`
+ * (레이아웃에 있음)가 이 표시가 DOM에 4.5초 넘게 남아 있는지를 감시해 "깨우는 중" 안내를 띄운다.
+ */
+export const PAGE_LOADING_ATTR = "data-page-loading";
+
 /** fetch 대상이 우리 API인지 판단한다(서비스 밖 요청은 세지 않는다). */
 export function isApiRequest(input: string, apiBase: string | undefined): boolean {
   if (!apiBase) return false;

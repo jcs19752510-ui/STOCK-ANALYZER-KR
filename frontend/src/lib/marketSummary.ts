@@ -1,4 +1,5 @@
 import { serverApiHeaders } from "@/lib/serverApiHeaders";
+import { fetchWithColdStartRetry } from "@/lib/serverFetch";
 import type { DataFreshness, Envelope, MarketSummaryData } from "@/lib/types";
 
 /**
@@ -35,7 +36,7 @@ export async function fetchMarketSummary(date?: string): Promise<MarketSummaryRe
   try {
     // 배치 갱신 데이터라 캐시하지 않는다(§3-4 원칙 — 매 요청마다 서버가
     // 계산한 최신 신선도 값을 그대로 신뢰).
-    response = await fetch(url.toString(), {
+    response = await fetchWithColdStartRetry(url.toString(), {
       cache: "no-store",
       headers: await serverApiHeaders(),
     });
