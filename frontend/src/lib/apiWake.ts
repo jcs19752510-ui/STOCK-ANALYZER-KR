@@ -36,30 +36,35 @@ const defaultTimers: WakeTimers = {
 };
 
 /**
- * 진행 중인 요청을 세다가, 가장 오래된 요청이 임계값을 넘으면 `onChange(true)`, 모두 끝나면 `onChange(false)`.
+ * 진행 중인 요청을 세다가, 가장 오래된 요청이 임계값을 넘으면 `onChange(true, 그 요청의 시작 시각)`, 모두 끝나면 `onChange(false)`.
  * 같은 값으로는 다시 알리지 않는다.
  */
 export function createWakeTracker(
-  onChange: (visible: boolean) => void,
+  onChange: (visible: boolean, startedAt?: number) => void,
   thresholdMs: number = WAKE_NOTICE_THRESHOLD_MS,
   timers: WakeTimers = defaultTimers,
+  now: () => number = () => Date.now(),
 ) {
   let nextId = 0;
   const pending = new Map<number, unknown>();
+  const startedAtById = new Map<number, number>();
   const slow = new Set<number>();
   let visible = false;
 
   const publish = () => {
-    const now = slow.size > 0;
-    if (now !== visible) {
-      visible = now;
-      onChange(now);
+    const isSlow = slow.size > 0;
+    if (isSlow !== visible) {
+      visible = isSlow;
+      // 보이게 될 때는 가장 오래된 느린 요청의 시작 시각(요청 시각 표시용)을 함께 알린다.
+      const earliest = isSlow ? Math.min(...[...slow].map((id) => startedAtById.get(id) ?? now())) : undefined;
+      onChange(isSlow, earliest);
     }
   };
 
   return {
     begin(): () => void {
       const id = nextId++;
+      startedAtById.set(id, now());
       pending.set(id, timers.setTimeout(() => {
         if (pending.has(id)) {
           slow.add(id);
@@ -72,6 +77,7 @@ export function createWakeTracker(
         done = true;
         timers.clearTimeout(pending.get(id));
         pending.delete(id);
+        startedAtById.delete(id);
         slow.delete(id);
         publish();
       };
