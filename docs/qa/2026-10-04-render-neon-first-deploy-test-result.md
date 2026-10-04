@@ -243,7 +243,7 @@ Playwright 항목 요약: 빠른 응답(재시도 없음·안내 없음, API 1�
 | `ALEMBIC_DATABASE_URL`(마이그레이터 계정) | **아니오**(그 노트북에 DB를 새로 만들 때만 그 노트북 값으로) | 시작 때 마이그레이션을 실행한다. Neon 소유자 주소를 넣으면 **시작할 때마다 Neon 스키마를 건드린다** |
 | `BATCH_DATABASE_URL`, `GOV_DATA_PORTAL_SERVICE_KEY`, `DART_API_KEY` | **아니오** | 배치를 도는 한 대에만 필요. 두 대가 배치를 돌면 호출량·중복 적재 문제 |
 | `LOCAL_INTRADAY_ENABLED`, `KIS_APP_KEY`, `KIS_APP_SECRET` | 호가·체결을 그 노트북에서도 볼 때만 | 실전 계좌에 연동된 키. 증권사에서 키를 추가 발급할 수 있는지, 두 대가 같은 키를 쓸 때 토큰 재발급 제한과의 관계는 **확인하지 못했다** |
-| `frontend/.env.local` | 직접 새로 만들기 | `NEXT_PUBLIC_API_BASE_URL=http://localhost:4001`, `NEXT_PUBLIC_LOCAL_INTRADAY_ENABLED=true` 정도로 비밀값이 거의 없다 |
+| `frontend/.env.local` | **복사해도 됨**(사용자 질문 후속) | `NEXT_PUBLIC_*` 값은 빌드 때 브라우저 코드에 들어가는 설정이라 비밀이 아니다(`frontend/.env.example`: `NEXT_PUBLIC_` 접두어에 비밀을 넣지 말 것). 다만 ① `NEXT_PUBLIC_API_BASE_URL`이 `http://localhost:4001`이면 그 노트북에서 API도 돌릴 때만 맞고, 이 PC의 API를 쓰려면 이 PC의 사설 주소여야 한다(API의 CORS·`LOCAL_INTRADAY_ALLOWED_IPS`에 그 노트북을 허용해야 함, `docs/ops/user-action-guide.md`) ② 파일에 `PUBLIC_API_INTERNAL_TOKEN`이 있으면 이는 **비밀**(서버 전용)이며 그 노트북 API의 `.env` 값과 같아야 한다 ③ 값을 바꾼 뒤에는 프런트를 **재시작**해야 반영된다(빌드 때 확정) |
 
 - **옮기는 방법(권고)**: git·메신저·이메일·채팅으로 보내지 않는다(비밀값이 채팅에 노출된 이력이 이미 있다). USB 등으로 직접 옮기거나 새 노트북에서 직접 입력하고, 옮긴 뒤 임시 사본은 지운다. 새 노트북에서 `.env`가 git 추적 대상이 아님(`.gitignore`)을 확인한다.
 - 대안: 키를 PC 한 대에만 두고 다른 노트북에서는 그 PC에 접속하는 방식(F-9의 P2). 사용자 답변 대기.
