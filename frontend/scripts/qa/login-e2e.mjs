@@ -402,6 +402,61 @@ if (should("E")) {
   await ctx.close();
 }
 
+// ───────────────────────── G. 소유자 전용 투자자 수급(DEC-068)
+if (should("G")) {
+  const OWNER_PATH = "/api/v1/internal/owner/stocks/T00001/investor";
+  // 소유자(kim): 화면에 값이 보인다
+  const octx = await newCtx(1280);
+  const op = await octx.newPage();
+  await uiLogin(op, "kim", PW);
+  await op.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
+  await op.goto("/stocks/T00001");
+  await op.getByRole("tab", { name: "투자자" }).click();
+  await op.waitForSelector(".daily-table", { timeout: 15000 }).catch(() => {});
+  const otext = await op.locator('[role="tabpanel"]:not([hidden])').innerText().catch(() => "");
+  rec("G 소유자: 투자자 탭에 수집 값 표(▼1,234 / ▲4,321)", /4,321/.test(otext) && /1,234/.test(otext) && !/준비 중/.test(otext), otext.replace(/\s+/g, " ").slice(0, 120));
+  rec("G 소유자: 결측 값은 0이 아니라 '–'", /–/.test(otext));
+  rec("G 소유자: 최근 날짜가 위(2026-10-01 → 2026-09-30)", otext.indexOf("2026-10-01") !== -1 && otext.indexOf("2026-10-01") < otext.indexOf("2026-09-30"));
+  rec("G 소유자: 수집 안내 문구 표시", /소유자 계정에게만 보입니다/.test(otext));
+  let r = await octx.request.get(`${BASE}${OWNER_PATH}`);
+  const ob = await r.json();
+  rec("G 소유자 대행 호출: 200 + no-store + 2행", r.status() === 200 && /no-store/.test(r.headers()["cache-control"] ?? "") && ob.data.rows.length === 2, `${r.status()}`);
+  await octx.close();
+  // 일반 회원(park): 같은 화면은 '준비 중', 값 호출은 403
+  const pctx = await newCtx(1280);
+  const pp = await pctx.newPage();
+  await uiLogin(pp, "park", PW2);
+  await pp.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
+  await pp.goto("/stocks/T00001");
+  await pp.getByRole("tab", { name: "투자자" }).click();
+  await pp.waitForTimeout(800);
+  const ptext = await pp.locator('[role="tabpanel"]:not([hidden])').innerText().catch(() => "");
+  rec("G 일반 회원: 투자자 탭은 '준비 중', 값 없음", /준비 중/.test(ptext) && !/4,321/.test(ptext) && !/1,234/.test(ptext));
+  r = await pctx.request.get(`${BASE}${OWNER_PATH}`);
+  const pb = await r.text();
+  rec("G 일반 회원이 주소를 직접 호출: 403, 값 없음", r.status() === 403 && !/4321|1234|rows/.test(pb), `${r.status()}`);
+  await pctx.close();
+  // 비로그인: 401 / 쿠키 없는 API 직접 호출 거부
+  r = await fetch(`${BASE}${OWNER_PATH}`);
+  rec("G 비로그인 대행 호출: 401", r.status === 401, `${r.status}`);
+  r = await fetch(`${API}${OWNER_PATH}`);
+  rec("G API 직접 호출(토큰 없음): 401", r.status === 401, `${r.status}`);
+  r = await fetch(`${API}${OWNER_PATH}`, { headers: { "X-Internal-Token": TOKEN } });
+  rec("G API 직접 호출(토큰만, 아이디 없음): 403", r.status === 403, `${r.status}`);
+  r = await fetch(`${API}${OWNER_PATH}`, { headers: { "X-Internal-Token": TOKEN, "X-Auth-Username": "park" } });
+  rec("G API 직접 호출(다른 아이디): 403", r.status === 403, `${r.status}`);
+  r = await fetch(`${API}${OWNER_PATH}`, { headers: { "X-Internal-Token": TOKEN, "X-Auth-Username": "kim" } });
+  rec("G API 직접 호출(토큰+소유자 아이디): 200", r.status === 200, `${r.status}`);
+  // 브라우저가 보낸 가짜 헤더는 대행 경로가 무시한다
+  const fctx = await newCtx(1280);
+  const fp = await fctx.newPage();
+  await uiLogin(fp, "park", PW2);
+  await fp.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
+  r = await fctx.request.get(`${BASE}${OWNER_PATH}`, { headers: { "X-Auth-Username": "kim", "X-Internal-Token": TOKEN } });
+  rec("G 일반 회원이 소유자 아이디 헤더를 위조해도 403", r.status() === 403, `${r.status()}`);
+  await fctx.close();
+}
+
 // ───────────────────────── F. 로그인 시도 제한(API)
 if (should("F")) {
   const codes = [];

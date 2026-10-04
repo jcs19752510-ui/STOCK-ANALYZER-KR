@@ -32,6 +32,16 @@ export function sessionSecret(env: Env = process.env): string {
   return (env.SESSION_SECRET ?? "").trim();
 }
 
+/** 소유자(투자자 수급을 볼 수 있는 단 한 명)의 아이디. 비어 있으면 소유자 없음(기능 꺼짐). 서버 전용 환경변수. */
+export function ownerUsername(env: Env = process.env): string {
+  return (env.OWNER_USERNAME ?? "").trim().toLowerCase();
+}
+
+export function isOwnerUsername(username: string | null | undefined, env: Env = process.env): boolean {
+  const owner = ownerUsername(env);
+  return owner !== "" && (username ?? "").trim().toLowerCase() === owner;
+}
+
 /** 설정이 안전하지 않으면 사용자에게 보일 수 있는 설명(값은 포함하지 않음), 괜찮으면 null. */
 export function authConfigProblem(env: Env = process.env): string | null {
   if (!authEnabled(env)) return null;

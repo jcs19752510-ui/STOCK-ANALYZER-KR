@@ -4,6 +4,7 @@ import { useEffect, useId, useState, useSyncExternalStore } from "react";
 import type { KeyboardEvent } from "react";
 import { ConditionStatusBadge } from "@/components/ConditionStatusBadge";
 import { InvestorPanel } from "@/components/InvestorPanel";
+import { OwnerInvestorPanel } from "@/components/OwnerInvestorPanel";
 import { OrderBookPanel } from "@/components/OrderBookPanel";
 import { StockChart } from "@/components/StockChart";
 import { TickPanel } from "@/components/TickPanel";
@@ -65,6 +66,8 @@ interface StockDetailTabsProps {
   prices: StockPricePoint[];
   /** false면 시세 원값 탭(차트·일자별 시세)을 만들지 않는다(DEC-048). 기본 true. */
   showPrices?: boolean;
+  /** 소유자 계정으로 로그인했을 때만 true(서버가 판단). 공개 서버에서 투자자 탭에 수집 값을 보여 준다(DEC-068). */
+  isOwner?: boolean;
 }
 
 export function StockDetailTabs({
@@ -72,6 +75,7 @@ export function StockDetailTabs({
   stockName,
   prices,
   showPrices = true,
+  isOwner = false,
 }: StockDetailTabsProps) {
   // 브라우저 주소가 내 PC/사설망이고 스위치가 켜졌을 때만 true(서버 렌더·공개 도메인에서는 false).
   const localMode = useSyncExternalStore(noopSubscribe, localIntradayAvailable, () => false);
@@ -255,7 +259,11 @@ export function StockDetailTabs({
 
           {t.id === "investor" && tab === "investor" && localMode && <InvestorPanel stockCode={stockCode} />}
 
-          {t.id === "investor" && tab === "investor" && !localMode && (
+          {t.id === "investor" && tab === "investor" && !localMode && isOwner && (
+            <OwnerInvestorPanel stockCode={stockCode} />
+          )}
+
+          {t.id === "investor" && tab === "investor" && !localMode && !isOwner && (
             <div className="stock-tabs__pending">
               <h2 className="stock-tabs__pending-title">{copy.stockDetail.investorPendingTitle}</h2>
               <p>{copy.stockDetail.investorPendingBody}</p>

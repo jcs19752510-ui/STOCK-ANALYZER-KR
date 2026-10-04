@@ -26,7 +26,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 
-from sqlalchemy import create_engine  # noqa: E402
+from sqlalchemy import create_engine, text  # noqa: E402
 from sqlalchemy.engine import make_url  # noqa: E402
 
 from scripts import manage_users as mu  # noqa: E402
@@ -79,6 +79,7 @@ def main() -> int:
         "NEXT_PUBLIC_BROWSER_API_BASE_URL": "same-origin",
         "NEXT_PUBLIC_AUTH_ENABLED": "true",
         "FRONTEND_TRUSTED_PROXY_HOPS": "0",
+        "OWNER_USERNAME": "kim",  # 소유자 전용 투자자 수급(DEC-068)
     }
     procs: list[subprocess.Popen] = []
     code = 1
@@ -95,6 +96,11 @@ def main() -> int:
             for username, name, pw in users:
                 mu.add_user(admin, username, name, pw)
             mu.set_active(admin, "off", False)
+            with admin.begin() as conn:  # 소유자 전용 투자자 수급 시험 값(T00001)
+                conn.execute(text(
+                    "INSERT INTO public_serving.investor_flow_daily (stock_code, trade_date, personal_quantity, foreign_quantity, institution_quantity,"
+                    " personal_amount_million, foreign_amount_million, institution_amount_million) VALUES"
+                    " ('T00001', '2026-09-30', -1234, 567, 890, -100, 50, 60), ('T00001', '2026-10-01', 4321, NULL, -765, 400, NULL, -70)"))
             admin.dispose()
 
             api_url = make_url(os.environ["PUBLIC_API_DATABASE_URL"]).set(database=tdb.name)
@@ -108,6 +114,7 @@ def main() -> int:
                 "PUBLIC_API_HOST": "127.0.0.1",
                 "PUBLIC_API_PORT": str(API_PORT),
                 "PUBLIC_API_CORS_ALLOWED_ORIGINS": f"http://localhost:{WEB_PORT}",
+                "PUBLIC_API_OWNER_USERNAME": "kim",
                 "PUBLIC_API_LOGIN_RATE_PER_MINUTE": "40",
                 "PUBLIC_API_LOGIN_GLOBAL_PER_MINUTE": "120",
                 "PYTHONPATH": str(REPO),

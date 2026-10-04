@@ -56,6 +56,7 @@ export async function GET(request: Request) {
   const upstreamHeaders: Record<string, string> = {
     "X-Internal-Token": (process.env.PUBLIC_API_INTERNAL_TOKEN ?? "").trim(),
     "X-Auth-User": session.uid,
+    "X-Auth-Username": session.un, // 소유자 전용 경로가 API에서 한 번 더 확인한다(DEC-068)
     Accept: "application/json",
   };
   if (ip) upstreamHeaders["X-End-User-IP"] = ip;

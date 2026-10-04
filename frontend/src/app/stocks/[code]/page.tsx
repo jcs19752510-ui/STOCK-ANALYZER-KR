@@ -8,6 +8,7 @@ import { StockDetailTabs } from "@/components/StockDetailTabs";
 import { StockQuoteHeader } from "@/components/StockQuoteHeader";
 import { ValuationMetricCard } from "@/components/ValuationMetricCard";
 import copy from "@/content/copy.ko.json";
+import { isOwnerUsername } from "@/lib/auth/config";
 import { requireMember } from "@/lib/auth/current";
 import { mapApiErrorCodeToDisplay } from "@/lib/errorMapping";
 import { formatSignedPercent, percentDirectionLabel, percentValueClassName } from "@/lib/formatPercent";
@@ -30,7 +31,8 @@ interface StockDetailPageProps {
 export default async function StockDetailPage({ params, searchParams }: StockDetailPageProps) {
   const { code } = await params;
   const { date } = await searchParams;
-  await requireMember(date ? `/stocks/${code}?date=${date}` : `/stocks/${code}`); // 로그인 확인(프록시와 이중 방어)
+  const session = await requireMember(date ? `/stocks/${code}?date=${date}` : `/stocks/${code}`); // 로그인 확인(프록시와 이중 방어)
+  const isOwner = isOwnerUsername(session?.un); // 소유자 전용 투자자 수급(DEC-068). 서버(API)가 아이디를 다시 확인한다
   // 서버 호출은 2건만(첫 화면에 필요한 것). 실적·조건 체크는 탭을 열 때 브라우저가 호출한다.
   // 시세 원값 비공개(DEC-048, 기본)면 일봉을 호출하지 않는다.
   const [result, pricesResult] = await Promise.all([
@@ -88,10 +90,10 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
       {!PRICE_EXPOSURE_ENABLED ? (
         <>
           <p className="stock-quote__basis">{copy.stockDetail.pricesHiddenNote}</p>
-          <StockDetailTabs stockCode={data.stock_code} stockName={data.name} prices={[]} showPrices={false} />
+          <StockDetailTabs stockCode={data.stock_code} stockName={data.name} prices={[]} showPrices={false} isOwner={isOwner} />
         </>
       ) : pricesResult?.kind === "success" && prices.length > 0 ? (
-        <StockDetailTabs stockCode={data.stock_code} stockName={data.name} prices={prices} />
+        <StockDetailTabs stockCode={data.stock_code} stockName={data.name} prices={prices} isOwner={isOwner} />
       ) : (
         <p className="stock-tabs__pending">
           {pricesResult?.kind === "success"

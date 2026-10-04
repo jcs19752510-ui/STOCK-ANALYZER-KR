@@ -14,6 +14,8 @@ import {
   authConfigProblem,
   authEnabled,
   cookieSecure,
+  isOwnerUsername,
+  ownerUsername,
   sessionCookieName,
 } from "../src/lib/auth/config.ts";
 import { endUserIp } from "../src/lib/auth/endUserIp.ts";
@@ -196,6 +198,26 @@ test("isAllowedBffPath: 조회 화면에 필요한 경로만 허용", () => {
     "/api/v1/stocks/%2e%2e/internal", "/api/v1/stocks/005930/metrics%2f..", "/API/V1/screen",
   ]) assert.equal(isAllowedBffPath(p), false, p);
   assert.ok(MAX_QUERY_LENGTH > 0);
+});
+
+test("소유자 전용 경로: 정확한 형식만 대행 허용(그 밖의 internal 경로는 계속 막힘)", () => {
+  assert.equal(isAllowedBffPath("/api/v1/internal/owner/stocks/005930/investor"), true);
+  for (const p of [
+    "/api/v1/internal/owner/stocks/005930", "/api/v1/internal/owner/stocks/0059301/investor", "/api/v1/internal/owner/stocks/005930/investor/",
+    "/api/v1/internal/owner/stocks/../investor", "/api/v1/internal/owner", "/api/v1/internal/owner/members", "/api/v1/internal/auth/session-check",
+  ]) assert.equal(isAllowedBffPath(p), false, p);
+});
+
+test("isOwnerUsername: 설정이 없으면 아무도 소유자가 아니고, 대소문자·공백만 정규화", () => {
+  assert.equal(ownerUsername({}), "");
+  assert.equal(isOwnerUsername("kim", {}), false);
+  assert.equal(isOwnerUsername("", {}), false);
+  assert.equal(isOwnerUsername(undefined, { OWNER_USERNAME: "" }), false);
+  assert.equal(isOwnerUsername("", { OWNER_USERNAME: "   " }), false);
+  const env = { OWNER_USERNAME: " Kim " };
+  assert.equal(isOwnerUsername("kim", env), true);
+  assert.equal(isOwnerUsername(" KIM", env), true);
+  for (const other of ["kim2", "kimm", "ki", "park", null, undefined]) assert.equal(isOwnerUsername(other, env), false, String(other));
 });
 
 // ------------------------------------------------------------------ 방문자 IP

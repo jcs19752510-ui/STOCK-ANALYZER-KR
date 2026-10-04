@@ -30,6 +30,37 @@ function Cell({ qty, amount }: { qty: number | null; amount: number | null }) {
   );
 }
 
+/** 일별 순매수 표(개인 로컬 모드와 소유자 전용 화면이 함께 쓴다). 값이 없으면 안내 문구. */
+export function InvestorTable({ rows }: { rows: IntradayInvestorData["rows"] }) {
+  return rows.length === 0 ? (
+    <p className="stock-tabs__pending">{copy.stockDetail.investorEmpty}</p>
+  ) : (
+    <div className="daily-table-wrap" role="region" tabIndex={0} aria-label={copy.stockDetail.investorCaption}>
+      <table className="daily-table">
+        <caption className="sr-only">{copy.stockDetail.investorCaption}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{copy.stockDetail.investorDate}</th>
+            <th scope="col">{copy.stockDetail.investorPersonal}</th>
+            <th scope="col">{copy.stockDetail.investorForeign}</th>
+            <th scope="col">{copy.stockDetail.investorInstitution}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.date}>
+              <th scope="row">{r.date}</th>
+              <Cell qty={r.personal_quantity} amount={r.personal_amount_million} />
+              <Cell qty={r.foreign_quantity} amount={r.foreign_amount_million} />
+              <Cell qty={r.institution_quantity} amount={r.institution_amount_million} />
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function InvestorPanel({ stockCode }: { stockCode: string }) {
   const state = useIntradayPoll<IntradayInvestorData>(
     `/api/v1/local/stocks/${encodeURIComponent(stockCode)}/investor`,
@@ -50,33 +81,7 @@ export function InvestorPanel({ stockCode }: { stockCode: string }) {
     <div>
       <LocalModeNotice />
       {state.error && <p className="local-error">{state.error.message}</p>}
-      {data.rows.length === 0 ? (
-        <p className="stock-tabs__pending">{copy.stockDetail.investorEmpty}</p>
-      ) : (
-        <div className="daily-table-wrap" role="region" tabIndex={0} aria-label={copy.stockDetail.investorCaption}>
-          <table className="daily-table">
-            <caption className="sr-only">{copy.stockDetail.investorCaption}</caption>
-            <thead>
-              <tr>
-                <th scope="col">{copy.stockDetail.investorDate}</th>
-                <th scope="col">{copy.stockDetail.investorPersonal}</th>
-                <th scope="col">{copy.stockDetail.investorForeign}</th>
-                <th scope="col">{copy.stockDetail.investorInstitution}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.rows.map((r) => (
-                <tr key={r.date}>
-                  <th scope="row">{r.date}</th>
-                  <Cell qty={r.personal_quantity} amount={r.personal_amount_million} />
-                  <Cell qty={r.foreign_quantity} amount={r.foreign_amount_million} />
-                  <Cell qty={r.institution_quantity} amount={r.institution_amount_million} />
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <InvestorTable rows={data.rows} />
       <p className="stock-tabs__note">{copy.stockDetail.investorNetBuyHint}</p>
       <p className="stock-tabs__note">{copy.stockDetail.investorNote}</p>
     </div>

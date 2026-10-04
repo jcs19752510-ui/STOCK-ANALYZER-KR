@@ -240,6 +240,25 @@ class CorpEarnings(Base):
     )
 
 
+class InvestorFlowDaily(Base):
+    """종목별 일별 투자자 순매수(DEC-068, 0016). 소유자 PC가 적재, 소유자에게만 제공, 결측 NULL."""
+
+    __tablename__ = "investor_flow_daily"
+    __table_args__ = {"schema": "public_serving"}
+
+    stock_code: Mapped[str] = mapped_column(String(6), primary_key=True)
+    trade_date: Mapped[date] = mapped_column(Date, primary_key=True)
+    personal_quantity: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    foreign_quantity: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    institution_quantity: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    personal_amount_million: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    foreign_amount_million: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    institution_amount_million: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class CurrentPublishedBatch(Base):
     """"현재 서빙 중" 데이터 포인터(§3-2, §5-3 롤백/무결성). REQ-002/003/004 공용 인프라.
 
