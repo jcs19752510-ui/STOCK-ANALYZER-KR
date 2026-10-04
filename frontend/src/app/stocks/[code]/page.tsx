@@ -8,6 +8,7 @@ import { StockDetailTabs } from "@/components/StockDetailTabs";
 import { StockQuoteHeader } from "@/components/StockQuoteHeader";
 import { ValuationMetricCard } from "@/components/ValuationMetricCard";
 import copy from "@/content/copy.ko.json";
+import { requireMember } from "@/lib/auth/current";
 import { mapApiErrorCodeToDisplay } from "@/lib/errorMapping";
 import { formatSignedPercent, percentDirectionLabel, percentValueClassName } from "@/lib/formatPercent";
 import { PRICE_EXPOSURE_ENABLED } from "@/lib/priceExposure";
@@ -29,6 +30,7 @@ interface StockDetailPageProps {
 export default async function StockDetailPage({ params, searchParams }: StockDetailPageProps) {
   const { code } = await params;
   const { date } = await searchParams;
+  await requireMember(date ? `/stocks/${code}?date=${date}` : `/stocks/${code}`); // 로그인 확인(프록시와 이중 방어)
   // 서버 호출은 2건만(첫 화면에 필요한 것). 실적·조건 체크는 탭을 열 때 브라우저가 호출한다.
   // 시세 원값 비공개(DEC-048, 기본)면 일봉을 호출하지 않는다.
   const [result, pricesResult] = await Promise.all([

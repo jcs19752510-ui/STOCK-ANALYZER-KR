@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { pickClientIp } from "@/lib/clientIp";
+import { readSession } from "@/lib/auth/current";
 
 /**
  * 서버 컴포넌트가 Public API를 호출할 때 붙일 헤더(DEC-045, R1). 토큰·IP 헤더는 서버에서만 만들며 브라우저로 나가지 않는다.
@@ -18,5 +19,8 @@ export async function serverApiHeaders(): Promise<Record<string, string>> {
     const ip = pickClientIp((await headers()).get("x-forwarded-for"), hops);
     if (ip) result["X-End-User-IP"] = ip;
   }
+  // 로그인한 회원 id(DEC-067): API가 회원별로 호출 한도를 센다. 로그인을 끈 환경(로컬)에서는 쿠키를 읽지 않고 헤더도 붙이지 않는다.
+  const session = await readSession();
+  if (session) result["X-Auth-User"] = session.uid;
   return result;
 }

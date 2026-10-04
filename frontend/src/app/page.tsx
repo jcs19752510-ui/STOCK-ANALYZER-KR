@@ -5,6 +5,7 @@ import { ErrorState } from "@/components/ErrorState";
 import { SectorSummaryList } from "@/components/SectorSummaryList";
 import { StatSummaryGrid } from "@/components/StatSummaryGrid";
 import copy from "@/content/copy.ko.json";
+import { requireMember } from "@/lib/auth/current";
 import { mapApiErrorCodeToDisplay } from "@/lib/errorMapping";
 import { fetchMarketSummary } from "@/lib/marketSummary";
 
@@ -32,6 +33,7 @@ export const dynamic = "force-dynamic";
  * (§2-1 — v2까지의 "코스피/코스닥 각각 호출 후 프론트 합산" 방식은 폐기됨).
  */
 export default async function HomePage() {
+  await requireMember("/"); // 로그인을 켠 환경에서 로그인 확인(프록시와 이중 방어)
   const result = await fetchMarketSummary();
 
   if (result.kind === "error") {

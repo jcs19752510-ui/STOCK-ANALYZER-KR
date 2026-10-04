@@ -1,5 +1,6 @@
 "use client";
 
+import { browserApiBase } from "@/lib/apiBase";
 import { useEffect, useState } from "react";
 import type { Envelope } from "@/lib/types";
 
@@ -24,7 +25,7 @@ export function useLazyApi<T>(path: string, enabled: boolean): LazyState<T> {
     if (!enabled) return;
     const controller = new AbortController();
     (async () => {
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const baseUrl = browserApiBase();
       if (!baseUrl) {
         setState({ kind: "error" });
         return;

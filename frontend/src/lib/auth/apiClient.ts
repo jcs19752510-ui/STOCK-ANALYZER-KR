@@ -1,0 +1,121 @@
+import { fetchWithColdStartRetry } from "@/lib/serverFetch";
+
+/**
+ * 웹 서버가 API의 **내부 전용 경로**(로그인 확인·활성 확인·회원 목록)를 부르는 클라이언트(DEC-067). 서버에서만 실행되며 내부 토큰이 브라우저로 나가지 않는다.
+ * 로그인(POST)은 실패 횟수를 세므로 **재시도하지 않는다**(깨어나는 중이면 길게 기다린다). 활성 확인·회원 목록은 조회라 일시적 실패를 재시도한다.
+ */
+export interface MemberInfo {
+  uid: string;
+  username: string;
+  displayName: string;
+}
+
+export type LoginResult =
+  | { kind: "ok"; user: MemberInfo }
+  | { kind: "invalid" }
+  | { kind: "rate_limited" }
+  | { kind: "unavailable" };
+
+export type SessionCheckResult =
+  | { kind: "active"; user: Omit<MemberInfo, "uid"> }
+  | { kind: "inactive" }
+  | { kind: "unavailable" };
+
+export type MembersResult =
+  | { kind: "ok"; items: { username: string; displayName: string }[] }
+  | { kind: "unavailable" };
+
+const LOGIN_TIMEOUT_MS = 65_000;
+
+function apiBase(): string {
+  return (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
+}
+
+function internalHeaders(extra: Record<string, string> = {}): Record<string, string> {
+  return {
+    "X-Internal-Token": (process.env.PUBLIC_API_INTERNAL_TOKEN ?? "").trim(),
+    Accept: "application/json",
+    "Content-Type": "application/json",
+    ...extra,
+  };
+}
+
+async function readJson(response: Response): Promise<Record<string, unknown> | null> {
+  try {
+    const body: unknown = await response.json();
+    return typeof body === "object" && body !== null ? (body as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+function asString(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+export async function apiLogin(username: string, password: string, ip: string | null): Promise<LoginResult> {
+  try {
+    const response = await fetch(`${apiBase()}/api/v1/internal/auth/login`, {
+      method: "POST",
+      headers: internalHeaders(ip ? { "X-End-User-IP": ip } : {}),
+      body: JSON.stringify({ username, password }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(LOGIN_TIMEOUT_MS),
+    });
+    if (response.status === 401) return { kind: "invalid" };
+    if (response.status === 429) return { kind: "rate_limited" };
+    if (response.status !== 200) return { kind: "unavailable" };
+    const data = ((await readJson(response))?.data ?? null) as Record<string, unknown> | null;
+    const uid = asString(data?.user_id);
+    const name = asString(data?.username);
+    const display = asString(data?.display_name);
+    if (!uid || !name || !display) return { kind: "unavailable" };
+    return { kind: "ok", user: { uid, username: name, displayName: display } };
+  } catch {
+    return { kind: "unavailable" };
+  }
+}
+
+export async function apiSessionCheck(uid: string): Promise<SessionCheckResult> {
+  try {
+    const response = await fetchWithColdStartRetry(`${apiBase()}/api/v1/internal/auth/session-check`, {
+      method: "POST",
+      headers: internalHeaders({ "X-Auth-User": uid }),
+      body: JSON.stringify({ user_id: uid }),
+      cache: "no-store",
+    });
+    if (response.status !== 200) return { kind: "unavailable" };
+    const data = ((await readJson(response))?.data ?? null) as Record<string, unknown> | null;
+    if (data?.active === true) {
+      const username = asString(data.username);
+      const display = asString(data.display_name);
+      return username && display ? { kind: "active", user: { username, displayName: display } } : { kind: "unavailable" };
+    }
+    return data?.active === false ? { kind: "inactive" } : { kind: "unavailable" };
+  } catch {
+    return { kind: "unavailable" };
+  }
+}
+
+export async function apiMembers(uid: string): Promise<MembersResult> {
+  try {
+    const response = await fetchWithColdStartRetry(`${apiBase()}/api/v1/internal/members`, {
+      method: "GET",
+      headers: internalHeaders({ "X-Auth-User": uid }),
+      cache: "no-store",
+    });
+    if (response.status !== 200) return { kind: "unavailable" };
+    const items = ((await readJson(response))?.data as { items?: unknown } | null)?.items;
+    if (!Array.isArray(items)) return { kind: "unavailable" };
+    const rows: { username: string; displayName: string }[] = [];
+    for (const item of items) {
+      const r = item as Record<string, unknown>;
+      const username = asString(r?.username);
+      const display = asString(r?.display_name);
+      if (username && display) rows.push({ username, displayName: display });
+    }
+    return { kind: "ok", items: rows };
+  } catch {
+    return { kind: "unavailable" };
+  }
+}

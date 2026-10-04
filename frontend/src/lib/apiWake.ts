@@ -19,7 +19,11 @@ export function isApiRequest(input: string, apiBase: string | undefined): boolea
   try {
     const base = new URL(apiBase);
     const target = new URL(input, base);
-    return target.origin === base.origin && target.pathname.startsWith("/api/");
+    // `/auth/*`는 로그인 화면·상태 갱신 요청(DEC-067)이라 같은 대기 팝업을 쓴다.
+    return (
+      target.origin === base.origin &&
+      (target.pathname.startsWith("/api/") || target.pathname.startsWith("/auth/"))
+    );
   } catch {
     return false;
   }

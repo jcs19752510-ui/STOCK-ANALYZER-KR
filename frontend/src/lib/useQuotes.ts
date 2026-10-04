@@ -1,5 +1,6 @@
 "use client";
 
+import { browserApiBase } from "@/lib/apiBase";
 import { useEffect, useState } from "react";
 import { PRICE_EXPOSURE_ENABLED } from "@/lib/priceExposure";
 import type { Envelope, StockQuote } from "@/lib/types";
@@ -15,7 +16,7 @@ export function useQuotes(codes: readonly string[]): Record<string, StockQuote> 
   const key = codes.join(",");
 
   useEffect(() => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+    const baseUrl = browserApiBase();
     if (!PRICE_EXPOSURE_ENABLED || !baseUrl || key === "") return; // 시세 비공개(DEC-048)면 호출하지 않는다
     // // 코드가 없으면 요청하지 않는다(이전 값은 조회 키가 달라 쓰이지 않음)
     const controller = new AbortController();

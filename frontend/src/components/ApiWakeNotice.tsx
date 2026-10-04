@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import copy from "@/content/copy.ko.json";
+import { browserApiBase } from "@/lib/apiBase";
 import {
   createWakeTracker,
   installWakeTracking,
@@ -40,7 +41,7 @@ export function ApiWakeNotice() {
     const tracker = createWakeTracker((visible, startedAt) =>
       setRequestStart(visible ? (startedAt ?? Date.now()) : null),
     );
-    const restore = installWakeTracking(window, process.env.NEXT_PUBLIC_API_BASE_URL, tracker);
+    const restore = installWakeTracking(window, browserApiBase(), tracker);
     return () => {
       restore();
       setRequestStart(null);

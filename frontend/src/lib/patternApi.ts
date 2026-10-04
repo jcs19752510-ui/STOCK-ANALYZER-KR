@@ -1,3 +1,4 @@
+import { browserApiBase } from "@/lib/apiBase";
 import type { DataFreshness, Envelope, PatternConditionId, PatternScreenData } from "@/lib/types";
 
 /**
@@ -51,7 +52,7 @@ export function buildPatternSearchParams(query: PatternQuery): URLSearchParams {
 }
 
 export async function fetchPatternResults(query: PatternQuery): Promise<PatternApiResult> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const baseUrl = browserApiBase();
   if (!baseUrl) {
     return {
       kind: "error",

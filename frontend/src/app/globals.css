@@ -2581,3 +2581,152 @@ main {
   margin: 0;
   font-size: 13px;
 }
+
+/* ── 로그인·회원 목록(DEC-067) ─────────────────────────────────────────────────────────────── */
+.login-page {
+  max-width: 420px;
+  margin: var(--space-8) auto;
+}
+
+.login-page__title {
+  margin: 0 0 var(--space-3);
+  font-size: 24px;
+}
+
+.login-page__intro {
+  margin: 0 0 var(--space-6);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.login-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.login-form__field label {
+  font-weight: 600;
+}
+
+.login-form__field input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  background: var(--color-surface-bg);
+  color: var(--color-text-primary);
+  font-size: 16px; /* 모바일에서 입력칸을 눌렀을 때 화면이 확대되지 않도록 */
+}
+
+.login-form__field input:focus-visible,
+.login-form__submit:focus-visible,
+.member-menu__link:focus-visible,
+.member-menu__logout:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.login-form__message {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-semantic-error);
+  border-radius: 6px;
+  color: var(--color-semantic-error);
+  background: #fef2f2;
+  line-height: 1.5;
+}
+
+.login-form__submit {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: 6px;
+  background: var(--color-brand-primary);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.login-form__submit:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+.member-menu {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  font-size: 14px;
+}
+
+.member-menu__name {
+  font-weight: 600;
+}
+
+.member-menu__link,
+.member-menu__logout {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--color-brand-primary);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (max-width: 767px) {
+  .site-header__bar {
+    flex-wrap: wrap;
+  }
+}
+
+.members-page__title {
+  margin: 0 0 var(--space-3);
+}
+
+.members-page__intro {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-secondary);
+}
+
+.members-page__count {
+  margin: 0 0 var(--space-4);
+  font-weight: 600;
+}
+
+.members-page__table-wrap {
+  overflow-x: auto;
+}
+
+.members-table {
+  width: 100%;
+  max-width: 560px;
+  border-collapse: collapse;
+}
+
+.members-table th,
+.members-table td {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-surface-subtle);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.members-table th {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}

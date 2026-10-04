@@ -433,5 +433,37 @@
     "secondsUnit": "초",
     "reloadNote": "남은 시간이 00이 되면 화면을 새로고침합니다.",
     "autoCloseNote": "응답이 오면 이 창은 자동으로 닫힙니다."
+  },
+  "auth": {
+    "loginTitle": "로그인",
+    "loginIntro": "이 서비스는 관리자가 등록한 회원만 이용할 수 있습니다. 회원 가입 기능은 없습니다.",
+    "usernameLabel": "아이디",
+    "passwordLabel": "비밀번호",
+    "submit": "로그인",
+    "submitting": "확인 중입니다…",
+    "errorInvalid": "아이디 또는 비밀번호가 올바르지 않습니다. 여러 번 틀리면 잠시 로그인할 수 없습니다.",
+    "errorRateLimited": "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+    "errorUnavailable": "서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    "errorBadRequest": "입력한 내용을 확인해 주세요.",
+    "expiredNotice": "로그인이 만료되었습니다. 다시 로그인해 주세요.",
+    "renewTitle": "로그인 상태를 확인하는 중입니다",
+    "renewBody": "잠시만 기다려 주세요. 확인이 끝나면 보시던 화면으로 돌아갑니다.",
+    "renewFailed": "로그인 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    "renewRetry": "다시 시도",
+    "memberSuffix": "님",
+    "membersLink": "회원 목록",
+    "logout": "로그아웃",
+    "memberMenuLabel": "회원 메뉴"
+  },
+  "members": {
+    "pageTitle": "회원 목록",
+    "intro": "로그인할 수 있는 회원입니다. 아이디와 이름만 표시됩니다.",
+    "countLabel": "전체",
+    "countUnit": "명",
+    "tableCaption": "로그인 가능한 회원 목록",
+    "columnUsername": "아이디",
+    "columnName": "이름",
+    "empty": "등록된 회원이 없습니다.",
+    "unavailable": "회원 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
   }
 }

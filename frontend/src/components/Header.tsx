@@ -1,6 +1,7 @@
 import Link from "next/link";
 import copy from "@/content/copy.ko.json";
 import { GlobalNav } from "@/components/GlobalNav";
+import { MemberMenu } from "@/components/MemberMenu";
 
 /**
  * 04-ux-design.md §2-0/§4 — 헤더: 서비스명 워드마크(홈 링크 겸용) +
@@ -16,6 +17,7 @@ export function Header() {
           국내주식 조건 스크리닝 정보 서비스
         </Link>
         <GlobalNav />
+        <MemberMenu />
       </div>
     </header>
   );

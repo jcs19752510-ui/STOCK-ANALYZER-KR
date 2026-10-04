@@ -1,3 +1,4 @@
+import { browserApiBase } from "@/lib/apiBase";
 import type { Envelope, StockSearchItem } from "@/lib/types";
 
 /**
@@ -20,7 +21,7 @@ export async function fetchStockSearch(
   query: string,
   market: StockSearchMarket
 ): Promise<StockSearchResult> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const baseUrl = browserApiBase();
   if (!baseUrl) {
     return {
       kind: "error",

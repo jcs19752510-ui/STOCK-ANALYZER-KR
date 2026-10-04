@@ -1,3 +1,4 @@
+import { browserApiBase } from "@/lib/apiBase";
 import type { DataFreshness, Envelope, ScreenData } from "@/lib/types";
 
 /**
@@ -91,7 +92,7 @@ function buildSearchParams(query: ScreenQuery): URLSearchParams {
 }
 
 export async function fetchScreenResults(query: ScreenQuery): Promise<ScreenApiResult> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const baseUrl = browserApiBase();
   if (!baseUrl) {
     return {
       kind: "error",
