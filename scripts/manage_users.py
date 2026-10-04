@@ -134,6 +134,18 @@ def list_users(engine: Engine) -> list[dict]:
         return [dict(r) for r in rows]
 
 
+def purge_audit(engine: Engine, days: int) -> int:
+    """`days`일보다 오래된 로그인 기록을 지우고 지운 건수를 돌려준다(보존기간 수동 정리)."""
+    if days < 1:
+        raise UserError("--days는 1 이상이어야 합니다.")
+    with engine.begin() as conn:
+        result = conn.execute(
+            text("DELETE FROM auth.login_audit WHERE occurred_at < now() - make_interval(days => :d)"),
+            {"d": days},
+        )
+        return result.rowcount or 0
+
+
 def audit_rows(engine: Engine, limit: int) -> list[dict]:
     with engine.connect() as conn:
         rows = conn.execute(
@@ -201,6 +213,8 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("list", help="회원 목록")
     au = sub.add_parser("audit", help="최근 로그인 기록")
     au.add_argument("--limit", type=int, default=20)
+    pu = sub.add_parser("purge-audit", help="오래된 로그인 기록 삭제(기본 90일 보존)")
+    pu.add_argument("--days", type=int, default=90)
     sub.add_parser("check", help="계정 권한 점검")
     return p
 
@@ -241,6 +255,8 @@ def main(argv: list[str] | None = None, *, engine: Engine | None = None) -> int:
         elif args.cmd == "audit":
             for r in audit_rows(eng, max(1, min(args.limit, 500))):
                 print(f"{_fmt(r['occurred_at'])}  {_fmt(r['username_attempted']):<20}{r['result']:<9}{_fmt(r['client_ip'])}")
+        elif args.cmd == "purge-audit":
+            print(f"{args.days}일보다 오래된 기록 {purge_audit(eng, args.days)}건을 삭제했습니다.")
         elif args.cmd == "check":
             results = check_privileges(eng)
             for label, ok, note in results:

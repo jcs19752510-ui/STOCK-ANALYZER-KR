@@ -22,6 +22,10 @@ services:
         sync: false
       - key: PUBLIC_API_INTERNAL_TOKEN         # 웹 서비스와 같은 값(긴 무작위 문자열)
         sync: false
+      - key: PUBLIC_API_REQUIRE_INTERNAL_TOKEN # 로그인 도입(DEC-067): true면 웹 서버만 API 호출 가능. 되돌릴 때 false
+        sync: false
+      - key: PUBLIC_API_AUTH_DATABASE_URL      # postgresql+psycopg://auth_service:비번@(직접 접속 주소)/neondb?sslmode=require
+        sync: false
       - key: PUBLIC_API_TRUSTED_PROXY_IPS      # Render 프록시 대역(CIDR). 확인 전에는 비워 둔다 → 절차서 §7
         sync: false
       - key: PUBLIC_API_REQUIRE_TRUSTED_PROXY  # 확인 전 false(+LOG_PEER_IPS=1), 대역 입력 후 true
@@ -52,8 +56,16 @@ services:
     dockerfilePath: ./deploy/frontend.Dockerfile
     dockerContext: .
     autoDeployTrigger: "off"
-    healthCheckPath: /
+    healthCheckPath: /login            # 로그인 켜면 / 는 /login 으로 이동하므로 공개 페이지로 검사
     envVars:
+      - key: AUTH_REQUIRED              # 로그인 도입(DEC-067). true=로그인 필요. 되돌릴 때 false
+        sync: false
+      - key: SESSION_SECRET             # 세션 쿠키 서명키(32자 이상 무작위). 바꾸면 모두 로그아웃
+        sync: false
+      - key: NEXT_PUBLIC_AUTH_ENABLED   # 빌드 때 확정. AUTH_REQUIRED와 같은 값(true)
+        sync: false
+      - key: NEXT_PUBLIC_BROWSER_API_BASE_URL   # 로그인 켤 때 same-origin (브라우저는 웹 서버만 호출). 빌드 때 확정
+        sync: false
       - key: NEXT_PUBLIC_API_BASE_URL   # API 서비스 주소 예: https://stock-analyzer-api.onrender.com (빌드 때 코드에 들어간다)
         sync: false
       - key: PUBLIC_API_INTERNAL_TOKEN  # API 서비스와 같은 값

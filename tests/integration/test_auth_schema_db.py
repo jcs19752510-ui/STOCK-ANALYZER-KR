@@ -357,6 +357,17 @@ def test_cli_list_and_audit_never_show_hashes(db, cli):
     assert code == 0 and "FAIL" in out and "203.0.113.x" in out
 
 
+def test_cli_purge_audit_deletes_only_old_rows(db, cli):
+    _run(db.migrator_url, "INSERT INTO auth.login_audit (username_attempted, result, occurred_at) VALUES ('old', 'FAIL', now() - interval '91 days')")
+    _run(db.migrator_url, "INSERT INTO auth.login_audit (username_attempted, result, occurred_at) VALUES ('edge', 'FAIL', now() - interval '89 days')")
+    _run(db.migrator_url, "INSERT INTO auth.login_audit (username_attempted, result) VALUES ('new', 'SUCCESS')")
+    assert cli("purge-audit", "--days", "0")[0] == 1
+    code, out, _e = cli("purge-audit")
+    assert code == 0 and "1건" in out
+    code, out, _e = cli("audit", "--limit", "10")
+    assert "old" not in out and "edge" in out and "new" in out
+
+
 def test_cli_db_errors_do_not_leak_connection_strings(monkeypatch, capsys):
     bad = create_engine("postgresql+psycopg://user:SuperSecretPw@127.0.0.1:1/nodb", connect_args={"connect_timeout": 1})
     code = mu.main(["list"], engine=bad)
