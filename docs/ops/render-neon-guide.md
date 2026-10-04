@@ -26,7 +26,7 @@ GitHub PROD_SCH 푸시 ─▶ Actions: 백업 → DB 변경(마이그레이션) 
 ## 1. Neon 프로젝트 만들기
 
 1. https://neon.tech 가입(GitHub 계정으로 가능).
-2. **Create project** → 이름 `stock-analyzer`, **Postgres 버전 16**(백업 도구와 맞추기 위해), **리전: AWS Asia Pacific (Singapore)**. 한국에 가장 가까운 곳이며 Render 싱가포르와 같은 지역이라 빠릅니다.
+2. **Create project** → 이름 `stock-analyzer-kr`, **리전: AWS Asia Pacific (Singapore)**. 한국에 가장 가까운 곳이며 Render 싱가포르와 같은 지역이라 빠릅니다. 생성 화면에는 버전 선택이 없고 **Postgres 18**로 만들어집니다(2026-10-04 확인). 그래서 GitHub Actions 백업 도구도 18로 맞춰 두었습니다(`deploy/render/install-pg-client.sh`). ⚠ 18 서버로 `pg_dump`가 도는지는 첫 백업 실행에서 확인합니다. 또 18 도구로 뜬 백업은 **16 이하 `pg_restore`로는 열리지 않을 수 있으니**, VPS로 되돌릴 때는 복원 도구도 18을 쓰세요.
 3. 만들어지면 **Connection details**가 나옵니다. 주소가 두 종류입니다.
    - **직접(Direct) 주소**: 호스트에 `-pooler`가 **없음** → 우리는 이것만 씁니다(마이그레이션, 배치 잠금, 시간제한 옵션이 모두 이 주소에서 동작).
    - 풀러(Pooled) 주소: 호스트에 `-pooler`가 있음 → **쓰지 않습니다**. (스크립트가 풀러 주소를 넣으면 거부합니다.)

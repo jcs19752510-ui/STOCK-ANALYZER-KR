@@ -74,7 +74,8 @@ jobs:
         run: |
           pip install -r requirements.txt
           sudo apt-get update -qq
-          sudo apt-get install -y -qq age rclone postgresql-client-16
+          sudo apt-get install -y -qq age rclone
+          bash deploy/render/install-pg-client.sh   # Neon 서버(18)와 같은 버전의 pg_dump
 
       - name: Backup + migrate (Neon)
         if: steps.gate.outputs.ready == 'true'
