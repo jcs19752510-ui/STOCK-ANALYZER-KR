@@ -2727,6 +2727,7 @@ main {
 }
 
 .members-table th {
+  white-space: nowrap;
   color: var(--color-text-secondary);
   font-weight: 600;
 }

@@ -26,12 +26,12 @@
 - 로그인: 존재하지 않는 아이디와 틀린 비밀번호가 같은 응답·같은 처리(dummy_verify), 5회 실패 15분 잠금(배수 증가, 상한 24h), 원자적 UPDATE, 로그인 요청 한도, CSRF(Origin=Host) 검사, 열린 리다이렉트 차단.
 - 최소 권한: `auth_service`는 `app_users` SELECT + 지정 컬럼 UPDATE + `login_audit` INSERT만. 회원 목록에 해시 미노출, XSS 문자열은 이스케이프되어 표시.
 - 설정 오류(약한 시크릿·누락) 시 fail-closed 503.
-- 화면: `docs/qa/2026-10-05/login-360.png`, `login-1280.png`, `members-360.png`, `members-1280.png` (확인: 360px에서 아이디 열 줄바꿈 발생 — 가독성 경미, 아래 미해결).
+- 화면: `docs/qa/2026-10-05/login-360.png`, `login-1280.png`, `members-360.png`, `members-1280.png` (확인: 360px에서 머리글 줄바꿈은 nowrap으로 수정함(재촬영은 미수행)).
 
 ## 4. 미확인 / 미해결
 1. Render·Neon 실서버에서의 동작(무료 CPU의 argon2 소요 시간, `onrender.com` 쿠키, 깨우기 지연 중 로그인) — 적용 후 절차서 §4에서 확인.
 2. 다중 탭 동시 만료·갱신, 모바일 실기기, 접근성 도구(스크린리더) 실측 미수행(자동 점검 항목만 통과).
-3. members 360px 표: "아이디" 머리글이 두 줄로 꺾임(`아이/디`). 기능 영향 없음, 표시 개선 후보.
+3. members 360px 표 머리글 줄바꿈 → `white-space: nowrap` 적용(스크린샷 재촬영 미수행).
 4. 세션 즉시 무효화(서버 저장소) 없음 — 설계상 한계(절차서 §6).
 5. VPS 경로(`deploy/db/init/01-roles.sh`)에 `auth_service` 미반영.
 6. 선행 조건(내부 토큰·Neon 비밀번호 교체)은 사용자 수행 대기.
