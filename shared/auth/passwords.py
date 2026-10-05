@@ -1,7 +1,7 @@
 """회원 아이디·표시 이름·비밀번호 규칙과 argon2id 해시 (DEC-067, `docs/harness/login-feature-design.md` §3~§5).
 
 - 비밀번호 원문은 어디에도 저장·기록하지 않는다. 해시는 argon2id(OWASP 권장 계열).
-- 정책 기본값(사용자 승인): 최소 12자, 아이디와 동일 금지, 흔하고 약한 비밀번호 거부. 최대 128자(과도하게 긴 입력으로 서버를 느리게 하는 공격 방지).
+- 정책 기본값(사용자 승인): 최소 8자(사용자 변경 2026-10-05, 당초 12자), 아이디와 동일 금지, 흔하고 약한 비밀번호 거부. 최대 128자(과도하게 긴 입력으로 서버를 느리게 하는 공격 방지).
 - 존재하지 않는 아이디도 같은 시간이 걸리도록 더미 해시와 비교하는 `dummy_verify`를 제공한다(아이디 존재 여부 추측 방지).
 """
 
@@ -20,7 +20,7 @@ ARGON2_TIME_COST = 3
 ARGON2_MEMORY_COST_KIB = 47104
 ARGON2_PARALLELISM = 1
 
-PASSWORD_MIN_LENGTH = 12
+PASSWORD_MIN_LENGTH = 8  # 사용자 결정(2026-10-05): 12자 → 8자. 아이디 동일·흔한 비밀번호 금지 규칙은 그대로
 PASSWORD_MAX_LENGTH = 128
 DISPLAY_NAME_MAX_LENGTH = 40
 USERNAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]{2,31}$")

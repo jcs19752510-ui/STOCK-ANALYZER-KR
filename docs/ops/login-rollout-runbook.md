@@ -91,7 +91,7 @@
 ```powershell
 py -3.12 scripts/manage_users.py add jcs1973 --name "표시할 이름"
 ```
-- 비밀번호는 **숨김 입력창**에 직접 입력(두 번). **12자 이상**, 아이디와 달라야 하고 흔한 비밀번호는 거부된다. 채팅에 노출된 비밀번호는 쓰지 말 것.
+- 비밀번호는 **숨김 입력창**에 직접 입력(두 번). **8자 이상**, 아이디와 달라야 하고 흔한 비밀번호는 거부된다. 채팅에 노출된 비밀번호는 쓰지 말 것.
 - 다른 회원도 같은 방식으로 추가. 확인: `py -3.12 scripts/manage_users.py list`
 - 이후 관리: `set-password`(그 회원 전 기기 로그아웃), `disable`/`enable`, `unlock`, `delete`, `audit --limit 20`, `purge-audit --days 90`, `sessions`, `revoke-sessions <아이디>`(분실·탈취 대응 — 전 기기 즉시 취소), `purge-sessions --days 7`(월 1회).
 

@@ -50,7 +50,8 @@ def test_strong_password_passes():
 
 
 def test_length_boundaries():
-    assert pw.password_problems("Zq8!Zq8!Zq8") != []  # 11자
+    assert pw.password_problems("Zq8!Zq8") != []  # 7자
+    assert pw.password_problems("Zq8!Zq8x") == []  # 8자
     assert pw.password_problems("Zq8!Zq8!Zq8x") == []  # 12자
     assert pw.password_problems("Zq8!Xk2@" * 16) == []  # 128자
     assert any("128" in m for m in pw.password_problems("Zq8!Xk2@" * 16 + "x"))  # 129자
@@ -86,7 +87,7 @@ def test_policy_messages_never_contain_the_password():
 def test_validate_password_raises_policy_error_with_messages():
     with pytest.raises(pw.PolicyError) as exc:
         pw.validate_password("short")
-    assert exc.value.messages and "12자" in exc.value.messages[0]
+    assert exc.value.messages and "8자" in exc.value.messages[0]
 
 
 # ------------------------------------------------------------------ 해시
