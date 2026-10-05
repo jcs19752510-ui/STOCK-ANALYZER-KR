@@ -17,6 +17,7 @@ import {
   cookieSecure,
   sessionCookieName,
 } from "../src/lib/auth/config.ts";
+import { classifyLoginFailure } from "../src/lib/auth/loginFailure.ts";
 import { endUserIp } from "../src/lib/auth/endUserIp.ts";
 import { isSameOriginRequest } from "../src/lib/auth/origin.ts";
 import { SAVED_USERNAME_KEY, loadSavedUsername, persistUsername } from "../src/lib/auth/savedUsername.ts";
@@ -335,4 +336,18 @@ test("아이디 저장: 비밀번호를 저장하는 코드 경로가 없다(소
   assert.ok(!/setItem\([^)]*password/i.test(src));
   const form = readFileSync(new URL("../src/components/LoginForm.tsx", import.meta.url), "utf8");
   assert.ok(!/(localStorage|sessionStorage|document\.cookie)[^;\n]*password/i.test(form));
+});
+
+// ------------------------------------------------------------------ 로그인 실패 분류(내부 토큰 불일치를 비밀번호 오류로 오인하지 않는다)
+test("classifyLoginFailure: 401은 오류 코드가 INVALID_CREDENTIALS일 때만 비밀번호 오류", () => {
+  assert.equal(classifyLoginFailure(401, "INVALID_CREDENTIALS"), "invalid");
+  for (const code of ["AUTH_REQUIRED", undefined, null, "", "FEATURE_DISABLED", 5]) assert.equal(classifyLoginFailure(401, code), "unavailable", String(code)); // 토큰 불일치 등 서버 설정 오류
+});
+
+test("classifyLoginFailure: 승인 대기·사용 중지·시도 제한·그 밖의 오류", () => {
+  assert.equal(classifyLoginFailure(403, "PENDING_APPROVAL"), "pending");
+  assert.equal(classifyLoginFailure(403, "ACCOUNT_DISABLED"), "disabled");
+  assert.equal(classifyLoginFailure(403, "FORBIDDEN"), "unavailable");
+  assert.equal(classifyLoginFailure(429, "LOGIN_RATE_LIMITED"), "rate_limited");
+  for (const st of [400, 404, 500, 502, 503]) assert.equal(classifyLoginFailure(st, "INVALID_CREDENTIALS"), "unavailable", String(st));
 });

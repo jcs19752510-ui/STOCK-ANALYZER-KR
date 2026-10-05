@@ -1,3 +1,4 @@
+import { classifyLoginFailure } from "@/lib/auth/loginFailure";
 import { fetchWithColdStartRetry } from "@/lib/serverFetch";
 
 /**
@@ -69,15 +70,10 @@ export async function apiLogin(username: string, password: string, ip: string | 
       cache: "no-store",
       signal: AbortSignal.timeout(LOGIN_TIMEOUT_MS),
     });
-    if (response.status === 401) return { kind: "invalid" };
-    if (response.status === 403) {
+    if (response.status !== 200) {
       const code = ((await readJson(response))?.error as { code?: unknown } | null)?.code;
-      if (code === "PENDING_APPROVAL") return { kind: "pending" };
-      if (code === "ACCOUNT_DISABLED") return { kind: "disabled" };
-      return { kind: "unavailable" };
+      return { kind: classifyLoginFailure(response.status, code) };
     }
-    if (response.status === 429) return { kind: "rate_limited" };
-    if (response.status !== 200) return { kind: "unavailable" };
     const data = ((await readJson(response))?.data ?? null) as Record<string, unknown> | null;
     const uid = asString(data?.user_id);
     const name = asString(data?.username);
