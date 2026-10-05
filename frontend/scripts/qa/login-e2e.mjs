@@ -700,6 +700,83 @@ if (should("I")) {
   await c9.close();
 }
 
+// ───────────────────────── J. 모든 기기에서 로그아웃(DEC-071)
+if (should("J")) {
+  const decode = (c) => JSON.parse(Buffer.from(c.value.split(".")[0], "base64url").toString("utf8"));
+  const cookieOf = async (ctx) => (await ctx.cookies()).find((c) => c.name === COOKIE);
+  const staleOf = (payload) => sign({ ...payload, iat: payload.iat - 700, exp: payload.exp - 700, chk: nowS() - 600 });
+  const activeCount = (username) => Number(psql(`SELECT count(*) FROM auth.user_sessions s JOIN auth.app_users u USING (user_id) WHERE u.username='${username}' AND s.revoked_at IS NULL AND s.expires_at > now()`));
+  const login = async (username, pw, w = 1280) => {
+    const c = await newCtx(w); const pg = await c.newPage();
+    await pg.goto("/login"); await pg.fill("#login-username", username); await pg.fill("#login-password", pw); await pg.check("#login-keep");
+    await pg.click("button[type=submit]"); await pg.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
+    return { c, pg };
+  };
+  psql("UPDATE auth.user_sessions SET revoked_at = now() WHERE revoked_at IS NULL"); // 다른 구역 시험이 남긴 세션 정리
+  // 화면(360/1280): 메뉴에 두 버튼, 넘침·터치 크기·접근성
+  for (const w of [360, 1280]) {
+    const { c, pg } = await login("park", PW2, w);
+    await pg.locator(".member-menu").waitFor({ timeout: 10000 });
+    const names = await pg.locator(".member-menu button").allInnerTexts();
+    rec(`J ${w}px: 회원 메뉴에 '로그아웃'과 '모든 기기에서 로그아웃' 버튼`, names.includes("로그아웃") && names.includes("모든 기기에서 로그아웃"), names.join("|"));
+    const hs = await pg.evaluate(() => [...document.querySelectorAll(".member-menu button")].map((b) => Math.round(b.getBoundingClientRect().height)));
+    rec(`J ${w}px: 버튼 높이 44px 이상·가로 넘침 없음`, hs.every((h) => h >= 44) && !(await pg.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)), hs.join(","));
+    const axe = await runAxe(pg);
+    rec(`J ${w}px: axe 위반 없음`, axe.length === 0, axe.map((v) => v.id).join(","));
+    if (w === 360) await pg.screenshot({ path: `${OUT}/member-menu-360.png` });
+    await c.close();
+  }
+  psql("UPDATE auth.user_sessions SET revoked_at = now() WHERE revoked_at IS NULL");
+  // 확인창에서 취소하면 아무 일도 없다
+  const d1 = await login("park", PW2); const d2 = await login("park", PW2); const lee = await login("lee", PW2);
+  rec("J 준비: park 두 기기·lee 한 기기 로그인", activeCount("park") === 2 && activeCount("lee") === 1, `${activeCount("park")}/${activeCount("lee")}`);
+  let msg = "";
+  d1.pg.once("dialog", (d) => { msg = d.message(); d.dismiss(); });
+  await d1.pg.locator(".member-menu button", { hasText: "모든 기기에서 로그아웃" }).click();
+  await d1.pg.waitForTimeout(800);
+  rec("J 확인창 문구(모든 기기·30일 유지 해제 안내) + 취소하면 아무것도 바뀌지 않는다", /모든 기기/.test(msg) && /30일/.test(msg) && activeCount("park") === 2 && new URL(d1.pg.url()).pathname === "/", msg.slice(0, 40));
+  // 서버 취소 실패: 성공처럼 보이지 않고 로그인 유지 + 오류 안내 + 다시 시도 가능
+  await d1.pg.route("**/auth/logout-all", (route) => route.fulfill({ status: 503, contentType: "application/json", body: '{"ok":false,"code":"SERVICE_UNAVAILABLE"}' }));
+  d1.pg.once("dialog", (d) => d.accept());
+  await d1.pg.locator(".member-menu button", { hasText: "모든 기기에서 로그아웃" }).click();
+  const alertText = await d1.pg.locator(".member-menu__notice").waitFor({ timeout: 8000 }).then(() => d1.pg.locator(".member-menu__notice").innerText()).catch(() => "");
+  rec("J 서버 취소 실패(503): 오류 안내(role=alert)·로그인 유지·세션 그대로", /하지 못했습니다/.test(alertText) && /그대로 유지/.test(alertText) && new URL(d1.pg.url()).pathname === "/" && activeCount("park") === 2 && !!(await cookieOf(d1.c)), alertText.slice(0, 50));
+  rec("J 실패 뒤 버튼이 다시 활성화(재시도 가능)", await d1.pg.locator(".member-menu button", { hasText: "모든 기기에서 로그아웃" }).isEnabled());
+  await d1.pg.unroute("**/auth/logout-all");
+  // 실제 실행
+  const dp2 = decode(await cookieOf(d2.c)); const dl = decode(await cookieOf(lee.c));
+  d1.pg.once("dialog", (d) => d.accept());
+  await d1.pg.locator(".member-menu button", { hasText: "모든 기기에서 로그아웃" }).click();
+  await d1.pg.waitForURL((u) => u.pathname === "/login", { timeout: 20000 });
+  rec("J 실행: 이 기기는 로그인 화면으로, 쿠키 삭제", (await d1.c.cookies()).filter((c) => c.name === COOKIE && c.value).length === 0);
+  rec("J 실행: park의 모든 서버 세션 취소(0건 남음), lee는 그대로(1건)", activeCount("park") === 0 && activeCount("lee") === 1, `${activeCount("park")}/${activeCount("lee")}`);
+  await setSessionCookie(d2.c, staleOf(dp2));
+  rec("J 다른 기기(park)는 서버 확인(5분 주기)에서 거부(401)", (await d2.c.request.get(`${BASE}/api/v1/market-summary`)).status() === 401);
+  await setSessionCookie(lee.c, staleOf(dl));
+  rec("J 다른 회원(lee)의 세션은 영향 없음(200)", (await lee.c.request.get(`${BASE}/api/v1/market-summary`)).status() === 200);
+  // 다시 로그인하면 정상
+  const again = await login("park", PW2);
+  rec("J 취소 뒤 새로 로그인하면 정상 이용", activeCount("park") === 1 && (await again.c.request.get(`${BASE}/api/v1/market-summary`)).status() === 200);
+  // 엔드포인트 직접 호출 보호
+  const origin = new URL(BASE).origin;
+  const anon = await fetch(`${BASE}/auth/logout-all`, { method: "POST", headers: { Origin: origin } });
+  rec("J 로그인 없이 호출: 401", anon.status === 401, `${anon.status}`);
+  const cross = await again.c.request.post(`${BASE}/auth/logout-all`, { headers: { origin: "https://evil.example.com" } });
+  rec("J 다른 사이트에서 온 요청: 403이고 세션은 그대로(남이 몰래 전체 로그아웃시키지 못함)", cross.status() === 403 && activeCount("park") === 1, `${cross.status()}`);
+  const ok = await again.c.request.post(`${BASE}/auth/logout-all`, { headers: { origin } });
+  const okBody = await ok.json();
+  rec("J 정상 호출: 200·ok·revoked_count=1, 쿠키 삭제 응답", ok.status() === 200 && okBody.ok === true && okBody.revoked_count === 1 && /no-store/.test(ok.headers()["cache-control"] ?? ""), JSON.stringify(okBody));
+  // 이미 취소된 세션의 복사본으로는 호출할 수 없다
+  const revokedCopy = sign(payloadFor(uidOf("park"), "park", "박민수", { sid: realSid("park", true) }));
+  psql("UPDATE auth.user_sessions SET revoked_at = now() WHERE revoked_at IS NULL AND user_id = (SELECT user_id FROM auth.app_users WHERE username='park')");
+  const rc = await newCtx(1280);
+  await setSessionCookie(rc, revokedCopy);
+  const rr = await rc.request.post(`${BASE}/auth/logout-all`, { headers: { origin } });
+  rec("J 이미 취소된 세션 쿠키(5분 안의 복사본)로는 전체 로그아웃도 못 한다(401, 서버가 거부)", rr.status() === 401, `${rr.status()}`);
+  await rc.close();
+  for (const x of [d1, d2, lee, again]) await x.c.close();
+}
+
 // ───────────────────────── F. 로그인 시도 제한(API)
 if (should("F")) {
   const codes = [];

@@ -213,6 +213,28 @@ def revoke_session(session: Session, user_id: str, session_id: str) -> bool:
     return done is not None
 
 
+def revoke_all_sessions(session: Session, user_id: str, session_id: str) -> int | None:
+    """"모든 기기에서 로그아웃"(DEC-071): 이 회원의 유효한 세션을 전부 취소하고 취소한 건수를 돌려준다.
+    요청한 세션 자체가 이 회원의 살아 있는 세션일 때만 실행한다(이미 취소·만료된 쿠키로는 못 한다). 아니면 None."""
+    live = session.execute(
+        text(
+            "SELECT 1 FROM auth.user_sessions s JOIN auth.app_users u ON u.user_id = s.user_id "
+            "WHERE s.session_id = CAST(:sid AS uuid) AND s.user_id = CAST(:uid AS uuid) "
+            "AND s.revoked_at IS NULL AND s.expires_at > now() AND u.is_active"
+        ),
+        {"uid": user_id, "sid": session_id},
+    ).first()
+    if live is None:
+        session.rollback()
+        return None
+    result = session.execute(
+        text("UPDATE auth.user_sessions SET revoked_at = now() WHERE user_id = CAST(:uid AS uuid) AND revoked_at IS NULL"),
+        {"uid": user_id},
+    )
+    session.commit()
+    return result.rowcount or 0
+
+
 def list_active_members(session: Session, limit: int = 500) -> list[dict[str, str]]:
     """회원 목록: 활성 회원의 아이디·이름만(비밀번호 해시·접속 시각·상태 등은 읽지도 않는다)."""
     rows = (

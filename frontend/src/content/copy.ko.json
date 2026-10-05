@@ -459,6 +459,11 @@
     "memberSuffix": "님",
     "membersLink": "회원 목록",
     "logout": "로그아웃",
+    "logoutAll": "모든 기기에서 로그아웃",
+    "logoutAllBusy": "처리 중…",
+    "logoutAllConfirm": "이 계정으로 로그인된 모든 기기(이 기기 포함)에서 로그아웃합니다. 30일 로그인 유지도 모두 해제됩니다. 계속할까요?",
+    "logoutAllFailed": "모든 기기에서 로그아웃하지 못했습니다. 로그인은 그대로 유지됩니다. 잠시 후 다시 시도해 주세요.",
+    "logoutAllInvalid": "로그인이 이미 해제되었거나 만료되었습니다. 다시 로그인한 뒤 시도해 주세요.",
     "memberMenuLabel": "회원 메뉴"
   },
   "members": {

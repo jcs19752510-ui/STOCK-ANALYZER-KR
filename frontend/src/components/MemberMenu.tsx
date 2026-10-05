@@ -13,6 +13,8 @@ const AUTH_BUILD = process.env.NEXT_PUBLIC_AUTH_ENABLED === "true";
 
 export function MemberMenu() {
   const [name, setName] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!AUTH_BUILD) return undefined;
@@ -40,6 +42,25 @@ export function MemberMenu() {
     }
   }
 
+  async function logoutAll() {
+    if (busy) return;
+    if (!window.confirm(copy.auth.logoutAllConfirm)) return; // 실수로 누르는 것을 막는 확인
+    setBusy(true);
+    setNotice(null);
+    try {
+      const response = await fetch("/auth/logout-all", { method: "POST", credentials: "same-origin" });
+      if (response.ok) {
+        window.location.assign(new URL("/login", window.location.origin).toString());
+        return; // 화면이 바뀌므로 잠금은 그대로 둔다
+      }
+      // 서버 취소가 확인되지 않으면 성공처럼 보이지 않게 하고 로그인은 그대로 둔다(다시 시도 가능)
+      setNotice(response.status === 401 ? copy.auth.logoutAllInvalid : copy.auth.logoutAllFailed);
+    } catch {
+      setNotice(copy.auth.logoutAllFailed);
+    }
+    setBusy(false);
+  }
+
   if (!AUTH_BUILD || name === null) return null;
   return (
     <div className="member-menu" role="group" aria-label={copy.auth.memberMenuLabel}>
@@ -53,6 +74,14 @@ export function MemberMenu() {
       <button type="button" className="member-menu__logout" onClick={logout}>
         {copy.auth.logout}
       </button>
+      <button type="button" className="member-menu__logout" onClick={logoutAll} disabled={busy}>
+        {busy ? copy.auth.logoutAllBusy : copy.auth.logoutAll}
+      </button>
+      {notice ? (
+        <p className="member-menu__notice" role="alert">
+          {notice}
+        </p>
+      ) : null}
     </div>
   );
 }

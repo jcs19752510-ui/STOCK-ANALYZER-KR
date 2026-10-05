@@ -535,3 +535,60 @@ def test_deleting_member_removes_sessions(db, api):
     assert _admin(db, "SELECT count(*) FROM auth.user_sessions")[0][0] == 1
     _admin(db, "DELETE FROM auth.app_users WHERE username = 'kim'")
     assert _admin(db, "SELECT count(*) FROM auth.user_sessions")[0][0] == 0
+
+
+# ------------------------------------------------------------------ 모든 기기에서 로그아웃 (DEC-071)
+LOGOUT_ALL = "/api/v1/internal/auth/logout-all"
+
+
+def test_logout_all_revokes_every_session_of_the_member_only(db, api):
+    _add_user(db, "kim")
+    _add_user(db, "lee", "이영희")
+    a = _login_data(api, remember=True)
+    b = _login_data(api, remember=True)
+    c = _login_data(api)  # 8시간 세션도 포함
+    other = _login_data(api, username="lee", remember=True)
+    r = api.post(LOGOUT_ALL, json={"user_id": a["user_id"], "session_id": a["session_id"]}, headers=H)
+    assert r.status_code == 200 and r.json()["data"] == {"revoked_count": 3}
+    for s in (a, b, c):
+        assert _check(api, s["user_id"], s["session_id"]) is False
+        assert _sess_row(db, s["session_id"])[3] is True
+    assert _check(api, other["user_id"], other["session_id"]) is True  # 다른 회원은 그대로
+    # 새로 로그인하면 다시 쓸 수 있다
+    again = _login_data(api, remember=True)
+    assert _check(api, again["user_id"], again["session_id"]) is True
+
+
+def test_logout_all_needs_a_live_session_of_that_member(db, api):
+    _add_user(db, "kim")
+    _add_user(db, "lee", "이영희")
+    a = _login_data(api, remember=True)
+    b = _login_data(api, remember=True)
+    lee = _login_data(api, username="lee")
+    # 남의 세션 id를 내 id로 제시 → 거부, 아무것도 취소되지 않는다
+    r = api.post(LOGOUT_ALL, json={"user_id": a["user_id"], "session_id": lee["session_id"]}, headers=H)
+    assert r.status_code == 401 and r.json()["error"]["code"] == "INVALID_SESSION"
+    assert _check(api, a["user_id"], a["session_id"]) is True and _check(api, lee["user_id"], lee["session_id"]) is True
+    # 없는 세션
+    assert api.post(LOGOUT_ALL, json={"user_id": a["user_id"], "session_id": "99999999-9999-4999-8999-999999999999"}, headers=H).status_code == 401
+    # 이미 취소된 세션(로그아웃된 쿠키)으로는 다른 기기를 끊지 못한다
+    api.post(LOGOUT, json={"user_id": a["user_id"], "session_id": a["session_id"]}, headers=H)
+    assert api.post(LOGOUT_ALL, json={"user_id": a["user_id"], "session_id": a["session_id"]}, headers=H).status_code == 401
+    assert _check(api, b["user_id"], b["session_id"]) is True
+    # 만료된 세션·비활성 회원
+    _admin(db, "UPDATE auth.user_sessions SET created_at = now() - interval '31 days', expires_at = now() - interval '1 day' WHERE session_id = CAST(:s AS uuid)", s=b["session_id"])
+    assert api.post(LOGOUT_ALL, json={"user_id": b["user_id"], "session_id": b["session_id"]}, headers=H).status_code == 401
+    c = _login_data(api)
+    _admin(db, "UPDATE auth.app_users SET is_active = false WHERE username = 'kim'")
+    assert api.post(LOGOUT_ALL, json={"user_id": c["user_id"], "session_id": c["session_id"]}, headers=H).status_code == 401
+
+
+def test_logout_all_validation_and_internal_token(db, api):
+    _add_user(db, "kim")
+    a = _login_data(api)
+    body = {"user_id": a["user_id"], "session_id": a["session_id"]}
+    assert api.post(LOGOUT_ALL, json=body).status_code == 401  # 내부 토큰 필수
+    assert api.post(LOGOUT_ALL, json=body, headers={"X-Internal-Token": "wrong"}).status_code == 401
+    for bad in ({}, {"user_id": a["user_id"]}, {"session_id": a["session_id"]}, {**body, "extra": 1}, {"user_id": "x", "session_id": "y"}):
+        assert api.post(LOGOUT_ALL, json=bad, headers=H).status_code == 400, bad
+    assert _check(api, a["user_id"], a["session_id"]) is True  # 거부된 요청은 아무것도 바꾸지 않는다

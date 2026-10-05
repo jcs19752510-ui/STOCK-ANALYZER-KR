@@ -46,6 +46,10 @@ class SessionCheckData(BaseModel):
     display_name: str | None = None
 
 
+class LogoutAllData(BaseModel):
+    revoked_count: int  # 이번 요청으로 취소한 세션 수(현재 기기 포함)
+
+
 class MemberItem(BaseModel):
     username: str
     display_name: str

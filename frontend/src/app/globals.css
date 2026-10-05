@@ -2700,6 +2700,19 @@ main {
   font-weight: 600;
 }
 
+.member-menu__notice {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--color-semantic-error);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.member-menu__logout:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
 .member-menu__link,
 .member-menu__logout {
   display: inline-flex;

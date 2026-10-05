@@ -3,6 +3,7 @@
 - `POST /api/v1/internal/auth/login` : 아이디·비밀번호 확인. 실패는 이유와 관계없이 같은 401.
 - `POST /api/v1/internal/auth/session-check` : 이 세션이 취소·만료되지 않았고 회원이 아직 활성인지(웹이 5분마다 확인).
 - `POST /api/v1/internal/auth/logout` : 이 세션 하나를 서버에서 취소(DEC-070).
+- `POST /api/v1/internal/auth/logout-all` : 이 회원의 모든 세션 취소(DEC-071). 요청한 세션이 살아 있을 때만.
 - `GET  /api/v1/internal/members` : 로그인 가능한 회원(활성)의 아이디·이름 목록.
 
 모든 경로는 **강제 스위치와 무관하게** 항상 내부 토큰을 요구한다(로컬에서 스위치가 꺼져 있어도 열려 있지 않다).
@@ -27,6 +28,7 @@ from services.public_api.auth.service import (
     check_session_user,
     create_session,
     list_active_members,
+    revoke_all_sessions,
     revoke_session,
 )
 from services.public_api.auth.throttle import allow_login_attempt
@@ -36,6 +38,7 @@ from services.public_api.errors import ApiError
 from services.public_api.schemas.auth import (
     LoginData,
     LoginRequest,
+    LogoutAllData,
     LogoutData,
     LogoutRequest,
     MemberItem,
@@ -117,6 +120,14 @@ def session_check(body: SessionCheckRequest, db: Session = Depends(get_auth_db))
 @router.post("/auth/logout", response_model=Envelope[LogoutData])
 def logout(body: LogoutRequest, db: Session = Depends(get_auth_db)) -> Envelope[LogoutData]:
     return Envelope[LogoutData](meta=_meta(), data=LogoutData(revoked=revoke_session(db, body.user_id, body.session_id)))
+
+
+@router.post("/auth/logout-all", response_model=Envelope[LogoutAllData])
+def logout_all(body: LogoutRequest, db: Session = Depends(get_auth_db)) -> Envelope[LogoutAllData]:
+    count = revoke_all_sessions(db, body.user_id, body.session_id)
+    if count is None:  # 이미 취소·만료된 세션이거나 남의 세션: 아무것도 하지 않는다
+        raise ApiError(status_code=401, code="INVALID_SESSION", message="유효한 로그인이 아닙니다.")
+    return Envelope[LogoutAllData](meta=_meta(), data=LogoutAllData(revoked_count=count))
 
 
 @router.get("/members", response_model=Envelope[MembersData])

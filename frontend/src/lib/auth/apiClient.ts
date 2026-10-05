@@ -27,6 +27,7 @@ export type MembersResult =
 
 const LOGIN_TIMEOUT_MS = 65_000;
 const LOGOUT_TIMEOUT_MS = 8_000;
+const LOGOUT_ALL_TIMEOUT_MS = 30_000; // 잠든 API가 깨어나는 시간을 기다린다(실패를 성공으로 보이지 않기 위해 재시도는 하지 않는다)
 
 function apiBase(): string {
   return (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
@@ -113,6 +114,25 @@ export async function apiLogout(uid: string, sessionId: string): Promise<boolean
     return response.status === 200;
   } catch {
     return false;
+  }
+}
+
+/** "모든 기기에서 로그아웃": 이 회원의 모든 서버 세션을 취소한다. 취소한 건수를 돌려주고, 이미 취소·만료된 세션이면 "invalid", 서버 장애는 null. 재시도하지 않는다(결과를 사용자에게 그대로 알린다). */
+export async function apiLogoutAll(uid: string, sessionId: string): Promise<number | "invalid" | null> {
+  try {
+    const response = await fetch(`${apiBase()}/api/v1/internal/auth/logout-all`, {
+      method: "POST",
+      headers: internalHeaders({ "X-Auth-User": uid }),
+      body: JSON.stringify({ user_id: uid, session_id: sessionId }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(LOGOUT_ALL_TIMEOUT_MS),
+    });
+    if (response.status === 401) return "invalid";
+    if (response.status !== 200) return null;
+    const count = (((await readJson(response))?.data ?? null) as Record<string, unknown> | null)?.revoked_count;
+    return typeof count === "number" && Number.isInteger(count) && count >= 0 ? count : null;
+  } catch {
+    return null;
   }
 }
 
