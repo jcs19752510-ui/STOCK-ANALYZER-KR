@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { apiSessionCheck } from "@/lib/auth/apiClient";
-import { MAX_QUERY_LENGTH, isAllowedBffPath } from "@/lib/auth/bffPaths";
+import { MAX_QUERY_LENGTH, isAdminOnlyBffPath, isAllowedBffPath } from "@/lib/auth/bffPaths";
 import { authConfigProblem, authEnabled, sessionCookieName, sessionSecret } from "@/lib/auth/config";
 import { endUserIp } from "@/lib/auth/endUserIp";
 import { clearSessionCookie, json, nowSeconds, setSessionCookie } from "@/lib/auth/http";
@@ -32,6 +32,9 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   if (!isAllowedBffPath(url.pathname)) {
     return json({ data: null, error: { code: "NOT_FOUND", message: "찾을 수 없습니다." } }, 404);
+  }
+  if (isAdminOnlyBffPath(url.pathname) && session.rl !== "a") {
+    return json({ data: null, error: { code: "FORBIDDEN", message: "권한이 없습니다." } }, 403);
   }
   if (url.search.length > MAX_QUERY_LENGTH) {
     return json({ data: null, error: { code: "INVALID_PARAMETER", message: "요청 파라미터가 올바르지 않습니다." } }, 400);

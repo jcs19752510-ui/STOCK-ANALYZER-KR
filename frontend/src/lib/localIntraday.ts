@@ -4,8 +4,9 @@
  * - 스위치: `NEXT_PUBLIC_LOCAL_INTRADAY_ENABLED === "true"`(빌드 시점, 기본 꺼짐) **그리고** 시세 공개 스위치가 켜져 있어야 하고,
  *   브라우저 주소가 내 PC/사설망(localhost·127.x·10.x·172.16~31.x·192.168.x)일 때만 화면에 나타난다(공개 도메인에서는 숨김).
  *   서버(API)도 허용 IP·환경변수로 한 번 더 막으므로 이 검사는 보조 방어선이다.
- * - 호출은 브라우저가 API로 직접 한다(서버 렌더 경로를 거치지 않음). 앱키는 이 코드에 존재하지 않는다(API 서버 환경변수에만 있음).
+ * - 호출은 브라우저가 한다(서버 렌더 경로를 거치지 않음). 로그인을 끈 로컬은 API로 직접, 로그인을 켠 로컬은 웹 서버 대행 경로(`apiBase.ts`)로 간다. 앱키는 이 코드에 존재하지 않는다(API 서버 환경변수에만 있음).
  */
+import { browserApiBase } from "@/lib/apiBase";
 import { isPrivateHostname } from "@/lib/privateHost";
 import { PRICE_EXPOSURE_ENABLED } from "@/lib/priceExposure";
 import type { Envelope } from "@/lib/types";
@@ -44,7 +45,8 @@ export function intradayErrorMessage(code: string): string {
 }
 
 export async function fetchIntraday<T>(path: string, signal?: AbortSignal): Promise<IntradayResult<T>> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  // 로그인을 켠 로컬은 웹 서버(대행 경로)를 거치고(DEC-075), 로그인을 끈 로컬은 지금처럼 API를 직접 부른다.
+  const baseUrl = browserApiBase();
   if (!baseUrl) return { kind: "error", code: "CONFIG_ERROR", message: intradayErrorMessage("CONFIG_ERROR") };
   try {
     const response = await fetch(new URL(path, baseUrl).toString(), { signal, cache: "no-store" });

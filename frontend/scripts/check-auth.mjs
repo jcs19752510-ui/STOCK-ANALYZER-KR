@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import { test } from "node:test";
-import { isAllowedBffPath, MAX_QUERY_LENGTH } from "../src/lib/auth/bffPaths.ts";
+import { isAdminOnlyBffPath, isAllowedBffPath, localIntradayBffEnabled, MAX_QUERY_LENGTH } from "../src/lib/auth/bffPaths.ts";
 import {
   SECRET_MIN_LENGTH,
   SESSION_FRESH_SECONDS,
@@ -357,4 +357,39 @@ test("classifyApiProbe: 200 정상 / 401 토큰 불일치 / 404 회원 DB 설정
   assert.equal(classifyApiProbe(401), "token_mismatch");
   assert.equal(classifyApiProbe(404), "auth_not_configured");
   for (const st of [null, 0, 400, 403, 429, 500, 502, 503]) assert.equal(classifyApiProbe(st), "unreachable", String(st));
+});
+
+// ------------------------------------------------------------------ 로컬 서버 로그인(DEC-075): 개인 로컬 모드 경로는 로컬 빌드에서만 대행 허용
+const LOCAL_ON = { NEXT_PUBLIC_LOCAL_INTRADAY_ENABLED: "true" };
+const LOCAL_PATHS = [
+  "/api/v1/local/status", "/api/v1/local/stocks/005930/minutes", "/api/v1/local/stocks/005930/ticks",
+  "/api/v1/local/stocks/005930/orderbook", "/api/v1/local/stocks/T00001/investor",
+];
+
+test("개인 로컬 모드 경로: 운영 빌드(스위치 없음/false)에서는 계속 막힘", () => {
+  for (const env of [{}, { NEXT_PUBLIC_LOCAL_INTRADAY_ENABLED: "false" }, { NEXT_PUBLIC_LOCAL_INTRADAY_ENABLED: "" }, { NEXT_PUBLIC_LOCAL_INTRADAY_ENABLED: "1" }]) {
+    for (const p of LOCAL_PATHS) assert.equal(isAllowedBffPath(p, env), false, `${p} ${JSON.stringify(env)}`);
+    assert.equal(localIntradayBffEnabled(env), false);
+  }
+});
+
+test("개인 로컬 모드 경로: 로컬 빌드(true)에서만 정확한 형식이 열림", () => {
+  assert.equal(localIntradayBffEnabled(LOCAL_ON), true);
+  for (const p of LOCAL_PATHS) assert.equal(isAllowedBffPath(p, LOCAL_ON), true, p);
+  for (const p of [
+    "/api/v1/local", "/api/v1/local/", "/api/v1/local/stocks/005930", "/api/v1/local/stocks/005930/other", "/api/v1/local/stocks/00593/ticks",
+    "/api/v1/local/stocks/0059300/ticks", "/api/v1/local/stocks/005930/ticks/", "/api/v1/local/../internal/members", "/api/v1/local/stocks/../../internal/auth/login",
+    "/api/v1/local/status/extra", "/api/v1/LOCAL/status", "/api/v1/local/stocks/%2e%2e/ticks",
+    "/api/v1/internal/auth/login", "/api/v1/live", "/docs",
+  ]) assert.equal(isAllowedBffPath(p, LOCAL_ON), false, p);
+  // 기존 허용 경로는 스위치와 무관하게 그대로
+  assert.equal(isAllowedBffPath("/api/v1/screen", {}), true);
+  assert.equal(isAllowedBffPath("/api/v1/screen", LOCAL_ON), true);
+});
+
+test("로컬 투자자 수급 경로는 관리자 전용으로 분류(DEC-074와 같은 규칙)", () => {
+  assert.equal(isAdminOnlyBffPath("/api/v1/local/stocks/005930/investor"), true);
+  for (const p of ["/api/v1/local/stocks/005930/ticks", "/api/v1/local/stocks/005930/orderbook", "/api/v1/screen", "/api/v1/local/stocks/005930/investor/x"]) {
+    assert.equal(isAdminOnlyBffPath(p), false, p);
+  }
 });
