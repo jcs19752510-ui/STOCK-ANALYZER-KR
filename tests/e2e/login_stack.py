@@ -33,7 +33,7 @@ from scripts import manage_users as mu  # noqa: E402
 from tests.integration.pattern_api_env import prepare_database  # noqa: E402
 from tests.integration.pg_temp_db import TempDb, temp_database  # noqa: E402
 
-API_PORT, WEB_PORT = 4321, 4322
+API_PORT, WEB_PORT, BAD_WEB_PORT = 4321, 4322, 4323  # BAD_WEB: 내부 토큰이 API와 다른 웹(운영에서 실제로 겪은 설정 오류) 재현용
 GOOD_PW = "Tr0ub4dor&3-horse-staple"
 OTHER_PW = "Correct-Horse-Battery-9!"
 LOG_DIR = Path(os.environ.get("E2E_LOG_DIR", "/tmp/claude-0/e2e-logs"))
@@ -63,7 +63,7 @@ def main() -> int:
     parser.add_argument("--only", default="", help="브라우저 시험에서 이름에 이 문자열이 든 장면만(디버깅용)")
     args = parser.parse_args()
     LOG_DIR.mkdir(parents=True, exist_ok=True)
-    for port in (API_PORT, WEB_PORT):
+    for port in (API_PORT, WEB_PORT, BAD_WEB_PORT):
         probe = subprocess.run(["bash", "-c", f"exec 3<>/dev/tcp/127.0.0.1/{port}"], capture_output=True)
         if probe.returncode == 0:
             print(f"[e2e] 포트 {port}를 이미 다른 프로세스가 쓰고 있습니다. 먼저 종료하세요.", file=sys.stderr)
@@ -131,6 +131,10 @@ def main() -> int:
                                           stdout=(LOG_DIR / "web.log").open("w"), stderr=subprocess.STDOUT))
             wait_http(f"http://127.0.0.1:{API_PORT}/api/v1/live")
             wait_http(f"http://127.0.0.1:{WEB_PORT}/login")
+            bad_env = {**os.environ, **web_env, "PUBLIC_API_INTERNAL_TOKEN": "x" * 48, "AUTH_COOKIE_INSECURE": os.environ.get("E2E_COOKIE_INSECURE", "")}
+            procs.append(subprocess.Popen(["npx", "next", "start", "-H", "127.0.0.1", "-p", str(BAD_WEB_PORT)], cwd=REPO / "frontend", start_new_session=True, env=bad_env,
+                                          stdout=(LOG_DIR / "web-bad.log").open("w"), stderr=subprocess.STDOUT))
+            wait_http(f"http://127.0.0.1:{BAD_WEB_PORT}/login")
             print("[e2e] 서버 준비 완료, 브라우저 시험 시작", flush=True)
 
             admin_psql = os.environ["TEST_PG_ADMIN_PSQL"]
@@ -138,6 +142,7 @@ def main() -> int:
                 **os.environ,
                 "QA_BASE": f"http://localhost:{WEB_PORT}",
                 "QA_API": f"http://127.0.0.1:{API_PORT}",
+                "QA_BAD_BASE": f"http://localhost:{BAD_WEB_PORT}",
                 "QA_TOKEN": token,
                 "QA_SESSION_SECRET": session_secret,
                 "QA_PW": GOOD_PW,

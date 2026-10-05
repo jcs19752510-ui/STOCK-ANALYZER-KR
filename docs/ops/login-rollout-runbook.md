@@ -199,3 +199,13 @@ curl.exe -s -o NUL -w "%{http_code}`n" "$API/api/v1/live"             # 200 (헬
 | `alembic upgrade`가 권한 오류 | 소유자 URL이 아님(`neondb_owner`) 또는 풀러 주소(`-pooler`) 사용. 직접 주소로 |
 | `manage_users.py check`가 FAIL | `neon-auth-setup.sql`을 다시 실행(2-2) |
 | 투자자 탭에 "불러오지 못했습니다" | 아직 수집 안 됨(7-1) 또는 관리자 권한이 아님(관리자 화면에서 권한 확인) |
+
+## 11. 로그인이 이유 없이 실패할 때: 연결 점검 `/auth/status` (2026-10-05 추가)
+브라우저 주소창에 `https://(웹 주소)/auth/status`를 열면 상태 이름만 보인다.
+| 응답 | 뜻 | 조치 |
+|---|---|---|
+| `{"ok":true,"web":"ok","api":"ok"}` | 웹→API 연결·토큰·회원 DB 설정 정상 | 비밀번호/계정 상태 문제(`manage_users.py audit`, `unlock`, `set-password`) |
+| `"api":"token_mismatch"` | **웹과 API의 `PUBLIC_API_INTERNAL_TOKEN`이 다르다** | 두 서비스 값을 글자 하나까지 같게 수정(앞뒤 공백 주의), 둘 다 재배포 |
+| `"api":"auth_not_configured"` | API에 `PUBLIC_API_AUTH_DATABASE_URL`/토큰이 없다 | API 환경변수 확인 후 재배포 |
+| `"api":"unreachable"` | API가 잠들었거나 주소(`NEXT_PUBLIC_API_BASE_URL`)가 틀림 | 잠시 후 재시도, 주소 확인 |
+| `"web":"misconfigured"` / `"auth_off"` | 웹 설정(SESSION_SECRET·토큰 길이·same-origin 빌드) 문제 / 로그인 꺼짐 | 웹 환경변수 확인(재빌드 필요한 항목 포함) |

@@ -17,7 +17,7 @@ import {
   cookieSecure,
   sessionCookieName,
 } from "../src/lib/auth/config.ts";
-import { classifyLoginFailure } from "../src/lib/auth/loginFailure.ts";
+import { classifyApiProbe, classifyLoginFailure } from "../src/lib/auth/loginFailure.ts";
 import { endUserIp } from "../src/lib/auth/endUserIp.ts";
 import { isSameOriginRequest } from "../src/lib/auth/origin.ts";
 import { SAVED_USERNAME_KEY, loadSavedUsername, persistUsername } from "../src/lib/auth/savedUsername.ts";
@@ -350,4 +350,11 @@ test("classifyLoginFailure: 승인 대기·사용 중지·시도 제한·그 밖
   assert.equal(classifyLoginFailure(403, "FORBIDDEN"), "unavailable");
   assert.equal(classifyLoginFailure(429, "LOGIN_RATE_LIMITED"), "rate_limited");
   for (const st of [400, 404, 500, 502, 503]) assert.equal(classifyLoginFailure(st, "INVALID_CREDENTIALS"), "unavailable", String(st));
+});
+
+test("classifyApiProbe: 200 정상 / 401 토큰 불일치 / 404 회원 DB 설정 없음 / 그 밖 연결 불가", () => {
+  assert.equal(classifyApiProbe(200), "ok");
+  assert.equal(classifyApiProbe(401), "token_mismatch");
+  assert.equal(classifyApiProbe(404), "auth_not_configured");
+  for (const st of [null, 0, 400, 403, 429, 500, 502, 503]) assert.equal(classifyApiProbe(st), "unreachable", String(st));
 });

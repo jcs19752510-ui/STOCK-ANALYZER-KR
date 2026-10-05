@@ -7,6 +7,7 @@ import { launch, runAxe } from "./common.mjs";
 
 const BASE = process.env.QA_BASE;
 const API = process.env.QA_API;
+const BAD_BASE = process.env.QA_BAD_BASE;
 const TOKEN = process.env.QA_TOKEN;
 const SECRET = process.env.QA_SESSION_SECRET;
 const PW = process.env.QA_PW;
@@ -1051,6 +1052,32 @@ if (should("L")) {
   rec("L 관리 작업 기록이 남는다(비밀번호·해시는 기록 안 됨)", Number(audit) >= 10 && Number(secrets) === 0, `기록 ${audit}건`);
   await op.screenshot({ path: `${OUT}/admin-members-after-1280.png` });
   for (const x of [octx, nctx, actx]) await x.close();
+}
+
+// ───────────────────────── M. 운영 설정 오류 재현: 웹과 API의 내부 토큰이 다를 때(운영 첫 적용에서 실제 발생)
+if (should("M")) {
+  // 정상 웹: 연결 점검 주소가 정상을 알린다
+  let r = await fetch(`${BASE}/auth/status`);
+  let body = await r.json();
+  rec("M 정상 설정: /auth/status → 200 {ok, web:ok, api:ok}, 값·비밀 없음", r.status === 200 && body.ok === true && body.web === "ok" && body.api === "ok" && Object.keys(body).sort().join(",") === "api,ok,web" && !JSON.stringify(body).includes(TOKEN), JSON.stringify(body));
+  // 토큰이 다른 웹: 점검 주소가 정확히 원인을 알리고, 로그인 화면은 '비밀번호 오류'가 아니라 연결 오류를 보여 준다
+  r = await fetch(`${BAD_BASE}/auth/status`);
+  body = await r.json();
+  rec("M 내부 토큰 불일치: /auth/status → 503 api=token_mismatch", r.status === 503 && body.ok === false && body.api === "token_mismatch", JSON.stringify(body));
+  const auditCount = () => Number(psql("SELECT count(*) FROM auth.login_audit"));
+  const auditBefore = auditCount();
+  const ctx = await b.newContext({ viewport: { width: 1280, height: 800 }, baseURL: BAD_BASE });
+  const p = await ctx.newPage();
+  await p.goto("/login");
+  await p.fill("#login-username", "kim");
+  await p.fill("#login-password", PW);
+  await p.click("button[type=submit]");
+  await p.locator(".login-form__message").waitFor({ timeout: 20000 });
+  const msg = await p.locator(".login-form__message").innerText();
+  rec("M 내부 토큰 불일치 + 올바른 비밀번호: '비밀번호 오류'가 아니라 '서버에 연결하지 못했습니다'로 표시", /연결하지 못했습니다/.test(msg) && !/올바르지 않습니다/.test(msg), msg.slice(0, 60));
+  rec("M 내부 토큰 불일치: 로그인 쿠키가 만들어지지 않는다", (await ctx.cookies()).filter((c) => c.name === COOKIE).length === 0);
+  rec("M 내부 토큰 불일치: DB에 로그인 기록이 늘지 않는다(API 확인 단계에 도달하지 못함 — 운영 진단 단서)", auditCount() === auditBefore, `기록 ${auditBefore}→${auditCount()}`);
+  await ctx.close();
 }
 
 // ───────────────────────── F. 로그인 시도 제한(API)
