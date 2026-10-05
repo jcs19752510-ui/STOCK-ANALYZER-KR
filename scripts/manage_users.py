@@ -64,12 +64,30 @@ def _engine() -> Engine:
 def _read_password(args: argparse.Namespace, username: str) -> str:
     if getattr(args, "password_stdin", False):
         line = sys.stdin.readline()
-        return line.rstrip("\r\n")
+        # Windows PowerShell이 파이프로 보낼 때 맨 앞에 붙일 수 있는 보이지 않는 BOM(U+FEFF)을 제거한다
+        # (붙은 채 저장되면 화면에서 같은 비밀번호를 입력해도 로그인되지 않는다 — 운영 첫 적용에서 의심된 사례).
+        return line.rstrip("\r\n").lstrip("\ufeff")
     first = getpass.getpass("비밀번호(입력은 보이지 않습니다): ")
     second = getpass.getpass("비밀번호 확인: ")
     if first != second:
         raise UserError("두 비밀번호가 다릅니다.")
     return first
+
+
+def _read_password_once(args: argparse.Namespace) -> str:
+    if getattr(args, "password_stdin", False):
+        return sys.stdin.readline().rstrip("\r\n").lstrip("\ufeff")
+    return getpass.getpass("비밀번호(입력은 보이지 않습니다): ")
+
+
+def verify_stored_password(engine: Engine, username: str, password: str) -> bool:
+    """저장된 해시와 입력값이 맞는지(로그인 실패 원인 점검). 없는 아이디도 False."""
+    from shared.auth.passwords import verify_password
+
+    username = normalize_username(username)
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT password_hash FROM auth.app_users WHERE username = :u"), {"u": username}).first()
+    return bool(row) and verify_password(row[0], password)
 
 
 def add_user(engine: Engine, username: str, display_name: str, password: str, role: str = "user") -> None:
@@ -327,6 +345,9 @@ def build_parser() -> argparse.ArgumentParser:
     au.add_argument("--limit", type=int, default=20)
     pu = sub.add_parser("purge-audit", help="오래된 로그인 기록 삭제(기본 90일 보존)")
     pu.add_argument("--days", type=int, default=90)
+    vp = sub.add_parser("verify-password", help="입력한 비밀번호가 저장된 값과 맞는지 확인(원인 점검용, 값은 출력하지 않음)")
+    vp.add_argument("username")
+    vp.add_argument("--password-stdin", action="store_true", help="표준입력 한 줄에서 비밀번호를 읽음")
     sub.add_parser("sessions", help="회원별 유효 세션 수")
     rv = sub.add_parser("revoke-sessions", help="그 회원의 모든 기기 로그인 취소")
     rv.add_argument("username")
@@ -343,6 +364,10 @@ def main(argv: list[str] | None = None, *, engine: Engine | None = None) -> int:
         if args.cmd == "add":
             add_user(eng, args.username, args.name, _read_password(args, args.username), args.role)
             print(f"추가했습니다: {normalize_username(args.username)} ({'관리자' if args.role == 'admin' else '일반 사용자'})")
+        elif args.cmd == "verify-password":
+            ok = verify_stored_password(eng, args.username, _read_password_once(args))
+            print("일치합니다." if ok else "일치하지 않습니다(또는 없는 아이디).")
+            return 0 if ok else 1
         elif args.cmd == "approve":
             approve(eng, args.username)
             print(f"승인했습니다: {normalize_username(args.username)}")

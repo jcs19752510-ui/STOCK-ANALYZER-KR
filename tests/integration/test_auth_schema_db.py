@@ -475,6 +475,18 @@ def test_migration_0018_keeps_existing_members_active_and_approved(db):
     _run(db.migrator_url, "DELETE FROM auth.app_users WHERE username IN ('old1','old2')")
 
 
+def test_cli_stdin_password_with_bom_is_stored_without_the_bom_and_verify_works(db, cli):
+    bom_pw = "\ufeff" + STRONG  # Windows PowerShell 파이프가 앞에 붙일 수 있는 BOM
+    assert cli("add", "kim", "--name", "김", "--password-stdin", stdin=bom_pw + "\r\n")[0] == 0
+    h = _row(db, "kim")[0]
+    assert verify_password(h, STRONG) and not verify_password(h, bom_pw)  # BOM은 저장된 비밀번호에 포함되지 않는다
+    assert cli("verify-password", "kim", "--password-stdin", stdin=STRONG + "\n")[0] == 0
+    code, out, _e = cli("verify-password", "kim", "--password-stdin", stdin="wrong-password-xyz\n")
+    assert code == 1 and "일치하지 않습니다" in out and STRONG not in out
+    assert cli("verify-password", "nobody", "--password-stdin", stdin=STRONG + "\n")[0] == 1
+    assert cli("set-password", "kim", "--password-stdin", stdin=bom_pw + "2\n")[0] == 0 and verify_password(_row(db, "kim")[0], STRONG + "2")
+
+
 def test_cli_db_errors_do_not_leak_connection_strings(monkeypatch, capsys):
     bad = create_engine("postgresql+psycopg://user:SuperSecretPw@127.0.0.1:1/nodb", connect_args={"connect_timeout": 1})
     code = mu.main(["list"], engine=bad)
