@@ -20,6 +20,7 @@ import {
 } from "../src/lib/auth/config.ts";
 import { endUserIp } from "../src/lib/auth/endUserIp.ts";
 import { isSameOriginRequest } from "../src/lib/auth/origin.ts";
+import { SAVED_USERNAME_KEY, loadSavedUsername, persistUsername } from "../src/lib/auth/savedUsername.ts";
 import { safeNextPath } from "../src/lib/auth/redirect.ts";
 import { isFresh, newSession, refreshed, remainingSeconds, signSession, verifySession } from "../src/lib/auth/session.ts";
 
@@ -229,4 +230,51 @@ test("endUserIp: 신뢰 프록시 단수를 알 때만 오른쪽에서 N번째, 
   assert.equal(endUserIp(h, { FRONTEND_TRUSTED_PROXY_HOPS: "2" }), "203.0.113.5");
   assert.equal(endUserIp(h, { FRONTEND_TRUSTED_PROXY_HOPS: "9" }), null);
   assert.equal(endUserIp(headers({}), { FRONTEND_TRUSTED_PROXY_HOPS: "1" }), null);
+});
+
+// ------------------------------------------------------------------ 아이디 저장
+const memStore = (init = {}) => {
+  const m = new Map(Object.entries(init));
+  return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => void m.set(k, v), removeItem: (k) => void m.delete(k), _m: m };
+};
+
+test("아이디 저장: 체크하면 아이디만 저장, 해제하면 지운다", () => {
+  const st = memStore();
+  assert.equal(persistUsername(st, " jcs1973 ", true), true);
+  assert.equal(st.getItem(SAVED_USERNAME_KEY), "jcs1973");
+  assert.equal(loadSavedUsername(st), "jcs1973");
+  assert.equal(persistUsername(st, "jcs1973", false), false);
+  assert.equal(st.getItem(SAVED_USERNAME_KEY), null);
+  assert.equal([...st._m.keys()].length, 0);
+});
+
+test("아이디 저장: 형식이 틀린 값은 저장하지 않고, 저장소의 변조 값은 지우고 무시", () => {
+  const st = memStore();
+  for (const bad of ["", "   ", "한글", "a b", "<script>", "x".repeat(65), "-start", "a\nb"]) {
+    assert.equal(persistUsername(st, bad, true), false, JSON.stringify(bad));
+    assert.equal(st.getItem(SAVED_USERNAME_KEY), null);
+  }
+  for (const tampered of ["<img src=x onerror=1>", "a b", "", "x".repeat(65)]) {
+    const t = memStore({ [SAVED_USERNAME_KEY]: tampered });
+    assert.equal(loadSavedUsername(t), null, JSON.stringify(tampered));
+    assert.equal(t.getItem(SAVED_USERNAME_KEY), null); // 변조 값 삭제
+  }
+});
+
+test("아이디 저장: 저장소가 없거나 예외를 던져도 조용히 동작", () => {
+  assert.equal(loadSavedUsername(null), null);
+  assert.equal(loadSavedUsername(undefined), null);
+  assert.equal(persistUsername(null, "kim", true), false);
+  const boom = { getItem() { throw new Error("blocked"); }, setItem() { throw new Error("quota"); }, removeItem() { throw new Error("blocked"); } };
+  assert.equal(loadSavedUsername(boom), null);
+  assert.equal(persistUsername(boom, "kim", true), false);
+  assert.equal(persistUsername(boom, "kim", false), false);
+});
+
+test("아이디 저장: 비밀번호를 저장하는 코드 경로가 없다(소스에 password 저장 호출 없음)", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("../src/lib/auth/savedUsername.ts", import.meta.url), "utf8");
+  assert.ok(!/setItem\([^)]*password/i.test(src));
+  const form = readFileSync(new URL("../src/components/LoginForm.tsx", import.meta.url), "utf8");
+  assert.ok(!/(localStorage|sessionStorage|document\.cookie)[^;\n]*password/i.test(form));
 });

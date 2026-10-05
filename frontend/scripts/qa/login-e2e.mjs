@@ -457,6 +457,110 @@ if (should("G")) {
   await fctx.close();
 }
 
+// ───────────────────────── H. 아이디 저장 + 브라우저 비밀번호 관리자 연계(DEC-069)
+if (should("H")) {
+  const KEY = "login.savedUsername";
+  const store = (p) => p.evaluate((k) => { try { return localStorage.getItem(k); } catch { return "ERR"; } }, KEY);
+  const dump = (p) => p.evaluate(() => { try { return JSON.stringify([{ ...localStorage }, { ...sessionStorage }, document.cookie]); } catch { return "ERR"; } });
+  // 화면: 체크박스·안내·접근성·넘침 (360/1280)
+  for (const w of [360, 1280]) {
+    const ctx = await newCtx(w);
+    const p = await ctx.newPage();
+    await p.goto("/login");
+    rec(`H ${w}px: '아이디 저장' 체크박스 + 라벨 연결 + 안내 문구(비밀번호 미저장·공용 PC 주의)`, (await p.locator("label[for=login-remember]").innerText()) === "아이디 저장" && /비밀번호는 저장하지 않으며/.test(await p.locator(".login-form__hint").innerText()) && /공용 PC/.test(await p.locator(".login-form__hint").innerText()));
+    rec(`H ${w}px: 체크박스 기본값 해제`, !(await p.isChecked("#login-remember")));
+    const hgt = await p.evaluate(() => Math.round(document.querySelector(".login-form__remember").getBoundingClientRect().height));
+    rec(`H ${w}px: 체크박스 줄 높이 44px 이상(터치)`, hgt >= 44, `${hgt}`);
+    rec(`H ${w}px: 가로 넘침 없음`, !(await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)));
+    await p.focus("#login-username");
+    await p.keyboard.press("Tab"); await p.keyboard.press("Tab");
+    rec(`H ${w}px: 키보드 Tab 순서 아이디 → 비밀번호 → 아이디 저장`, (await p.evaluate(() => document.activeElement?.id)) === "login-remember");
+    await p.keyboard.press("Space");
+    rec(`H ${w}px: 스페이스로 체크 전환`, await p.isChecked("#login-remember"));
+    const axe = await runAxe(p);
+    rec(`H ${w}px: axe 위반 없음`, axe.length === 0, axe.map((v) => v.id).join(","));
+    if (w === 360) await p.screenshot({ path: `${OUT}/login-remember-360.png` });
+    await ctx.close();
+  }
+  // 로그인 성공 + 체크: 아이디만 저장, 비밀번호는 브라우저 비밀번호 관리자에만 전달
+  const ctx = await newCtx(1280);
+  const calls = [];
+  await ctx.exposeFunction("__spyStore", (id, pw) => { calls.push([id, pw]); });
+  await ctx.addInitScript(() => {
+    window.PasswordCredential = class { constructor(d) { this.id = d.id; this.password = d.password; this.type = "password"; } };
+    navigator.credentials.store = (c) => { window.__spyStore(c.id, c.password); return new Promise(() => {}); }; // 응답이 영원히 없는 경우까지 시험
+  });
+  const p = await ctx.newPage();
+  const t0 = Date.now();
+  await p.goto("/login");
+  await p.fill("#login-username", "park");
+  await p.fill("#login-password", PW2);
+  await p.check("#login-remember");
+  await p.click("button[type=submit]");
+  await p.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
+  rec("H 성공 로그인: 비밀번호 관리자 저장 제안 호출(아이디·비밀번호 전달)", calls.length === 1 && calls[0][0] === "park" && calls[0][1] === PW2, JSON.stringify(calls.map((c) => c[0])));
+  rec("H 저장 제안이 응답하지 않아도 로그인은 최대 약 1초 지연만으로 완료", Date.now() - t0 < 12000);
+  rec("H 체크 후 로그인: localStorage에 아이디만 저장", (await store(p)) === "park");
+  const all = await dump(p);
+  rec("H 비밀번호는 localStorage·sessionStorage·document.cookie 어디에도 없다", !all.includes(PW2) && !all.includes("argon2"), all.slice(0, 120));
+  // 다시 방문: 아이디 채움 + 체크됨 + 비밀번호는 비어 있고 포커스
+  await ctx.clearCookies();
+  await p.goto("/login");
+  await p.waitForFunction(() => document.querySelector("#login-username")?.value !== "", null, { timeout: 5000 }).catch(() => {});
+  rec("H 재방문: 아이디가 채워지고 '아이디 저장' 체크", (await p.inputValue("#login-username")) === "park" && (await p.isChecked("#login-remember")));
+  rec("H 재방문: 비밀번호 칸은 비어 있고 포커스(비밀번호 관리자가 채움)", (await p.inputValue("#login-password")) === "" && (await p.evaluate(() => document.activeElement?.id)) === "login-password");
+  // 해제하고 로그인: 저장값 삭제
+  await p.uncheck("#login-remember");
+  await p.fill("#login-password", PW2);
+  await p.click("button[type=submit]");
+  await p.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
+  rec("H 체크 해제 후 로그인: 저장된 아이디 삭제", (await store(p)) === null);
+  await ctx.clearCookies();
+  await p.goto("/login");
+  rec("H 해제 후 재방문: 아이디 칸 비어 있음", (await p.inputValue("#login-username")) === "" && !(await p.isChecked("#login-remember")));
+  // 실패한 로그인은 저장하지 않는다
+  const callsBefore = calls.length; // 앞의 성공 로그인 2회(체크/해제)는 비밀번호 관리자에 제안됨
+  await p.fill("#login-username", "park");
+  await p.fill("#login-password", "wrong-password-xyz");
+  await p.check("#login-remember");
+  await p.click("button[type=submit]");
+  await p.locator(".login-form__message").waitFor({ timeout: 10000 });
+  rec("H 틀린 비밀번호: 아이디를 저장하지 않는다", (await store(p)) === null);
+  rec("H 틀린 비밀번호: 비밀번호 관리자에 저장 제안하지 않는다", callsBefore === 2 && calls.length === callsBefore, `${callsBefore}→${calls.length}`);
+  // 변조된 저장값
+  await p.evaluate((k) => localStorage.setItem(k, "<img src=x onerror=window.__x=1>"), KEY);
+  await p.goto("/login");
+  rec("H 변조된 저장값: 채우지 않고 삭제, 스크립트 실행 없음", (await p.inputValue("#login-username")) === "" && (await store(p)) === null && (await p.evaluate(() => window.__x)) === undefined);
+  await ctx.close();
+  // 저장소 접근이 막힌 브라우저(사생활 보호 모드 등): 로그인은 정상
+  const ctx2 = await newCtx(1280);
+  await ctx2.addInitScript(() => {
+    Object.defineProperty(window, "localStorage", { get() { throw new DOMException("blocked", "SecurityError"); } });
+  });
+  const p2 = await ctx2.newPage();
+  const errs = [];
+  p2.on("pageerror", (e) => errs.push(String(e)));
+  await p2.goto("/login");
+  await p2.fill("#login-username", "park");
+  await p2.fill("#login-password", PW2);
+  await p2.check("#login-remember");
+  await p2.click("button[type=submit]");
+  await p2.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
+  rec("H 저장소 접근 불가: 오류 없이 로그인 성공", errs.length === 0, errs.join("|").slice(0, 100));
+  await ctx2.close();
+  // 비밀번호 관리자 API가 없는 브라우저: 그냥 로그인
+  const ctx3 = await newCtx(1280);
+  await ctx3.addInitScript(() => { delete window.PasswordCredential; });
+  const p3 = await ctx3.newPage();
+  await p3.goto("/login");
+  await p3.fill("#login-username", "park");
+  await p3.fill("#login-password", PW2);
+  await p3.click("button[type=submit]");
+  await p3.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
+  rec("H PasswordCredential 미지원 브라우저: 정상 로그인", new URL(p3.url()).pathname === "/");
+  await ctx3.close();
+}
+
 // ───────────────────────── F. 로그인 시도 제한(API)
 if (should("F")) {
   const codes = [];
