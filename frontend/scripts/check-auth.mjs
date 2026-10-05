@@ -10,6 +10,7 @@ import { isAllowedBffPath, MAX_QUERY_LENGTH } from "../src/lib/auth/bffPaths.ts"
 import {
   SECRET_MIN_LENGTH,
   SESSION_FRESH_SECONDS,
+  REMEMBER_MAX_AGE_SECONDS,
   SESSION_MAX_AGE_SECONDS,
   authConfigProblem,
   authEnabled,
@@ -27,7 +28,9 @@ import { isFresh, newSession, refreshed, remainingSeconds, signSession, verifySe
 const SECRET = "s".repeat(48);
 const UID = "11111111-1111-4111-8111-111111111111";
 const NOW = 1_800_000_000;
+const SID = "22222222-2222-4222-8222-222222222222";
 const user = { uid: UID, username: "kim", displayName: "김철수" };
+const mk = (u = user, now = NOW, o = {}) => newSession(u, now, { sessionId: SID, remember: false, ...o });
 const headers = (h) => ({ get: (k) => h[k.toLowerCase()] ?? null });
 
 // ------------------------------------------------------------------ 설정
@@ -72,18 +75,18 @@ test("authConfigProblem: 꺼져 있으면 문제 없음, 켜져 있으면 약한
 
 // ------------------------------------------------------------------ 세션 서명·검증
 test("정상 왕복: 서명한 세션을 검증하면 같은 내용이 나온다", () => {
-  const s = newSession(user, NOW);
+  const s = mk();
   assert.equal(s.exp - s.iat, SESSION_MAX_AGE_SECONDS);
   const back = verifySession(signSession(s, SECRET), SECRET, NOW + 10);
   assert.deepEqual(back, s);
 });
 
 test("틀린 비밀 키·내용 변조·서명 변조·형식 오류는 모두 null", () => {
-  const token = signSession(newSession(user, NOW), SECRET);
+  const token = signSession(mk(), SECRET);
   assert.equal(verifySession(token, "x".repeat(48), NOW), null);
   const [body, sig] = token.split(".");
   // 내용 변조: 아이디를 바꿔 같은 서명을 붙인다
-  const forged = Buffer.from(JSON.stringify({ ...newSession(user, NOW), un: "admin" }), "utf8").toString("base64url");
+  const forged = Buffer.from(JSON.stringify({ ...mk(), un: "admin" }), "utf8").toString("base64url");
   assert.equal(verifySession(`${forged}.${sig}`, SECRET, NOW), null);
   // 서명 변조(한 글자), 서명 길이 다름, 서명 없음, 구분자 여러 개
   const flipped = sig.slice(0, -1) + (sig.endsWith("A") ? "B" : "A");
@@ -96,7 +99,7 @@ test("틀린 비밀 키·내용 변조·서명 변조·형식 오류는 모두 n
 });
 
 test("만료·미래 발급·과도한 수명·확인 시각 이상은 null", () => {
-  const s = newSession(user, NOW);
+  const s = mk();
   assert.ok(verifySession(signSession(s, SECRET), SECRET, s.exp - 1));
   assert.equal(verifySession(signSession(s, SECRET), SECRET, s.exp), null); // 만료 시각 정각부터 거부
   assert.equal(verifySession(signSession(s, SECRET), SECRET, s.exp + 1), null);
@@ -107,9 +110,9 @@ test("만료·미래 발급·과도한 수명·확인 시각 이상은 null", ()
 });
 
 test("필드 형식 검사: 올바른 서명이어도 모양이 틀리면 거부", () => {
-  const s = newSession(user, NOW);
+  const s = mk();
   for (const bad of [
-    { ...s, v: 2 }, { ...s, uid: "not-a-uuid" }, { ...s, uid: 5 }, { ...s, un: "" }, { ...s, un: "k".repeat(33) },
+    { ...s, v: 1 }, { ...s, v: 3 }, { ...s, sid: undefined }, { ...s, sid: "nope" }, { ...s, sid: 5 }, { ...s, rm: 2 }, { ...s, rm: "1" }, { ...s, rm: undefined }, { ...s, uid: "not-a-uuid" }, { ...s, uid: 5 }, { ...s, un: "" }, { ...s, un: "k".repeat(33) },
     { ...s, dn: "" }, { ...s, dn: "가".repeat(41) }, { ...s, iat: "1" }, { ...s, exp: 1.5 }, { ...s, chk: -1 }, { ...s, exp: null },
   ]) {
     assert.equal(verifySession(signSession(bad, SECRET), SECRET, NOW), null, JSON.stringify(bad).slice(0, 60));
@@ -123,13 +126,13 @@ test("필드 형식 검사: 올바른 서명이어도 모양이 틀리면 거부
 });
 
 test("서명은 알고리즘 혼동에 안전하다: 'none' 같은 값을 받아들이지 않는다", () => {
-  const body = Buffer.from(JSON.stringify(newSession(user, NOW)), "utf8").toString("base64url");
+  const body = Buffer.from(JSON.stringify(mk()), "utf8").toString("base64url");
   assert.equal(verifySession(`${body}.none`, SECRET, NOW), null);
   assert.equal(verifySession(`${body}.`, SECRET, NOW), null);
 });
 
 test("신선도: 5분까지는 신선, 그 뒤에는 아님 / 갱신은 만료 시각을 늘리지 않는다", () => {
-  const s = newSession(user, NOW);
+  const s = mk();
   assert.equal(isFresh(s, NOW + SESSION_FRESH_SECONDS), true);
   assert.equal(isFresh(s, NOW + SESSION_FRESH_SECONDS + 1), false);
   const r = refreshed(s, NOW + 400);
@@ -143,9 +146,61 @@ test("신선도: 5분까지는 신선, 그 뒤에는 아님 / 갱신은 만료 �
 });
 
 test("회원 id는 소문자로 정규화된다", () => {
-  const s = newSession({ ...user, uid: UID.toUpperCase() }, NOW);
+  const s = mk({ ...user, uid: UID.toUpperCase() });
   assert.equal(s.uid, UID);
   assert.equal(verifySession(signSession(s, SECRET), SECRET, NOW).uid, UID);
+  const up = mk(user, NOW, { sessionId: SID.toUpperCase() });
+  assert.equal(up.sid, SID);
+});
+
+// ------------------------------------------------------------------ 로그인 상태 유지 30일 (DEC-070)
+test("로그인 상태 유지: 기본 8시간, 체크하면 절대 30일, 쿠키에 세션 id·유지 여부가 담긴다", () => {
+  const normal = mk();
+  assert.equal(normal.exp - normal.iat, SESSION_MAX_AGE_SECONDS);
+  assert.deepEqual([normal.rm, normal.sid], [0, SID]);
+  const kept = mk(user, NOW, { remember: true });
+  assert.equal(kept.exp - kept.iat, 30 * 24 * 3600);
+  assert.equal(REMEMBER_MAX_AGE_SECONDS, 30 * 24 * 3600);
+  assert.equal(kept.rm, 1);
+  assert.deepEqual(verifySession(signSession(kept, SECRET), SECRET, NOW + 29 * 24 * 3600), kept); // 29일째까지 유효
+  assert.equal(verifySession(signSession(kept, SECRET), SECRET, NOW + 30 * 24 * 3600), null); // 30일 정각에 만료(절대 만료)
+});
+
+test("로그인 상태 유지: 서버가 정한 수명을 따르되 허용 상한을 넘지 못한다", () => {
+  assert.equal(mk(user, NOW, { remember: true, lifetimeSeconds: 100 }).exp, NOW + 100);
+  assert.equal(mk(user, NOW, { remember: true, lifetimeSeconds: 10 * REMEMBER_MAX_AGE_SECONDS }).exp, NOW + REMEMBER_MAX_AGE_SECONDS);
+  assert.equal(mk(user, NOW, { remember: false, lifetimeSeconds: REMEMBER_MAX_AGE_SECONDS }).exp, NOW + SESSION_MAX_AGE_SECONDS); // 유지 아님 → 8시간 상한
+  assert.equal(mk(user, NOW, { remember: false, lifetimeSeconds: 0 }).exp, NOW + 1); // 이상한 값도 최소 1초
+});
+
+test("로그인 상태 유지: 8시간 쿠키(rm=0)를 30일로 늘려 위조하거나, 30일 쿠키를 31일로 늘려도 거부", () => {
+  const normal = mk();
+  assert.equal(verifySession(signSession({ ...normal, exp: NOW + 30 * 24 * 3600 }, SECRET), SECRET, NOW), null); // 서명이 맞아도 rm=0이면 8시간 상한
+  const kept = mk(user, NOW, { remember: true });
+  assert.equal(verifySession(signSession({ ...kept, exp: NOW + 31 * 24 * 3600 }, SECRET), SECRET, NOW), null);
+  assert.ok(verifySession(signSession({ ...kept, exp: NOW + 30 * 24 * 3600 + 30 }, SECRET), SECRET, NOW)); // 시계 오차 60초 이내 허용
+  // 서명 없이 rm만 바꾸면 서명 불일치
+  const [b, sig] = signSession(normal, SECRET).split(".");
+  const tampered = Buffer.from(JSON.stringify({ ...normal, rm: 1, exp: NOW + 30 * 24 * 3600 }), "utf8").toString("base64url");
+  assert.equal(verifySession(`${tampered}.${sig}`, SECRET, NOW), null);
+  assert.ok(b.length > 0);
+});
+
+test("로그인 상태 유지: 5분 확인(refreshed)은 30일 만료를 늘리지 않고 세션 id를 유지한다", () => {
+  const kept = mk(user, NOW, { remember: true });
+  const r = refreshed(kept, NOW + 3 * 24 * 3600);
+  assert.equal(r.exp, kept.exp);
+  assert.equal(r.sid, SID);
+  assert.equal(r.rm, 1);
+  assert.ok(verifySession(signSession(r, SECRET), SECRET, NOW + 3 * 24 * 3600));
+  assert.equal(isFresh(kept, NOW + 3 * 24 * 3600), false); // 3일 뒤 첫 요청은 반드시 서버 확인을 거친다
+});
+
+test("옛 형식 쿠키(v1, 세션 id 없음)는 거부된다(배포 후 한 번 다시 로그인)", () => {
+  const { sid, rm, ...legacy } = mk();
+  assert.ok(sid && rm === 0);
+  assert.equal(verifySession(signSession({ ...legacy, v: 1 }, SECRET), SECRET, NOW), null);
+  assert.equal(verifySession(signSession(legacy, SECRET), SECRET, NOW), null);
 });
 
 // ------------------------------------------------------------------ 리다이렉트 안전성

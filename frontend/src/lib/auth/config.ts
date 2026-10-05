@@ -5,6 +5,7 @@
  * 이 값들은 모두 서버 전용 환경변수다(`NEXT_PUBLIC_` 접두어 금지 — 브라우저 코드에 들어간다).
  */
 export const SESSION_MAX_AGE_SECONDS = 8 * 60 * 60; // 절대 만료 8시간
+export const REMEMBER_MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // "로그인 상태 유지" 절대 만료 30일(DEC-070)
 export const SESSION_FRESH_SECONDS = 5 * 60; // 5분이 지나면 API에 회원이 아직 활성인지 다시 확인
 export const SECRET_MIN_LENGTH = 32;
 

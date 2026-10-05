@@ -28,25 +28,26 @@ export async function POST(request: Request) {
   } catch {
     return json({ ok: false, code: "BAD_REQUEST" }, 400);
   }
-  const { username, password } = body;
+  const { username, password, remember } = body;
   if (
     typeof username !== "string" ||
     typeof password !== "string" ||
     username.length < 1 ||
     username.length > 64 ||
     password.length < 1 ||
-    password.length > 1024
+    password.length > 1024 ||
+    (remember !== undefined && typeof remember !== "boolean") // "로그인 상태 유지"는 참/거짓만 받는다
   ) {
     return json({ ok: false, code: "BAD_REQUEST" }, 400);
   }
 
-  const result = await apiLogin(username, password, endUserIp(request.headers));
+  const result = await apiLogin(username, password, endUserIp(request.headers), remember === true);
   if (result.kind === "invalid") return json({ ok: false, code: "INVALID_CREDENTIALS" }, 401);
   if (result.kind === "rate_limited") return json({ ok: false, code: "LOGIN_RATE_LIMITED" }, 429);
   if (result.kind !== "ok") return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
 
   const now = nowSeconds();
-  const session = newSession(result.user, now);
+  const session = newSession(result.user, now, { sessionId: result.sessionId, remember: remember === true, lifetimeSeconds: result.expiresInSeconds });
   const response = json({ ok: true, next: safeNextPath(body.next) });
   setSessionCookie(response, signSession(session, sessionSecret()), remainingSeconds(session, now));
   return response;

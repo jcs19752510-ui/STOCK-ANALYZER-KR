@@ -1,16 +1,19 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { SESSION_FRESH_SECONDS, SESSION_MAX_AGE_SECONDS } from "./config.ts";
+import { REMEMBER_MAX_AGE_SECONDS, SESSION_FRESH_SECONDS, SESSION_MAX_AGE_SECONDS } from "./config.ts";
 
 /**
  * 서명된 세션 쿠키(상태 없는 세션, DEC-067 설계서 §4·§7). 서버가 비밀 키(`SESSION_SECRET`)로 HMAC-SHA256 서명하므로 브라우저에서 바꿀 수 없다.
  * 쿠키에는 회원 id·아이디·이름·발급/만료/마지막 확인 시각만 들어 있다(비밀번호·해시 없음).
  *
- * 한계(설계서에 명시): 서버 쪽 세션 저장소가 없어 로그아웃·비활성화가 **즉시** 모든 쿠키를 무효로 만들지는 않는다.
- * 대신 절대 만료 8시간 + 5분마다 API에 활성 여부를 다시 확인(`chk`)해 비활성화를 5분 안에 반영한다.
+ * 서버 쪽 세션 목록(DEC-070): 쿠키의 `sid`는 API가 로그인 때 만든 세션 id다. 5분마다(`chk`) API가 "이 세션이 취소·만료되지 않았고 회원이 활성인지"를
+ * 확인하므로, 로그아웃·비밀번호 변경·회원 비활성화·관리자 세션 취소가 **늦어도 5분 안에** 모든 기기에 반영된다(30일 유지 쿠키 포함).
+ * 수명은 절대 만료다: 기본 8시간(`rm=0`), "로그인 상태 유지"는 30일(`rm=1`). 사용해도 늘어나지 않는다.
  */
 export interface SessionPayload {
-  v: 1;
+  v: 2;
   uid: string; // 회원 id(UUID)
+  sid: string; // 서버 쪽 세션 id(UUID)
+  rm: 0 | 1; // 1 = 로그인 상태 유지(30일)
   un: string; // 아이디
   dn: string; // 표시 이름
   iat: number; // 발급 시각(초)
@@ -62,9 +65,12 @@ export function verifySession(
   if (typeof data !== "object" || data === null) return null;
   const p = data as Record<string, unknown>;
   if (
-    p.v !== 1 ||
+    p.v !== 2 ||
     typeof p.uid !== "string" ||
     !UUID.test(p.uid) ||
+    typeof p.sid !== "string" ||
+    !UUID.test(p.sid) ||
+    (p.rm !== 0 && p.rm !== 1) ||
     typeof p.un !== "string" ||
     p.un.length < 1 ||
     p.un.length > 32 ||
@@ -79,22 +85,29 @@ export function verifySession(
   }
   if (p.exp <= nowSeconds) return null; // 만료
   if (p.iat > nowSeconds + CLOCK_SKEW_SECONDS) return null; // 미래에 발급된 것
-  if (p.exp - p.iat > SESSION_MAX_AGE_SECONDS + CLOCK_SKEW_SECONDS) return null; // 허용된 수명보다 긴 것
+  const maxLife = p.rm === 1 ? REMEMBER_MAX_AGE_SECONDS : SESSION_MAX_AGE_SECONDS;
+  if (p.exp - p.iat > maxLife + CLOCK_SKEW_SECONDS) return null; // 허용된 수명보다 긴 것
   if (p.chk > nowSeconds + CLOCK_SKEW_SECONDS || p.chk < p.iat - CLOCK_SKEW_SECONDS) return null;
-  return { v: 1, uid: p.uid.toLowerCase(), un: p.un, dn: p.dn, iat: p.iat, exp: p.exp, chk: p.chk };
+  return { v: 2, uid: p.uid.toLowerCase(), sid: p.sid.toLowerCase(), rm: p.rm, un: p.un, dn: p.dn, iat: p.iat, exp: p.exp, chk: p.chk };
 }
 
 export function newSession(
   user: { uid: string; username: string; displayName: string },
   nowSeconds: number,
+  options: { sessionId: string; remember: boolean; lifetimeSeconds?: number },
 ): SessionPayload {
+  const maxLife = options.remember ? REMEMBER_MAX_AGE_SECONDS : SESSION_MAX_AGE_SECONDS;
+  // 수명은 API(서버 쪽 세션)가 정한 값을 따르되, 허용 상한을 넘지 않는다.
+  const life = Math.min(Math.max(1, Math.floor(options.lifetimeSeconds ?? maxLife)), maxLife);
   return {
-    v: 1,
+    v: 2,
     uid: user.uid.toLowerCase(),
+    sid: options.sessionId.toLowerCase(),
+    rm: options.remember ? 1 : 0,
     un: user.username,
     dn: user.displayName,
     iat: nowSeconds,
-    exp: nowSeconds + SESSION_MAX_AGE_SECONDS,
+    exp: nowSeconds + life,
     chk: nowSeconds,
   };
 }

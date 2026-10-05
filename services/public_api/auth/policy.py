@@ -7,3 +7,7 @@ LOCK_MAX_MINUTES = 24 * 60
 LOCK_LEVEL_CAP = 7
 
 # ruff: noqa: E501
+
+# 세션 수명(DEC-067 8시간 + DEC-070 "로그인 상태 유지" 30일). 둘 다 **절대 만료**(사용해도 늘어나지 않는다).
+SESSION_SECONDS_DEFAULT = 8 * 60 * 60
+SESSION_SECONDS_REMEMBER = 30 * 24 * 60 * 60

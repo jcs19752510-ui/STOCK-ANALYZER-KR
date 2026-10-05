@@ -92,7 +92,7 @@ def test_schema_and_tables_exist(db):
         db.migrator_url,
         "SELECT table_name FROM information_schema.tables WHERE table_schema = 'auth' ORDER BY 1",
     )
-    assert [r[0] for r in rows] == ["app_users", "login_audit"]
+    assert [r[0] for r in rows] == ["app_users", "login_audit", "user_sessions"]
     assert _run(db.migrator_url, "SELECT count(*) FROM auth.app_users")[0][0] == 0
     cols = {r[0] for r in _run(db.migrator_url, "SELECT column_name FROM information_schema.columns WHERE table_schema='auth' AND table_name='app_users'")}
     assert {"user_id", "username", "display_name", "password_hash", "is_active", "failed_attempts", "lockout_level", "locked_until", "last_login_at"} <= cols
@@ -211,7 +211,7 @@ def test_downgrade_and_upgrade_cycle(db):
     assert _run(db.migrator_url, "SELECT count(*) FROM information_schema.schemata WHERE schema_name='auth'")[0][0] == 0
     assert _run(db.migrator_url, "SELECT count(*) FROM public_serving.stock_master")[0][0] == 0  # 기존 스키마는 그대로
     assert run_alembic(db, "upgrade", "head").returncode == 0
-    assert _run(db.migrator_url, "SELECT count(*) FROM information_schema.tables WHERE table_schema='auth'")[0][0] == 2
+    assert _run(db.migrator_url, "SELECT count(*) FROM information_schema.tables WHERE table_schema='auth'")[0][0] == 3
 
 
 def _admin_psql(*extra: str) -> list[str]:
@@ -231,9 +231,11 @@ def test_migration_succeeds_without_auth_service_role_then_setup_sql_applies_gra
         subprocess.run(_admin_psql("-v", "ON_ERROR_STOP=1", "-c", "ALTER ROLE auth_service RENAME TO auth_service_tmp"), check=True, capture_output=True, text=True)
         renamed = True
         with temp_database() as tdb:  # 내부에서 alembic upgrade head 실행 — 역할이 없어도 성공해야 한다
-            assert _run(tdb.migrator_url, "SELECT count(*) FROM information_schema.tables WHERE table_schema='auth'")[0][0] == 2
+            assert _run(tdb.migrator_url, "SELECT count(*) FROM information_schema.tables WHERE table_schema='auth'")[0][0] == 3
             acl = _run(tdb.migrator_url, "SELECT relacl::text FROM pg_class WHERE oid = 'auth.app_users'::regclass")[0][0]
             assert acl is None or "auth_service" not in acl
+            sess_acl = _run(tdb.migrator_url, "SELECT relacl::text FROM pg_class WHERE oid = 'auth.user_sessions'::regclass")[0][0]
+            assert sess_acl is None or "auth_service" not in sess_acl
             # 역할을 되돌리고(다시 만든 것과 같음) 설정 SQL을 실행한다
             subprocess.run(_admin_psql("-v", "ON_ERROR_STOP=1", "-c", "ALTER ROLE auth_service_tmp RENAME TO auth_service"), check=True, capture_output=True, text=True)
             renamed = False
@@ -366,6 +368,60 @@ def test_cli_purge_audit_deletes_only_old_rows(db, cli):
     assert code == 0 and "1건" in out
     code, out, _e = cli("audit", "--limit", "10")
     assert "old" not in out and "edge" in out and "new" in out
+
+
+def _mk_session(db, username, remember=True, expires="now() + interval '30 days'", created="now()"):
+    _run(db.migrator_url, f"INSERT INTO auth.user_sessions (user_id, remember, created_at, expires_at) SELECT user_id, :r, {created}, {expires} FROM auth.app_users WHERE username = :u", r=remember, u=username)
+
+
+def _active_sessions(db, username):
+    return _run(db.migrator_url, "SELECT count(*) FROM auth.user_sessions s JOIN auth.app_users u USING (user_id) WHERE u.username = :u AND s.revoked_at IS NULL AND s.expires_at > now()", u=username)[0][0]
+
+
+def test_cli_password_change_and_disable_revoke_all_sessions(db, cli):
+    cli("add", "kim", "--name", "김", "--password-stdin", stdin=STRONG + "\n")
+    cli("add", "lee", "--name", "이", "--password-stdin", stdin=STRONG2 + "\n")
+    for u in ("kim", "kim", "lee"):
+        _mk_session(db, u)
+    assert _active_sessions(db, "kim") == 2
+    # 정책에 맞는 새 비밀번호로 바꾼 경우에만 세션이 취소된다
+    code, _o, _e = cli("set-password", "kim", "--password-stdin", stdin="Another-Strong-Pass-77!\n")
+    assert code == 0 and _active_sessions(db, "kim") == 0
+    assert _active_sessions(db, "lee") == 1  # 다른 회원은 영향 없음
+    _mk_session(db, "kim")
+    assert cli("disable", "kim")[0] == 0 and _active_sessions(db, "kim") == 0
+    assert cli("enable", "kim")[0] == 0
+    assert _active_sessions(db, "kim") == 0  # 다시 허용해도 이전 로그인은 되살아나지 않는다
+
+
+def test_cli_rejected_password_change_keeps_sessions(db, cli):
+    cli("add", "kim", "--name", "김", "--password-stdin", stdin=STRONG + "\n")
+    _mk_session(db, "kim")
+    code, _o, err = cli("set-password", "kim", "--password-stdin", stdin="short\n")
+    assert code == 1 and _active_sessions(db, "kim") == 1
+
+
+def test_cli_revoke_sessions_sessions_summary_and_purge(db, cli):
+    cli("add", "kim", "--name", "김", "--password-stdin", stdin=STRONG + "\n")
+    cli("add", "lee", "--name", "이", "--password-stdin", stdin=STRONG2 + "\n")
+    _mk_session(db, "kim", remember=True)
+    _mk_session(db, "kim", remember=False, expires="now() + interval '8 hours'")
+    _mk_session(db, "lee", remember=True)
+    code, out, _e = cli("sessions")
+    assert code == 0 and "kim" in out and "lee" in out
+    kim_line = next(line for line in out.splitlines() if line.startswith("kim"))
+    assert kim_line.split() == ["kim", "2", "1"]
+    code, out, _e = cli("revoke-sessions", "kim")
+    assert code == 0 and "2건" in out and _active_sessions(db, "kim") == 0 and _active_sessions(db, "lee") == 1
+    assert cli("revoke-sessions", "nobody")[0] == 1
+    # purge: 만료·취소 후 N일 지난 것만 삭제
+    _mk_session(db, "lee", created="now() - interval '40 days'", expires="now() - interval '10 days'")  # 오래전 만료
+    _mk_session(db, "lee", created="now() - interval '2 days'", expires="now() - interval '1 day'")  # 어제 만료
+    before = _run(db.migrator_url, "SELECT count(*) FROM auth.user_sessions")[0][0]
+    code, out, _e = cli("purge-sessions", "--days", "7")
+    after = _run(db.migrator_url, "SELECT count(*) FROM auth.user_sessions")[0][0]
+    assert code == 0 and before - after == 1  # 10일 전 만료된 한 건만(kim의 방금 취소분·어제 만료분은 7일 안)
+    assert cli("purge-sessions", "--days", "-1")[0] == 1
 
 
 def test_cli_db_errors_do_not_leak_connection_strings(monkeypatch, capsys):

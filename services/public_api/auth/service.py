@@ -21,6 +21,8 @@ from services.public_api.auth.policy import (
     LOCK_LEVEL_CAP,
     LOCK_MAX_MINUTES,
     MAX_FAILED_ATTEMPTS,
+    SESSION_SECONDS_DEFAULT,
+    SESSION_SECONDS_REMEMBER,
 )
 from shared.auth.passwords import (
     PolicyError,
@@ -156,21 +158,59 @@ def authenticate(session: Session, raw_username: str, password: str, client_ip: 
     )
 
 
-def check_session_user(session: Session, user_id: str) -> AuthUser | None:
-    """로그인 후에도 회원이 아직 활성인지 확인한다(5분마다 호출). 활성이면 정보를, 아니면 None."""
+def create_session(session: Session, user_id: str, remember: bool) -> tuple[str, int]:
+    """로그인 성공 직후 서버 쪽 세션을 만든다(DEC-070). (session_id, 절대 수명 초)를 돌려준다. 수명은 서버가 정한다(요청 값 아님)."""
+    seconds = SESSION_SECONDS_REMEMBER if remember else SESSION_SECONDS_DEFAULT
+    row = session.execute(
+        text(
+            "INSERT INTO auth.user_sessions (user_id, remember, expires_at) "
+            "VALUES (CAST(:uid AS uuid), :rm, now() + :sec * interval '1 second') RETURNING session_id::text"
+        ),
+        {"uid": user_id, "rm": remember, "sec": seconds},
+    ).one()
+    session.commit()
+    return row[0], seconds
+
+
+def check_session_user(session: Session, user_id: str, session_id: str) -> AuthUser | None:
+    """로그인 후에도 이 세션이 유효하고 회원이 활성인지 확인한다(5분마다 호출).
+    세션이 이 회원 것이고, 취소·만료되지 않았고, 회원이 활성일 때만 정보를 돌려준다. 이유는 구분하지 않는다."""
     row = (
         session.execute(
             text(
-                "SELECT user_id::text AS user_id, username, display_name FROM auth.app_users "
-                "WHERE user_id = CAST(:uid AS uuid) AND is_active"
+                "SELECT u.user_id::text AS user_id, u.username, u.display_name "
+                "FROM auth.user_sessions s JOIN auth.app_users u ON u.user_id = s.user_id "
+                "WHERE s.session_id = CAST(:sid AS uuid) AND s.user_id = CAST(:uid AS uuid) "
+                "AND s.revoked_at IS NULL AND s.expires_at > now() AND u.is_active"
             ),
-            {"uid": user_id},
+            {"uid": user_id, "sid": session_id},
         )
         .mappings()
         .first()
     )
-    session.rollback()
-    return AuthUser(**row) if row else None
+    if row is None:
+        session.rollback()
+        return None
+    session.execute(
+        text("UPDATE auth.user_sessions SET last_check_at = now() WHERE session_id = CAST(:sid AS uuid)"),
+        {"sid": session_id},
+    )
+    session.commit()
+    return AuthUser(**row)
+
+
+def revoke_session(session: Session, user_id: str, session_id: str) -> bool:
+    """로그아웃: 이 세션 하나를 취소한다(다른 기기의 세션은 그대로). 이미 취소됐거나 남의 세션·없는 세션이면 False."""
+    done = session.execute(
+        text(
+            "UPDATE auth.user_sessions SET revoked_at = now() "
+            "WHERE session_id = CAST(:sid AS uuid) AND user_id = CAST(:uid AS uuid) AND revoked_at IS NULL "
+            "RETURNING session_id"
+        ),
+        {"uid": user_id, "sid": session_id},
+    ).first()
+    session.commit()
+    return done is not None
 
 
 def list_active_members(session: Session, limit: int = 500) -> list[dict[str, str]]:

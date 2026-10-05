@@ -11,12 +11,13 @@
 
 ## 1. DB 준비 (Neon, 소유자 연결, PC에서)
 1. `deploy/render/neon-auth-setup.sql` 실행: `psql "<owner 접속문자열>" -v auth='<auth_service 새 비밀번호>' -f deploy/render/neon-auth-setup.sql`
-2. 마이그레이션: `alembic upgrade head` (0015 적용 — `auth` 스키마, `app_users`, `login_audit`)
+2. 마이그레이션: `alembic upgrade head` (0015 `auth` 스키마·`app_users`·`login_audit`, **0017 `user_sessions`(로그인 상태 유지 30일용 서버 쪽 세션)**). `auth_service`가 이미 있으면 권한도 함께 부여되고, 없으면 `neon-auth-setup.sql`을 실행한다(0017 권한 포함)
 3. 확인: `python scripts/manage_users.py check` → 모든 줄 `OK` (환경변수 `AUTH_ADMIN_DATABASE_URL`=owner 연결)
 
 ## 2. 회원 추가 (관리자 스크립트)
 - `python scripts/manage_users.py add kim --name 김철수` → 비밀번호는 숨김 입력(12자 이상, 아이디와 같으면 거부).
-- 그 외: `list`, `set-password`, `disable`/`enable`, `unlock`, `delete`, `audit --limit 20`, `purge-audit --days 90`
+- 그 외: `list`, `set-password`(그 회원의 모든 로그인 취소), `disable`/`enable`(disable은 로그인 중인 기기도 즉시 끊음), `unlock`, `delete`, `audit --limit 20`, `purge-audit --days 90`
+- 세션(DEC-070): `sessions`(회원별 유효 세션·30일 유지 수), `revoke-sessions <아이디>`(**기기 분실·쿠키 탈취 의심 시 그 회원의 모든 기기 로그인 즉시 취소**, 웹은 늦어도 5분 안에 반영), `purge-sessions --days 7`(만료·취소 행 정리, 월 1회 권장)
 - 비밀번호는 명령줄 인자로 넘기지 않는다(히스토리 노출 방지).
 
 ## 3. Render 환경변수
@@ -67,3 +68,10 @@
 - 원인: Blueprint(`render.yaml`)가 최신 설정(`healthCheckPath: /login`)을 서비스에 동기화했는데, 배포한 코드는 옛 커밋이었다. 설정과 코드 버전이 어긋남.
 - 영향: 배포 실패 시 Render는 **이전에 성공한 버전을 계속 서비스**한다(운영은 중단되지 않음, 화면의 "Deploy failed"는 새 배포만 실패).
 - 조치: 상태 검사를 어떤 화면에도 의존하지 않는 `/healthz`(항상 200)로 바꿨다. **최신 커밋(PROD_SCH 맨 위)으로 Manual Deploy → "Deploy latest commit"** 을 하면 된다. 옛 커밋을 다시 배포하면 `/healthz`가 없어 또 실패한다.
+
+## 9. 로그인 상태 유지(30일) 운영 메모 (DEC-070)
+- 로그인 화면 체크박스 "로그인 상태 유지(30일)"를 켠 기기만 30일(절대 만료, 사용해도 연장 없음). 끄면 8시간. 기본은 꺼짐.
+- 이번 배포 후 **모든 회원이 한 번 다시 로그인**해야 한다(쿠키 형식이 v2로 바뀌어 기존 쿠키는 거부됨).
+- 반영 지연: 로그아웃·비활성화·세션 취소는 서버에 즉시 기록되지만, 이미 복사된 쿠키는 서버가 5분마다 확인할 때 거부된다(최대 5분).
+- 로그아웃이 서버 세션 취소에 실패한 경우(API가 잠든 상태 등)에도 이 브라우저의 쿠키는 지워진다. 분실·탈취가 의심되면 `revoke-sessions <아이디>`를 실행한다.
+- 롤백: Web `AUTH_REQUIRED=false`(로그인 끔). `user_sessions` 표는 남겨도 무해.

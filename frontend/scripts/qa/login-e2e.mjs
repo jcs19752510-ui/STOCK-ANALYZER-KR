@@ -1,7 +1,7 @@
 // DEC-067 종단간 점검: 실제 API(내부 토큰 강제)+실제 웹 서버(로그인 켬)+실제 PostgreSQL. `tests/e2e/login_stack.py`가 서버를 띄우고 이 스크립트를 실행한다.
 //   python tests/e2e/login_stack.py
 import { execFileSync } from "node:child_process";
-import { createHmac } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import { launch, runAxe } from "./common.mjs";
 
@@ -35,8 +35,11 @@ function sign(payload, secret = SECRET) {
 const nowS = () => Math.floor(Date.now() / 1000);
 function payloadFor(uid, username, name, over = {}) {
   const t = nowS();
-  return { v: 1, uid, un: username, dn: name, iat: t, exp: t + 3600, chk: t, ...over };
+  return { v: 2, uid, sid: randomUUID(), rm: 0, un: username, dn: name, iat: t, exp: t + 3600, chk: t, ...over };
 }
+// 서버 쪽 세션 행을 직접 만든다(5분 확인을 통과하는 진짜 세션이 필요한 시험용). 세션 id를 돌려준다.
+const realSid = (username, remember = false) =>
+  psql(`INSERT INTO auth.user_sessions (user_id, remember, expires_at) SELECT user_id, ${remember}, now() + interval '${remember ? "30 days" : "8 hours"}' FROM auth.app_users WHERE username='${username}' RETURNING session_id`).split("\n")[0].trim();
 
 const b = await launch();
 const should = (name) => !ONLY || name.includes(ONLY);
@@ -203,7 +206,7 @@ if (should("C")) {
   rec("C 세션 쿠키: 수명 8시간 이하", ttl > 0 && ttl <= 8 * 3600 + 5, `${ttl}s`);
   rec("C 세션 쿠키: 값에 비밀번호·해시 없음, JS(document.cookie)로 읽을 수 없음", cookie && !cookie.value.includes(PW) && !cookie.value.includes("argon2") && !(await p.evaluate(() => document.cookie)).includes("session"));
   const decoded = JSON.parse(Buffer.from(cookie.value.split(".")[0], "base64url").toString("utf8"));
-  rec("C 세션 내용: 회원 id·아이디·이름·시각만", Object.keys(decoded).sort().join(",") === "chk,dn,exp,iat,uid,un,v" && decoded.un === "kim");
+  rec("C 세션 내용: 회원 id·아이디·이름·시각만", Object.keys(decoded).sort().join(",") === "chk,dn,exp,iat,rm,sid,uid,un,v" && decoded.un === "kim" && decoded.rm === 0 && /^[0-9a-f-]{36}$/.test(decoded.sid));
   const menu = p.locator(".member-menu");
   await menu.waitFor({ timeout: 10000 });
   const menuText = await menu.innerText();
@@ -321,7 +324,7 @@ if (should("D")) {
   }
   // 신선도: 5분 지난 쿠키 → 갱신 화면 → 원래 화면, 만료 시각 불변
   const exp = nowS() + 3000;
-  const stale = sign(payloadFor(kim, "kim", "김철수", { iat: nowS() - 600, exp, chk: nowS() - 600 }));
+  const stale = sign(payloadFor(kim, "kim", "김철수", { sid: realSid("kim"), iat: nowS() - 600, exp, chk: nowS() - 600 }));
   {
     const ctx = await newCtx();
     await setSessionCookie(ctx, stale);
@@ -469,7 +472,7 @@ if (should("H")) {
     const ctx = await newCtx(w);
     const p = await ctx.newPage();
     await p.goto("/login");
-    rec(`H ${w}px: '아이디 저장' 체크박스 + 라벨 연결 + 안내 문구(비밀번호 미저장·공용 PC 주의)`, (await p.locator("label[for=login-remember]").innerText()) === "아이디 저장" && /비밀번호는 저장하지 않으며/.test(await p.locator(".login-form__hint").innerText()) && /공용 PC/.test(await p.locator(".login-form__hint").innerText()));
+    rec(`H ${w}px: '아이디 저장' 체크박스 + 라벨 연결 + 안내 문구(비밀번호 미저장·공용 PC 주의)`, (await p.locator("label[for=login-remember]").innerText()) === "아이디 저장" && /비밀번호는 저장하지 않으며/.test(await p.locator(".login-form__hint").first().innerText()) && /공용 PC/.test(await p.locator(".login-form__hint").first().innerText()));
     rec(`H ${w}px: 체크박스 기본값 해제`, !(await p.isChecked("#login-remember")));
     const hgt = await p.evaluate(() => Math.round(document.querySelector(".login-form__remember").getBoundingClientRect().height));
     rec(`H ${w}px: 체크박스 줄 높이 44px 이상(터치)`, hgt >= 44, `${hgt}`);
@@ -561,6 +564,140 @@ if (should("H")) {
   await p3.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
   rec("H PasswordCredential 미지원 브라우저: 정상 로그인", new URL(p3.url()).pathname === "/");
   await ctx3.close();
+}
+
+// ───────────────────────── I. 로그인 상태 유지 30일 + 서버 쪽 세션 취소(DEC-070)
+if (should("I")) {
+  const decode = (c) => JSON.parse(Buffer.from(c.value.split(".")[0], "base64url").toString("utf8"));
+  const cookieOf = async (ctx) => (await ctx.cookies()).find((c) => c.name === COOKIE);
+  // 같은 세션 id로 "확인한 지 10분 지난" 쿠키를 만든다(발급·만료 시각을 함께 앞당겨 수명은 그대로).
+  const staleOf = (payload) => sign({ ...payload, iat: payload.iat - 700, exp: payload.exp - 700, chk: nowS() - 600 }); // 수명(exp-iat)은 그대로 유지해야 형식 검사를 통과한다
+  const dbSess = (sid) => psql(`SELECT remember, round(extract(epoch FROM (expires_at - created_at))), revoked_at IS NOT NULL FROM auth.user_sessions WHERE session_id='${sid}'`);
+  // 화면
+  for (const w of [360, 1280]) {
+    const ctx = await newCtx(w);
+    const p = await ctx.newPage();
+    await p.goto("/login");
+    rec(`I ${w}px: '로그인 상태 유지(30일)' 체크박스 + 라벨 연결, 기본 해제`, (await p.locator("label[for=login-keep]").innerText()) === "로그인 상태 유지(30일)" && !(await p.isChecked("#login-keep")));
+    const hint = await p.locator("#login-keep-hint").innerText();
+    rec(`I ${w}px: 안내(30일·공용 PC 금지·로그아웃하면 해제) + aria-describedby 연결`, /30일/.test(hint) && /공용 PC/.test(hint) && /로그아웃하면 바로 해제/.test(hint) && (await p.getAttribute("#login-keep", "aria-describedby")) === "login-keep-hint");
+    rec(`I ${w}px: 가로 넘침 없음·체크박스 줄 44px 이상`, !(await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)) && (await p.evaluate(() => Math.round(document.querySelector("#login-keep").closest(".login-form__remember").getBoundingClientRect().height))) >= 44);
+    await p.focus("#login-remember");
+    await p.keyboard.press("Tab");
+    rec(`I ${w}px: Tab 순서 아이디 저장 → 로그인 상태 유지`, (await p.evaluate(() => document.activeElement?.id)) === "login-keep");
+    const axe = await runAxe(p);
+    rec(`I ${w}px: axe 위반 없음`, axe.length === 0, axe.map((v) => v.id).join(","));
+    if (w === 360) { await p.check("#login-keep"); await p.screenshot({ path: `${OUT}/login-keep-360.png` }); }
+    await ctx.close();
+  }
+  // 입력 검증: remember는 참/거짓만
+  for (const bad of ['"true"', "1", "null", "[true]", '"yes"']) {
+    const r = await fetch(`${BASE}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json", Origin: BASE }, body: `{"username":"park","password":"x","remember":${bad}}` });
+    rec(`I /auth/login remember=${bad}: 400`, r.status === 400, `${r.status}`);
+  }
+  // 유지 체크 없이 로그인: 8시간
+  const c8 = await newCtx(1280);
+  const p8 = await c8.newPage();
+  await uiLogin(p8, "park", PW2);
+  await p8.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
+  const ck8 = await cookieOf(c8);
+  const d8 = decode(ck8);
+  rec("I 유지 미체크: 쿠키 수명 8시간 이하, rm=0, 서버 세션 remember=false/8시간", d8.rm === 0 && ck8.expires - nowS() <= 8 * 3600 + 5 && dbSess(d8.sid).startsWith("f|28800"), `${ck8.expires - nowS()}s ${dbSess(d8.sid)}`);
+  await c8.close();
+  // 유지 체크하고 로그인: 30일
+  const ctx = await newCtx(1280);
+  const p = await ctx.newPage();
+  await p.goto("/login");
+  await p.fill("#login-username", "park");
+  await p.fill("#login-password", PW2);
+  await p.check("#login-keep");
+  await p.click("button[type=submit]");
+  await p.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
+  const ck = await cookieOf(ctx);
+  const d = decode(ck);
+  const ttl = ck.expires - nowS();
+  rec("I 유지 체크: 쿠키 수명 약 30일(29.9~30일), rm=1", d.rm === 1 && ttl > 29.9 * 86400 && ttl <= 30 * 86400 + 5, `${Math.round(ttl / 86400 * 100) / 100}일`);
+  rec("I 유지 체크: 쿠키 속성 HttpOnly·Path=/·SameSite=Lax" + (INSECURE ? "" : "·Secure·__Host- 접두어"), ck.httpOnly && ck.path === "/" && ck.sameSite === "Lax" && (INSECURE || (ck.secure && ck.name.startsWith("__Host-"))));
+  rec("I 유지 체크: 서버 세션 remember=true, 수명 정확히 30일(2592000초), 취소 안 됨", dbSess(d.sid) === "t|2592000|f", dbSess(d.sid));
+  rec("I 유지 체크: 비밀번호·해시는 쿠키에 없다", !ck.value.includes(PW2) && !Buffer.from(ck.value.split(".")[0], "base64url").toString("utf8").includes("argon2"));
+  rec("I 유지 쿠키로 페이지·대행 호출 정상", (await ctx.request.get(`${BASE}/api/v1/market-summary`)).status() === 200);
+  // 3일 뒤 상황(확인 시각이 오래됨): 서버가 세션을 다시 확인하고 통과
+  const exp3 = nowS() - 3 * 86400 + 30 * 86400;
+  await setSessionCookie(ctx, sign({ ...d, iat: nowS() - 3 * 86400, exp: exp3, chk: nowS() - 3 * 86400 }));
+  await p.goto("/stocks");
+  await p.waitForURL((u) => u.pathname === "/stocks", { timeout: 20000 });
+  const renewed = decode(await cookieOf(ctx));
+  rec("I 3일 지난 30일 쿠키: 서버 확인 후 통과, 만료 시각은 그대로(연장 없음)", new URL(p.url()).pathname === "/stocks" && renewed.exp === exp3 && nowS() - renewed.chk <= 15, `exp 불변=${renewed.exp === exp3}`);
+  // 로그아웃: 서버 세션 취소 + 쿠키 삭제
+  await setSessionCookie(ctx, sign(d));
+  const copy = (await cookieOf(ctx)).value; // 로그아웃 직전의 쿠키 복사본(탈취 가정)
+  const out = await ctx.request.post(`${BASE}/auth/logout`, { headers: { origin: new URL(BASE).origin } });
+  const outBody = await out.json();
+  rec("I 로그아웃: ok + 서버 세션 취소(revoked=true)", out.status() === 200 && outBody.ok === true && outBody.revoked === true, JSON.stringify(outBody));
+  rec("I 로그아웃: DB 세션 revoked_at 기록", dbSess(d.sid).endsWith("|t"), dbSess(d.sid));
+  rec("I 로그아웃: 쿠키 삭제", (await ctx.cookies()).filter((c) => c.name === COOKIE && c.value).length === 0);
+  // 훔친 복사본: 5분 안에는 서명·만료만 보는 알려진 한계 창, 5분이 지나 서버가 확인하면 거부
+  const t1 = await newCtx(1280);
+  await setSessionCookie(t1, copy);
+  const early = await t1.request.get(`${BASE}/api/v1/market-summary`);
+  rec("I [알려진 한계] 로그아웃 직후 5분 안의 쿠키 복사본은 아직 통과(확인 주기 5분)", early.status() === 200, `${early.status()}`);
+  await setSessionCookie(t1, staleOf(d));
+  const late = await t1.request.get(`${BASE}/api/v1/market-summary`);
+  rec("I 로그아웃한 세션의 복사본은 확인 주기(5분)가 지나면 거부(401)", late.status() === 401, `${late.status()}`);
+  rec("I [시험 대조군] 같은 방식으로 만든 5분 지난 쿠키도 살아 있는 세션이면 통과(위 거부가 형식 오류 때문이 아님을 보장)", await (async () => { const sid = realSid("park", true); const c = await newCtx(1280); await setSessionCookie(c, staleOf({ ...d, sid })); const st = (await c.request.get(`${BASE}/api/v1/market-summary`)).status(); await c.close(); return st === 200; })());
+  const t1p = await t1.newPage();
+  await setSessionCookie(t1, staleOf(d));
+  await t1p.goto("/stocks");
+  await t1p.waitForURL((u) => u.pathname === "/login", { timeout: 20000 });
+  rec("I 로그아웃한 세션의 복사본으로 화면 접근: 로그인 화면으로 + '만료' 안내", new URL(t1p.url()).searchParams.get("reason") === "expired");
+  await t1.close(); await ctx.close();
+  // 두 기기: 한쪽 로그아웃은 다른 쪽 세션을 끊지 않는다
+  const mk2 = async () => { const c = await newCtx(1280); const pg = await c.newPage(); await pg.goto("/login"); await pg.fill("#login-username", "park"); await pg.fill("#login-password", PW2); await pg.check("#login-keep"); await pg.click("button[type=submit]"); await pg.waitForURL((u) => u.pathname === "/", { timeout: 20000 }); return c; };
+  const home = await mk2(); const phone = await mk2();
+  const dh = decode(await cookieOf(home)); const dp = decode(await cookieOf(phone));
+  rec("I 기기마다 서로 다른 세션 id", dh.sid !== dp.sid);
+  await home.request.post(`${BASE}/auth/logout`, { headers: { origin: new URL(BASE).origin } });
+  await setSessionCookie(phone, staleOf(dp));
+  rec("I 한 기기 로그아웃 후에도 다른 기기 세션은 서버 확인 통과(200)", (await phone.request.get(`${BASE}/api/v1/market-summary`)).status() === 200);
+  // 관리자 취소(분실·탈취 대응): revoke → 5분 지난 확인에서 거부
+  psql(`UPDATE auth.user_sessions SET revoked_at = now() WHERE session_id='${dp.sid}'`);
+  await setSessionCookie(phone, staleOf(dp));
+  rec("I 관리자가 세션을 취소하면 다음 서버 확인에서 거부(401)", (await phone.request.get(`${BASE}/api/v1/market-summary`)).status() === 401);
+  await home.close(); await phone.close();
+  // 서버 쪽 만료(30일 지남)·남의 세션 id·없는 세션 id 위조
+  const sidExp = realSid("park", true);
+  psql(`UPDATE auth.user_sessions SET created_at = now() - interval '31 days', expires_at = now() - interval '1 day' WHERE session_id='${sidExp}'`);
+  const pk = uidOf("park");
+  const forged = [
+    ["서버에서 만료된 30일 세션", { sid: sidExp, rm: 1, iat: nowS() - 600, exp: nowS() + 86400, chk: nowS() - 600 }],
+    ["없는 세션 id(서명은 맞음)", { sid: randomUUID(), rm: 1, iat: nowS() - 600, exp: nowS() + 86400, chk: nowS() - 600 }],
+    ["다른 회원(kim)의 세션 id를 park 쿠키에 넣음", { sid: realSid("kim", true), rm: 1, iat: nowS() - 600, exp: nowS() + 86400, chk: nowS() - 600 }],
+  ];
+  for (const [name, over] of forged) {
+    const c = await newCtx(1280);
+    await setSessionCookie(c, sign(payloadFor(pk, "park", "박민수", over)));
+    rec(`I 위조/무효 쿠키 ${name}: 서버 확인에서 거부(401)`, (await c.request.get(`${BASE}/api/v1/market-summary`)).status() === 401);
+    await c.close();
+  }
+  // 로그아웃: 같은 사이트 요청만, 쿠키 없이도 안전하게 성공 응답
+  const bare = await fetch(`${BASE}/auth/logout`, { method: "POST", headers: { Origin: "https://evil.example.com" } });
+  rec("I 로그아웃: 다른 사이트에서 온 요청은 403(남이 몰래 로그아웃시키지 못함)", bare.status === 403, `${bare.status}`);
+  const noCookie = await fetch(`${BASE}/auth/logout`, { method: "POST", headers: { Origin: BASE } });
+  const nb = await noCookie.json();
+  rec("I 쿠키 없는 로그아웃: 200, revoked=false(상태를 알려 주지 않음)", noCookie.status === 200 && nb.ok === true && nb.revoked === false);
+  // 회원 비활성화: 30일 세션도 5분 안에 차단, 다시 활성화해도 되살아나지 않는다(CLI는 세션도 취소)
+  const c9 = await newCtx(1280);
+  const p9 = await c9.newPage();
+  await p9.goto("/login"); await p9.fill("#login-username", "lock"); await p9.fill("#login-password", PW); await p9.check("#login-keep"); 
+  psql("UPDATE auth.app_users SET failed_attempts = 0, lockout_level = 0, locked_until = NULL WHERE username='lock'");
+  await p9.click("button[type=submit]");
+  await p9.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
+  const d9 = decode(await cookieOf(c9));
+  psql("UPDATE auth.app_users SET is_active = false WHERE username='lock'");
+  await setSessionCookie(c9, staleOf(d9));
+  rec("I 회원 비활성화: 30일 세션도 다음 서버 확인에서 거부", (await c9.request.get(`${BASE}/api/v1/market-summary`)).status() === 401);
+  psql("UPDATE auth.app_users SET is_active = true WHERE username='lock'");
+  await c9.close();
 }
 
 // ───────────────────────── F. 로그인 시도 제한(API)

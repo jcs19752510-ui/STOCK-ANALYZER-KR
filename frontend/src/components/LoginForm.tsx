@@ -29,6 +29,7 @@ export function LoginForm({ next, expired }: { next: string; expired: boolean })
   const passwordRef = useRef<HTMLInputElement>(null);
   const usernameRef = useRef<HTMLInputElement>(null);
   const rememberRef = useRef<HTMLInputElement>(null);
+  const keepRef = useRef<HTMLInputElement>(null);
   const [failures, setFailures] = useState(0);
 
   // "아이디 저장": 저장된 아이디가 있으면 채우고 비밀번호 칸으로 포커스(비밀번호는 브라우저 비밀번호 관리자가 채운다).
@@ -59,7 +60,7 @@ export function LoginForm({ next, expired }: { next: string; expired: boolean })
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
-        body: JSON.stringify({ username, password, next }),
+        body: JSON.stringify({ username, password, next, remember: keepRef.current?.checked === true }),
       });
       const body = (await response.json().catch(() => null)) as { ok?: boolean; next?: unknown } | null;
       if (response.ok && body?.ok) {
@@ -116,7 +117,14 @@ export function LoginForm({ next, expired }: { next: string; expired: boolean })
         <input id="login-remember" name="remember" type="checkbox" disabled={pending} ref={rememberRef} />
         <label htmlFor="login-remember">{copy.auth.rememberLabel}</label>
       </div>
+      <div className="login-form__remember">
+        <input id="login-keep" name="keep" type="checkbox" disabled={pending} ref={keepRef} aria-describedby="login-keep-hint" />
+        <label htmlFor="login-keep">{copy.auth.keepLabel}</label>
+      </div>
       <p className="login-form__hint">{copy.auth.rememberHint}</p>
+      <p className="login-form__hint" id="login-keep-hint">
+        {copy.auth.keepHint}
+      </p>
       {message ? (
         <p className="login-form__message" role="alert">
           {message}

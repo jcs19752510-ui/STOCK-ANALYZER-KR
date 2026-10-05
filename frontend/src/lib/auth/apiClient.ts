@@ -11,7 +11,7 @@ export interface MemberInfo {
 }
 
 export type LoginResult =
-  | { kind: "ok"; user: MemberInfo }
+  | { kind: "ok"; user: MemberInfo; sessionId: string; expiresInSeconds: number }
   | { kind: "invalid" }
   | { kind: "rate_limited" }
   | { kind: "unavailable" };
@@ -26,6 +26,7 @@ export type MembersResult =
   | { kind: "unavailable" };
 
 const LOGIN_TIMEOUT_MS = 65_000;
+const LOGOUT_TIMEOUT_MS = 8_000;
 
 function apiBase(): string {
   return (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
@@ -53,12 +54,12 @@ function asString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
-export async function apiLogin(username: string, password: string, ip: string | null): Promise<LoginResult> {
+export async function apiLogin(username: string, password: string, ip: string | null, remember = false): Promise<LoginResult> {
   try {
     const response = await fetch(`${apiBase()}/api/v1/internal/auth/login`, {
       method: "POST",
       headers: internalHeaders(ip ? { "X-End-User-IP": ip } : {}),
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, remember }),
       cache: "no-store",
       signal: AbortSignal.timeout(LOGIN_TIMEOUT_MS),
     });
@@ -69,19 +70,21 @@ export async function apiLogin(username: string, password: string, ip: string | 
     const uid = asString(data?.user_id);
     const name = asString(data?.username);
     const display = asString(data?.display_name);
-    if (!uid || !name || !display) return { kind: "unavailable" };
-    return { kind: "ok", user: { uid, username: name, displayName: display } };
+    const sessionId = asString(data?.session_id);
+    const expires = data?.expires_in_seconds;
+    if (!uid || !name || !display || !sessionId || typeof expires !== "number" || !Number.isFinite(expires)) return { kind: "unavailable" };
+    return { kind: "ok", user: { uid, username: name, displayName: display }, sessionId, expiresInSeconds: expires };
   } catch {
     return { kind: "unavailable" };
   }
 }
 
-export async function apiSessionCheck(uid: string): Promise<SessionCheckResult> {
+export async function apiSessionCheck(uid: string, sessionId: string): Promise<SessionCheckResult> {
   try {
     const response = await fetchWithColdStartRetry(`${apiBase()}/api/v1/internal/auth/session-check`, {
       method: "POST",
       headers: internalHeaders({ "X-Auth-User": uid }),
-      body: JSON.stringify({ user_id: uid }),
+      body: JSON.stringify({ user_id: uid, session_id: sessionId }),
       cache: "no-store",
     });
     if (response.status !== 200) return { kind: "unavailable" };
@@ -94,6 +97,22 @@ export async function apiSessionCheck(uid: string): Promise<SessionCheckResult> 
     return data?.active === false ? { kind: "inactive" } : { kind: "unavailable" };
   } catch {
     return { kind: "unavailable" };
+  }
+}
+
+/** 로그아웃 때 서버 쪽 세션을 취소한다. 실패해도 쿠키는 지우므로 결과(취소했는지)만 알려 준다. 재시도 없이 짧게 기다린다. */
+export async function apiLogout(uid: string, sessionId: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${apiBase()}/api/v1/internal/auth/logout`, {
+      method: "POST",
+      headers: internalHeaders({ "X-Auth-User": uid }),
+      body: JSON.stringify({ user_id: uid, session_id: sessionId }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(LOGOUT_TIMEOUT_MS),
+    });
+    return response.status === 200;
+  } catch {
+    return false;
   }
 }
 

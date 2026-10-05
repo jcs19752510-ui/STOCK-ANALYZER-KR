@@ -133,7 +133,8 @@ def test_login_success_returns_member_info_and_records_it(db, api):
     assert r.status_code == 200
     data = r.json()["data"]
     assert data["username"] == "kim" and data["display_name"] == "김철수" and len(data["user_id"]) == 36
-    assert set(data) == {"user_id", "username", "display_name"}  # 해시·상태 등은 응답에 없다
+    assert set(data) == {"user_id", "username", "display_name", "session_id", "expires_in_seconds"}  # 해시·상태 등은 응답에 없다
+    assert data["expires_in_seconds"] == 8 * 3600
     assert GOOD not in r.text and HASH not in r.text
     failed, level, locked, logged_in, _hash, _secs = _row(db, "kim")
     assert (failed, level, locked, logged_in) == (0, 0, False, True)
@@ -329,7 +330,7 @@ def test_internal_endpoints_always_require_the_token(db, api):
         r = _login(api, "kim", GOOD, token=token)
         assert r.status_code == 401 and r.json()["error"]["code"] == "AUTH_REQUIRED", token
     assert api.get("/api/v1/internal/members").status_code == 401
-    assert api.post("/api/v1/internal/auth/session-check", json={"user_id": "11111111-1111-4111-8111-111111111111"}).status_code == 401
+    assert api.post("/api/v1/internal/auth/session-check", json={"user_id": "11111111-1111-4111-8111-111111111111", "session_id": "11111111-1111-4111-8111-111111111111"}).status_code == 401
     assert _audit(db) == []  # 토큰이 틀린 호출은 인증 로직에 닿지도 않는다
 
 
@@ -361,11 +362,13 @@ def test_session_check_reports_active_state(db, api):
     uid = _admin(db, "SELECT user_id::text FROM auth.app_users WHERE username='kim'")[0][0]
     off = _admin(db, "SELECT user_id::text FROM auth.app_users WHERE username='off'")[0][0]
     h = {"X-Internal-Token": TOKEN}
-    ok = api.post("/api/v1/internal/auth/session-check", json={"user_id": uid}, headers=h).json()["data"]
+    sid = _admin(db, "INSERT INTO auth.user_sessions (user_id, remember, expires_at) VALUES (CAST(:u AS uuid), false, now() + interval '8 hours') RETURNING session_id::text", u=uid)[0][0]
+    off_sid = _admin(db, "INSERT INTO auth.user_sessions (user_id, remember, expires_at) VALUES (CAST(:u AS uuid), false, now() + interval '8 hours') RETURNING session_id::text", u=off)[0][0]
+    ok = api.post("/api/v1/internal/auth/session-check", json={"user_id": uid, "session_id": sid}, headers=h).json()["data"]
     assert ok == {"active": True, "username": "kim", "display_name": "김철수"}
-    for gone in (off, "99999999-9999-4999-8999-999999999999"):
-        assert api.post("/api/v1/internal/auth/session-check", json={"user_id": gone}, headers=h).json()["data"] == {"active": False, "username": None, "display_name": None}
-    for bad in ({"user_id": "x"}, {"user_id": uid, "extra": 1}, {}):
+    for gone, gsid in ((off, off_sid), ("99999999-9999-4999-8999-999999999999", sid)):
+        assert api.post("/api/v1/internal/auth/session-check", json={"user_id": gone, "session_id": gsid}, headers=h).json()["data"] == {"active": False, "username": None, "display_name": None}
+    for bad in ({"user_id": "x", "session_id": sid}, {"user_id": uid, "session_id": sid, "extra": 1}, {"user_id": uid}, {}):
         assert api.post("/api/v1/internal/auth/session-check", json=bad, headers=h).status_code == 400
 
 
@@ -392,3 +395,143 @@ def test_members_empty_list(db, api):
 def test_existing_data_api_paths_are_unaffected_by_the_new_router(db, api):
     assert api.get("/api/v1/live").status_code == 200
     assert api.get("/openapi.json").status_code == 200  # 스위치가 꺼진 기본 상태(로컬)에서는 문서가 그대로 있다
+
+
+# ------------------------------------------------------------------ 서버 쪽 세션·로그인 상태 유지 30일 (DEC-070)
+H = {"X-Internal-Token": TOKEN}
+CHECK = "/api/v1/internal/auth/session-check"
+LOGOUT = "/api/v1/internal/auth/logout"
+
+
+def _login_data(api, remember=None, username="kim", password=GOOD):
+    body = {"username": username, "password": password}
+    if remember is not None:
+        body["remember"] = remember
+    r = api.post("/api/v1/internal/auth/login", json=body, headers=H)
+    assert r.status_code == 200, r.text
+    return r.json()["data"]
+
+
+def _check(api, uid, sid):
+    return api.post(CHECK, json={"user_id": uid, "session_id": sid}, headers=H).json()["data"]["active"]
+
+
+def _sess_row(db, sid):
+    return _admin(db, "SELECT remember, EXTRACT(EPOCH FROM (expires_at - created_at))::int, last_check_at IS NOT NULL, revoked_at IS NOT NULL FROM auth.user_sessions WHERE session_id = CAST(:s AS uuid)", s=sid)[0]
+
+
+def test_login_creates_server_session_with_8h_default_and_30d_when_remembered(db, api):
+    _add_user(db, "kim")
+    d8 = _login_data(api)
+    d30 = _login_data(api, remember=True)
+    dfalse = _login_data(api, remember=False)
+    assert d8["expires_in_seconds"] == 8 * 3600 and dfalse["expires_in_seconds"] == 8 * 3600
+    assert d30["expires_in_seconds"] == 30 * 24 * 3600
+    assert len({d8["session_id"], d30["session_id"], dfalse["session_id"]}) == 3
+    assert _sess_row(db, d8["session_id"])[:2] == (False, 8 * 3600)
+    assert _sess_row(db, d30["session_id"])[:2] == (True, 30 * 24 * 3600)
+
+
+def test_failed_login_creates_no_session(db, api):
+    _add_user(db, "kim")
+    assert _login(api, "kim", "wrong-password-xyz").status_code == 401
+    api.post("/api/v1/internal/auth/login", json={"username": "kim", "password": GOOD, "remember": True}, headers={**H, "X-End-User-IP": "203.0.113.5"})
+    assert _admin(db, "SELECT count(*) FROM auth.user_sessions")[0][0] == 1  # 성공한 한 건만
+
+
+def test_remember_must_be_a_real_boolean_and_lifetime_cannot_be_chosen_by_caller(db, api):
+    _add_user(db, "kim")
+    for bad in ("true", "yes", 1, 0, "30d", None, [True], {"days": 3650}):
+        r = api.post("/api/v1/internal/auth/login", json={"username": "kim", "password": GOOD, "remember": bad}, headers=H)
+        assert r.status_code == 400, bad
+    for extra in ({"expires_in": 99999999}, {"days": 3650}, {"session_id": "11111111-1111-4111-8111-111111111111"}):
+        r = api.post("/api/v1/internal/auth/login", json={"username": "kim", "password": GOOD, **extra}, headers=H)
+        assert r.status_code == 400, extra
+    assert _admin(db, "SELECT count(*) FROM auth.user_sessions")[0][0] == 0
+
+
+def test_session_check_requires_a_live_session_of_the_same_user(db, api):
+    _add_user(db, "kim")
+    _add_user(db, "lee", "이영희")
+    kim = _login_data(api)
+    lee = _login_data(api, username="lee")
+    assert _check(api, kim["user_id"], kim["session_id"]) is True
+    assert _sess_row(db, kim["session_id"])[2] is True  # 확인 시각 기록
+    assert _check(api, kim["user_id"], lee["session_id"]) is False  # 남의 세션 id를 내 id로 제시
+    assert _check(api, lee["user_id"], kim["session_id"]) is False
+    assert _check(api, kim["user_id"], "99999999-9999-4999-8999-999999999999") is False  # 없는 세션
+    assert _check(api, kim["user_id"], kim["session_id"].upper()) is True  # UUID 대소문자 무관
+
+
+def test_session_check_rejects_revoked_expired_and_disabled(db, api):
+    _add_user(db, "kim")
+    d = _login_data(api, remember=True)
+    uid, sid = d["user_id"], d["session_id"]
+    # 만료(절대 만료: 지난 뒤에는 다시 확인해도 통과하지 않는다)
+    _admin(db, "UPDATE auth.user_sessions SET created_at = now() - interval '31 days', expires_at = now() - interval '1 day' WHERE session_id = CAST(:s AS uuid)", s=sid)
+    assert _check(api, uid, sid) is False
+    d2 = _login_data(api, remember=True)
+    assert _check(api, uid, d2["session_id"]) is True
+    _admin(db, "UPDATE auth.app_users SET is_active = false WHERE username = 'kim'")  # 회원 비활성
+    assert _check(api, uid, d2["session_id"]) is False
+    _admin(db, "UPDATE auth.app_users SET is_active = true WHERE username = 'kim'")
+    assert _check(api, uid, d2["session_id"]) is True  # 다시 활성이면 세션은 살아 있다(취소한 것이 아니므로)
+    _admin(db, "UPDATE auth.user_sessions SET revoked_at = now() WHERE session_id = CAST(:s AS uuid)", s=d2["session_id"])
+    assert _check(api, uid, d2["session_id"]) is False
+
+
+def test_logout_revokes_only_this_session_and_is_idempotent(db, api):
+    _add_user(db, "kim")
+    _add_user(db, "lee", "이영희")
+    a = _login_data(api, remember=True)  # 집 PC
+    b = _login_data(api, remember=True)  # 다른 기기
+    other = _login_data(api, username="lee")
+    r = api.post(LOGOUT, json={"user_id": a["user_id"], "session_id": a["session_id"]}, headers=H)
+    assert r.status_code == 200 and r.json()["data"] == {"revoked": True}
+    assert _check(api, a["user_id"], a["session_id"]) is False  # 훔친 쿠키도 5분 안에 거부
+    assert _check(api, b["user_id"], b["session_id"]) is True  # 다른 기기 세션은 그대로
+    assert _check(api, other["user_id"], other["session_id"]) is True
+    assert api.post(LOGOUT, json={"user_id": a["user_id"], "session_id": a["session_id"]}, headers=H).json()["data"] == {"revoked": False}
+    # 남의 세션을 내 id로 로그아웃시킬 수 없다
+    assert api.post(LOGOUT, json={"user_id": a["user_id"], "session_id": other["session_id"]}, headers=H).json()["data"] == {"revoked": False}
+    assert _check(api, other["user_id"], other["session_id"]) is True
+    for bad in ({"user_id": a["user_id"]}, {"session_id": a["session_id"]}, {"user_id": "x", "session_id": "y"}, {}):
+        assert api.post(LOGOUT, json=bad, headers=H).status_code == 400
+    assert api.post(LOGOUT, json={"user_id": a["user_id"], "session_id": a["session_id"]}).status_code == 401  # 내부 토큰 필수
+
+
+def test_auth_service_cannot_extend_reassign_or_delete_sessions(db, api):
+    _add_user(db, "kim")
+    d = _login_data(api, remember=True)
+    auth_url = make_url(os.environ["PUBLIC_API_AUTH_DATABASE_URL"]).set(database=db.name)
+    eng = create_engine(TempDb.render(auth_url))
+    try:
+        for sql in (
+            "UPDATE auth.user_sessions SET expires_at = expires_at + interval '1 year'",
+            "UPDATE auth.user_sessions SET user_id = gen_random_uuid()",
+            "UPDATE auth.user_sessions SET remember = false",
+            "DELETE FROM auth.user_sessions",
+        ):
+            with eng.connect() as c, pytest.raises(Exception, match="permission denied"):
+                c.execute(text(sql))
+        with eng.begin() as c:  # 허용된 두 열은 가능
+            c.execute(text("UPDATE auth.user_sessions SET last_check_at = now()"))
+    finally:
+        eng.dispose()
+    assert _sess_row(db, d["session_id"])[1] == 30 * 24 * 3600
+
+
+def test_session_expiry_constraint_blocks_lifetimes_beyond_31_days(db, api):
+    _add_user(db, "kim")
+    uid = _admin(db, "SELECT user_id::text FROM auth.app_users WHERE username='kim'")[0][0]
+    for expr in ("now() + interval '32 days'", "now() - interval '1 hour'"):
+        with pytest.raises(Exception, match="ck_user_sessions_expiry"):
+            _admin(db, f"INSERT INTO auth.user_sessions (user_id, remember, expires_at) VALUES (CAST(:u AS uuid), true, {expr})", u=uid)
+
+
+def test_deleting_member_removes_sessions(db, api):
+    _add_user(db, "kim")
+    _login_data(api, remember=True)
+    assert _admin(db, "SELECT count(*) FROM auth.user_sessions")[0][0] == 1
+    _admin(db, "DELETE FROM auth.app_users WHERE username = 'kim'")
+    assert _admin(db, "SELECT count(*) FROM auth.user_sessions")[0][0] == 0

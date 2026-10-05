@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     clearSessionCookie(response);
     return response;
   }
-  const check = await apiSessionCheck(session.uid);
+  const check = await apiSessionCheck(session.uid, session.sid);
   if (check.kind === "unavailable") return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
   if (check.kind === "inactive") {
     const response = json({ ok: false, code: "AUTH_REQUIRED" }, 401);

@@ -8,6 +8,9 @@
     python scripts/manage_users.py delete <아이디>                      # 확인을 위해 아이디를 다시 입력
     python scripts/manage_users.py list
     python scripts/manage_users.py audit [--limit 20]                   # 최근 로그인 기록
+    python scripts/manage_users.py sessions                             # 회원별 유효 세션 수(30일 유지 포함)
+    python scripts/manage_users.py revoke-sessions <아이디>             # 그 회원의 모든 기기 로그인 즉시 취소(분실·탈취 대응)
+    python scripts/manage_users.py purge-sessions [--days 7]            # 만료·취소 후 N일 지난 세션 행 삭제
     python scripts/manage_users.py check                                # 계정 권한 점검(운영 반영 전후 확인)
 
 연결: 환경변수 `AUTH_ADMIN_DATABASE_URL`(없으면 `ALEMBIC_DATABASE_URL`). 이 연결은 `auth` 스키마를 쓸 수 있는 소유자/마이그레이터 계정이어야 하며
@@ -93,8 +96,55 @@ def set_password(engine: Engine, username: str, password: str) -> None:
             ),
             {"h": password_hash, "u": username},
         ).rowcount
+        if n:  # 비밀번호를 바꾸면 기존 로그인(30일 유지 포함)은 모두 끊는다
+            _revoke_all(conn, username)
     if n == 0:
         raise UserError(f"없는 아이디입니다: {username}")
+
+
+def _revoke_all(conn, username: str) -> int:
+    return conn.execute(
+        text(
+            "UPDATE auth.user_sessions SET revoked_at = now() WHERE revoked_at IS NULL "
+            "AND user_id IN (SELECT user_id FROM auth.app_users WHERE username = :u)"
+        ),
+        {"u": username},
+    ).rowcount or 0
+
+
+def revoke_sessions(engine: Engine, username: str) -> int:
+    """그 회원의 모든 유효 세션을 취소하고 취소한 건수를 돌려준다(웹은 늦어도 5분 안에 반영)."""
+    username = normalize_username(username)
+    with engine.begin() as conn:
+        if conn.execute(text("SELECT 1 FROM auth.app_users WHERE username = :u"), {"u": username}).first() is None:
+            raise UserError(f"없는 아이디입니다: {username}")
+        return _revoke_all(conn, username)
+
+
+def purge_sessions(engine: Engine, days: int) -> int:
+    if days < 0:
+        raise UserError("--days는 0 이상이어야 합니다.")
+    with engine.begin() as conn:
+        return conn.execute(
+            text(
+                "DELETE FROM auth.user_sessions WHERE GREATEST(expires_at, COALESCE(revoked_at, expires_at)) "
+                "< now() - make_interval(days => :d)"
+            ),
+            {"d": days},
+        ).rowcount or 0
+
+
+def session_summary(engine: Engine) -> list[dict]:
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT u.username, count(*) FILTER (WHERE s.revoked_at IS NULL AND s.expires_at > now()) AS active, "
+                "count(*) FILTER (WHERE s.revoked_at IS NULL AND s.expires_at > now() AND s.remember) AS remembered "
+                "FROM auth.app_users u LEFT JOIN auth.user_sessions s ON s.user_id = u.user_id "
+                "GROUP BY u.username ORDER BY u.username"
+            )
+        ).mappings()
+        return [dict(r) for r in rows]
 
 
 def _update_flag(engine: Engine, username: str, sql: str) -> None:
@@ -106,6 +156,8 @@ def _update_flag(engine: Engine, username: str, sql: str) -> None:
 
 
 def set_active(engine: Engine, username: str, active: bool) -> None:
+    if not active:
+        revoke_sessions(engine, username)  # 막으면 로그인 중인 기기도 즉시 끊는다
     reset = ", failed_attempts = 0, lockout_level = 0, locked_until = NULL" if active else ""
     flag = "true" if active else "false"
     _update_flag(engine, username, f"UPDATE auth.app_users SET is_active = {flag}{reset}, updated_at = now() WHERE username = :u")
@@ -179,6 +231,11 @@ def check_privileges(engine: Engine) -> list[tuple[str, bool, str]]:
             ("auth_service: failed_attempts 열 UPDATE", "SELECT has_column_privilege('auth_service', 'auth.app_users', 'failed_attempts', 'UPDATE')", True),
             ("auth_service: login_audit INSERT", "SELECT has_table_privilege('auth_service', 'auth.login_audit', 'INSERT')", True),
             ("auth_service: login_audit SELECT 없음", "SELECT has_table_privilege('auth_service', 'auth.login_audit', 'SELECT')", False),
+            ("auth_service: user_sessions SELECT·INSERT", "SELECT has_table_privilege('auth_service', 'auth.user_sessions', 'SELECT') AND has_table_privilege('auth_service', 'auth.user_sessions', 'INSERT')", True),
+            ("auth_service: user_sessions DELETE 없음", "SELECT has_table_privilege('auth_service', 'auth.user_sessions', 'DELETE')", False),
+            ("auth_service: user_sessions revoked_at 열 UPDATE", "SELECT has_column_privilege('auth_service', 'auth.user_sessions', 'revoked_at', 'UPDATE')", True),
+            ("auth_service: user_sessions expires_at 열 UPDATE 없음(수명 연장 불가)", "SELECT has_column_privilege('auth_service', 'auth.user_sessions', 'expires_at', 'UPDATE')", False),
+            ("auth_service: user_sessions user_id 열 UPDATE 없음", "SELECT has_column_privilege('auth_service', 'auth.user_sessions', 'user_id', 'UPDATE')", False),
             ("auth_service: public_serving 접근 없음", "SELECT has_schema_privilege('auth_service', 'public_serving', 'USAGE')", False),
         ]
         for label, sql, want in expect:
@@ -215,6 +272,11 @@ def build_parser() -> argparse.ArgumentParser:
     au.add_argument("--limit", type=int, default=20)
     pu = sub.add_parser("purge-audit", help="오래된 로그인 기록 삭제(기본 90일 보존)")
     pu.add_argument("--days", type=int, default=90)
+    sub.add_parser("sessions", help="회원별 유효 세션 수")
+    rv = sub.add_parser("revoke-sessions", help="그 회원의 모든 기기 로그인 취소")
+    rv.add_argument("username")
+    ps = sub.add_parser("purge-sessions", help="만료·취소된 세션 행 삭제")
+    ps.add_argument("--days", type=int, default=7)
     sub.add_parser("check", help="계정 권한 점검")
     return p
 
@@ -255,6 +317,15 @@ def main(argv: list[str] | None = None, *, engine: Engine | None = None) -> int:
         elif args.cmd == "audit":
             for r in audit_rows(eng, max(1, min(args.limit, 500))):
                 print(f"{_fmt(r['occurred_at'])}  {_fmt(r['username_attempted']):<20}{r['result']:<9}{_fmt(r['client_ip'])}")
+        elif args.cmd == "sessions":
+            rows = session_summary(eng)
+            print(f"{'아이디':<20}{'유효 세션':<12}{'30일 유지':<10}")
+            for r in rows:
+                print(f"{r['username']:<20}{r['active']:<12}{r['remembered']:<10}")
+        elif args.cmd == "revoke-sessions":
+            print(f"{normalize_username(args.username)}의 세션 {revoke_sessions(eng, args.username)}건을 취소했습니다.")
+        elif args.cmd == "purge-sessions":
+            print(f"세션 행 {purge_sessions(eng, args.days)}건을 삭제했습니다.")
         elif args.cmd == "purge-audit":
             print(f"{args.days}일보다 오래된 기록 {purge_audit(eng, args.days)}건을 삭제했습니다.")
         elif args.cmd == "check":

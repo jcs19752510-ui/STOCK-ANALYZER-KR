@@ -17,3 +17,6 @@ GRANT UPDATE (password_hash, failed_attempts, lockout_level, locked_until, last_
   ON auth.app_users TO auth_service;
 GRANT INSERT ON auth.login_audit TO auth_service;
 GRANT USAGE ON SEQUENCE auth.login_audit_audit_id_seq TO auth_service;
+-- 0017(로그인 상태 유지 30일, DEC-070): 서버 쪽 세션 목록
+GRANT SELECT, INSERT ON auth.user_sessions TO auth_service;
+GRANT UPDATE (last_check_at, revoked_at) ON auth.user_sessions TO auth_service;

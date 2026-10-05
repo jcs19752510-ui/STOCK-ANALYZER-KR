@@ -39,7 +39,7 @@ export async function GET(request: Request) {
 
   let refreshedCookie: { token: string; maxAge: number } | null = null;
   if (!isFresh(session, now)) {
-    const check = await apiSessionCheck(session.uid);
+    const check = await apiSessionCheck(session.uid, session.sid);
     if (check.kind === "unavailable") {
       return json({ data: null, error: { code: "SERVICE_UNAVAILABLE", message: "일시적인 서비스 장애입니다." } }, 503);
     }
