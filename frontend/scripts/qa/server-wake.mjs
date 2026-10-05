@@ -1,4 +1,4 @@
-// DEC-065/066 점검: 서버 컴포넌트가 API를 부르는 화면(홈·종목 상세)의 대기 팝업(요청 시각 + 카운트다운) · 일시적 실패 재시도 · 자동 새로고침 규칙.
+// DEC-065/066/076 점검: 서버 컴포넌트가 API를 부르는 화면(홈·종목 상세)에서 **대기 팝업이 없음**(DEC-076) · 일시적 실패 재시도 · 자동 새로고침 규칙(화면 표시 없이 유지).
 // 이 스크립트가 가짜 API(포트 4311)를 직접 띄운다. 카운트다운을 12초로 줄인 운영 빌드가 4312에서 실행 중이어야 한다:
 //   export NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:4311 PUBLIC_API_INTERNAL_TOKEN=qa NEXT_PUBLIC_WAKE_COUNTDOWN_SECONDS=12
 //   npm run build && npx next start -p 4312
@@ -77,44 +77,22 @@ for (const w of [360, 1280]) {
   await ctx.close();
 }
 
-// S2 503×2 후 성공(약 15초): 팝업 → 카운트다운 감소 → 데이터가 먼저 오면 팝업만 닫고 새로고침 안 함
+// S2 503×2 후 성공(약 15초): 4.5초가 지나도 팝업이 없고, 데이터가 먼저 오면 새로고침하지 않음
 for (const w of [360, 1280]) {
-  // 503 두 번(각 1.5초) → 3초·6초 대기 → 세 번째가 3초 걸려 성공: 약 15초. 카운트다운(12초)은 팝업이 뜬 뒤 끝나므로(약 17초) 데이터가 먼저 온다.
+  // 503 두 번(각 1.5초) → 3초·6초 대기 → 세 번째가 3초 걸려 성공: 약 15초. 자동 새로고침 시점(4.5초 + 카운트 12초)보다 먼저 데이터가 온다.
   reset(); plan = (_p, n) => (n < 2 ? { status: 503, delay: 1500 } : { status: 200, delay: 3000 });
   const { ctx, p, errs } = await open(w);
   const t0 = Date.now();
   await p.goto(BASE + "/", { waitUntil: "commit" });
   await mark(p);
   rec(`503×2 후 성공 ${w}px: 로딩 화면 즉시`, (await p.locator('section[aria-busy="true"]').count()) === 1);
-  await p.waitForTimeout(1500);
-  rec(`503×2 후 성공 ${w}px: 1.5초엔 팝업 없음`, (await dialog(p).count()) === 0);
-  const shown = await dialog(p).waitFor({ timeout: 8000 }).then(() => true).catch(() => false);
-  rec(`503×2 후 성공 ${w}px: 4.5초 뒤 팝업 표시`, shown, `${sec(t0)}s`);
-  if (shown) {
-    // 모양 확인용 캡처. 문서 로딩이 끝나기를 기다리는 p.screenshot() 대신 CDP로 즉시 찍는다(스트리밍 중이라 기다리면 팝업이 이미 닫힌다).
-    const cdp = await ctx.newCDPSession(p);
-    const shot = await cdp.send("Page.captureScreenshot", { format: "png" });
-    fs.writeFileSync(`${OUT}/wake-popup-${w}.png`, Buffer.from(shot.data, "base64"));
-    const first = await remaining(p);
-    rec(`503×2 후 성공 ${w}px: 시작 값이 ${String(CD).padStart(2, "0")}(또는 직후 ${String(CD - 1).padStart(2, "0")})`, [String(CD).padStart(2, "0"), String(CD - 1).padStart(2, "0")].includes(first), `값=${first}`);
-    const reqAt = (await p.locator('[data-testid="wake-requested-at"]').innerText()).trim();
-    rec(`503×2 후 성공 ${w}px: 요청 시각 형식 HH:MM:SS`, /^\d{2}:\d{2}:\d{2}$/.test(reqAt), reqAt);
-    const diff = Math.abs(toSec(reqAt) - toSec(kst(t0)));
-    rec(`503×2 후 성공 ${w}px: 요청 시각이 실제 요청 시각과 일치(±3초)`, diff <= 3 || diff >= 86397, `표시=${reqAt} 실제=${kst(t0)}`);
-    await p.waitForTimeout(1500);
-    const second = await remaining(p);
-    rec(`503×2 후 성공 ${w}px: 카운트다운이 줄어듦`, Number(second) < Number(first), `${first}→${second}`);
-    const txt = await dialog(p).innerText();
-    rec(`503×2 후 성공 ${w}px: 문구(제목·요청 시각·남은 시간·새로고침 안내)`, /서버를 깨우는 중/.test(txt) && /요청 시각/.test(txt) && /남은 시간/.test(txt) && /00이 되면 화면을 새로고침/.test(txt));
-    const box = await dialog(p).boundingBox();
-    rec(`503×2 후 성공 ${w}px: 팝업이 화면 안(가로 넘침 없음)`, box && box.x >= 0 && box.x + box.width <= w && !(await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)), box ? `x=${Math.round(box.x)} w=${Math.round(box.width)}` : "");
-    const axe = await runAxe(p);
-    rec(`503×2 후 성공 ${w}px: axe 위반 없음`, axe.length === 0, axe.map((v) => v.id).join(","));
-  }
+  await p.waitForTimeout(6500); // 예전 팝업 표시 시점(4.5초)을 지나 6.5초
+  rec(`503×2 후 성공 ${w}px: 4.5초 뒤에도 팝업 없음`, (await dialog(p).count()) === 0 && (await p.getByText("서버를 깨우는 중").count()) === 0, `${sec(t0)}s`);
+  rec(`503×2 후 성공 ${w}px: 화면에 겹치는 창(role=dialog) 없음`, (await p.locator('[role="dialog"]').count()) === 0);
   await p.waitForSelector("h1.home-page__title", { timeout: 20000 });
   const total = (Date.now() - t0) / 1000;
   await p.waitForTimeout(500);
-  rec(`503×2 후 성공 ${w}px: 데이터가 먼저 오면 팝업 닫힘`, (await dialog(p).count()) === 0, `${total.toFixed(1)}s`);
+  rec(`503×2 후 성공 ${w}px: 데이터가 오면 정상 화면`, true, `${total.toFixed(1)}s`);
   rec(`503×2 후 성공 ${w}px: 새로고침 안 함(표시 유지)`, await marked(p));
   rec(`503×2 후 성공 ${w}px: API 호출 3회`, hits["/api/v1/market-summary"] === 3, `hits=${hits["/api/v1/market-summary"]}`);
   rec(`503×2 후 성공 ${w}px: 새로고침 횟수 저장값 없음`, (await stored(p)) === null);
@@ -124,17 +102,17 @@ for (const w of [360, 1280]) {
   await ctx.close();
 }
 
-// S3 첫 요청만 18초 걸림: 0초에 아직 로딩 중이면 새로고침 → 새 요청은 빠르게 성공
+// S3 첫 요청만 18초 걸림: 팝업 없이 0초에 아직 로딩 중이면 자동 새로고침 → 새 요청은 빠르게 성공
 {
   reset(); plan = (_p, n) => (n === 0 ? { status: 200, delay: 18000 } : { status: 200, delay: 100 });
   const { ctx, p } = await open(360);
   const t0 = Date.now();
   await p.goto(BASE + "/", { waitUntil: "commit" });
   await mark(p);
-  await dialog(p).waitFor({ timeout: 8000 });
-  let last = await remaining(p);
+  await p.waitForTimeout(6000);
+  rec("0초에 아직 로딩 중: 기다리는 동안 팝업 없음", (await dialog(p).count()) === 0);
   const reloaded = await p.waitForFunction(() => window.__nr !== 1, null, { timeout: (CD + 8) * 1000 }).then(() => true).catch(() => false);
-  rec("0초에 아직 로딩 중: 자동 새로고침 실행", reloaded, `${sec(t0)}s`);
+  rec("0초에 아직 로딩 중: 자동 새로고침 실행(화면 표시 없이)", reloaded, `${sec(t0)}s`);
   await p.waitForSelector("h1.home-page__title", { timeout: 15000 });
   await p.waitForTimeout(800);
   rec("0초 새로고침 뒤: 데이터 화면 표시, 팝업 없음", (await dialog(p).count()) === 0);
@@ -143,7 +121,7 @@ for (const w of [360, 1280]) {
   await ctx.close();
 }
 
-// S5 브라우저 요청이 느린 경우(/stocks 검색): 팝업은 뜨되 0초에 닫히기만 하고 새로고침하지 않으며 입력은 유지
+// S5 브라우저 요청이 느린 경우(/stocks 검색): 팝업 없음, 새로고침하지 않으며 입력은 유지
 {
   const { ctx, p } = await open(360);
   await p.route("**/api/v1/**", async (r) => {
@@ -154,11 +132,10 @@ for (const w of [360, 1280]) {
   await mark(p);
   const box = p.locator("#stock-search-input");
   await box.fill("삼성"); await box.press("Enter").catch(() => {});
-  await dialog(p).waitFor({ timeout: 9000 });
-  const txt = await dialog(p).innerText();
-  rec("브라우저 요청 지연: 팝업 표시(새로고침 안내 문구 없음, 자동 닫힘 안내)", /응답이 오면 이 창은 자동으로 닫힙니다/.test(txt) && !/새로고침합니다/.test(txt));
-  await dialog(p).waitFor({ state: "detached", timeout: (CD + 4) * 1000 });
-  rec("브라우저 요청 지연: 0초에 팝업만 닫힘", true);
+  await p.waitForTimeout(6500);
+  rec("브라우저 요청 지연: 4.5초 뒤에도 팝업 없음", (await dialog(p).count()) === 0 && (await p.getByText("서버를 깨우는 중").count()) === 0);
+  await p.waitForTimeout((CD + 4) * 1000);
+  rec("브라우저 요청 지연: 카운트 시점이 지나도 팝업 없음", (await dialog(p).count()) === 0);
   rec("브라우저 요청 지연: 새로고침 안 함", await marked(p));
   rec("브라우저 요청 지연: 입력한 검색어 유지", (await box.inputValue()) === "삼성");
   await ctx.close();
@@ -201,7 +178,7 @@ for (const w of [360, 1280]) {
 }
 
 // (마지막에 실행: 이 시험이 남기는 서버 쪽 재시도가 다른 시험의 호출 수를 흐리지 않게 한다)
-// S4 계속 느림: 새로고침은 최대 2회, 그 뒤엔 팝업만 닫고 반복하지 않음
+// S4 계속 느림: 새로고침은 최대 2회, 그 뒤엔 반복하지 않음
 {
   reset(); plan = () => ({ status: 200, delay: 30000 });
   const { ctx, p } = await open(360);
@@ -210,17 +187,14 @@ for (const w of [360, 1280]) {
   p.on("request", (r) => { if (r.isNavigationRequest() && r.frame() === p.mainFrame() && new URL(r.url()).pathname === "/") navs += 1; });
   const t0 = Date.now();
   await p.goto(BASE + "/", { waitUntil: "commit" });
-  const waitCycle = async () => {
-    await dialog(p).waitFor({ timeout: 9000 });
-    await dialog(p).waitFor({ state: "detached", timeout: (CD + 6) * 1000 }).catch(() => {});
-  };
-  await waitCycle(); await p.waitForTimeout(1500); // 1회차(새로고침 1)
-  await waitCycle(); await p.waitForTimeout(1500); // 2회차(새로고침 2)
-  await waitCycle();                                // 3회차: 새로고침 없이 팝업만 닫힘
+  // 팝업이 없으므로 문서 요청 횟수로 새로고침을 센다: 주기마다(약 4.5초 + 카운트 + 여유) 한 번씩, 총 3번에서 멈춰야 한다.
+  const waitNavs = async (n) => { for (let i = 0; i < (CD + 12) * 2 && navs < n; i += 1) await p.waitForTimeout(500); };
+  await waitNavs(2); await p.waitForTimeout(1500); // 1회차 새로고침
+  await waitNavs(3);                               // 2회차 새로고침
   const navsAfterThird = navs;
-  await p.waitForTimeout(4000);
+  await p.waitForTimeout((CD + 8) * 1000);          // 3회차는 새로고침 없이 끝남
   rec("계속 느림: 화면 로딩은 총 3번(최초 + 자동 새로고침 2회)", navsAfterThird === 3, `문서 요청=${navsAfterThird}, ${sec(t0)}s`);
-  rec("계속 느림: 3회차 0초 뒤 팝업이 닫힘", (await dialog(p).count()) === 0);
+  rec("계속 느림: 내내 팝업 없음", (await dialog(p).count()) === 0);
   rec("계속 느림: 그 뒤 추가 새로고침 없음(반복 방지)", navs === 3, `문서 요청=${navs}`);
   rec("계속 느림: 저장된 새로고침 횟수 2", (await stored(p)) === "2");
   await ctx.close();

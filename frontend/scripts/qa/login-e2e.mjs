@@ -396,7 +396,7 @@ if (should("D")) {
   }
 }
 
-// ───────────────────────── E. 대기 안내(깨우는 중) 팝업과 로그인
+// ───────────────────────── E. 느린 로그인(서버가 깨어나는 중)에도 대기 팝업 없음(DEC-076)
 if (should("E")) {
   const ctx = await newCtx(360);
   const p = await ctx.newPage();
@@ -405,8 +405,10 @@ if (should("E")) {
   await p.fill("#login-username", "park");
   await p.fill("#login-password", PW2);
   await p.click("button[type=submit]");
-  const popup = await p.locator('[role="dialog"].wake-dialog').waitFor({ timeout: 8000 }).then(() => true).catch(() => false);
-  rec("E 로그인 요청이 4.5초 넘게 걸리면 '서버를 깨우는 중' 팝업(/auth/* 요청도 추적)", popup);
+  await p.waitForTimeout(6000); // 4.5초 기준을 넘긴 뒤에도 팝업이 없어야 한다(DEC-076: 대기 팝업 제거)
+  const popup = await p.locator('[role="dialog"]').count();
+  const wakeText = await p.getByText("서버를 깨우는 중").count();
+  rec("E 로그인 요청이 4.5초 넘게 걸려도 '서버를 깨우는 중' 팝업이 뜨지 않음", popup === 0 && wakeText === 0, `dialog=${popup} text=${wakeText}`);
   await p.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
   rec("E 느린 로그인이 끝나면 정상 로그인", new URL(p.url()).pathname === "/");
   await ctx.close();
@@ -890,6 +892,8 @@ if (should("K")) {
 
 // ───────────────────────── L. 관리자 회원 관리 화면 (DEC-074)
 if (should("L")) {
+  // 앞 장면들이 같은 접속 주소(127.0.0.1)에서 로그인을 많이 해 분당 40회 한도(F 장면이 시험하는 값)에 가깝다 → 한도 창이 비도록 잠시 기다린다(시험 환경 보정, 제품 동작 아님).
+  if (!ONLY) await new Promise((r) => setTimeout(r, 62000));
   const origin = new URL(BASE).origin;
   const decode = (c) => JSON.parse(Buffer.from(c.value.split(".")[0], "base64url").toString("utf8"));
   const cookieOf = async (ctx) => (await ctx.cookies()).find((c) => c.name === COOKIE);

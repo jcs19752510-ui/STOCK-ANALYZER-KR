@@ -5,7 +5,7 @@ import copy from "@/content/copy.ko.json";
 
 /**
  * 로그인 상태 갱신 화면(DEC-067). 확인한 지 5분이 지난 로그인은 이 화면에서 서버가 API에 회원이 아직 활성인지 확인한 뒤 원래 화면으로 돌아간다.
- * 확인이 오래 걸리면(무료 서버가 깨어나는 중) `ApiWakeNotice`가 같은 대기 팝업을 띄운다(`/auth/*` 요청도 대기 추적 대상).
+ * 확인이 오래 걸려도(무료 서버가 깨어나는 중) 대기 팝업은 띄우지 않는다(DEC-076).
  */
 export function RenewSession({ next }: { next: string }) {
   const [failed, setFailed] = useState(false);
