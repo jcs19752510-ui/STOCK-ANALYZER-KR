@@ -11,7 +11,7 @@
     py -3.12 scripts/collect_investor_flow.py                         # 전 종목(호출 약 2,800회, 수 분)
     py -3.12 scripts/collect_investor_flow.py --dry-run
 
-필요: KIS_APP_KEY, KIS_APP_SECRET, BATCH_DATABASE_URL(환경변수). 값은 출력하지 않는다.
+필요: KIS_APP_KEY·KIS_APP_SECRET(환경변수 또는 프로젝트 `.env`), BATCH_DATABASE_URL(**반드시 환경변수로 직접 지정**, `.env` 값은 읽지 않음). 값은 출력하지 않는다.
 당일 행은 확정 전일 수 있어 KST 20:00 이전에는 적재하지 않는다(`--include-today`로 강제). 확정 시각 자체는
 증권사 문서로 확인하지 못했다. 종목 단위 오류는 건너뛰고 요약에 집계하며, 키 누락·DB 접속 실패는 종료 코드 1이다.
 100종목마다 커밋하므로 중단돼도 그 시점까지는 남고 재실행해도 안전하다.
@@ -43,6 +43,27 @@ KST = ZoneInfo("Asia/Seoul")
 COMMIT_EVERY = 100
 MAX_CONSECUTIVE_ERRORS = 20  # 연속 실패가 이어지면 전체 장애로 보고 중단(2,800회 헛호출 방지)
 TODAY_CONFIRM_HOUR = 20  # 이 시각(KST) 이전에는 당일 행을 적재하지 않는다
+
+
+def load_kis_keys_from_dotenv(env_file: Path) -> list[str]:
+    """프로젝트 `.env`에서 **증권사 앱키 두 개만** 환경변수로 읽는다(이미 설정돼 있으면 덮어쓰지 않는다).
+    `.env`의 `BATCH_DATABASE_URL`은 일부러 읽지 않는다 — 보통 내 PC의 로컬 DB를 가리키므로, 운영(Neon) 연결은
+    PowerShell에서 직접 지정한 값만 쓴다(엉뚱한 DB에 적재하는 사고 방지). 읽은 키 이름만 돌려준다(값은 출력하지 않는다)."""
+    loaded: list[str] = []
+    try:
+        lines = env_file.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return loaded
+    for raw in lines:
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        if key in ("KIS_APP_KEY", "KIS_APP_SECRET") and not os.environ.get(key):
+            os.environ[key] = value.strip().strip('"').strip("'")
+            loaded.append(key)
+    return loaded
 
 
 def extract_rows(body: dict) -> list:
@@ -98,6 +119,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dry-run", action="store_true", help="설정만 확인하고 호출·반영 안 함.")
     args = parser.parse_args(argv)
 
+    load_kis_keys_from_dotenv(REPO_ROOT / ".env")
     db_url = os.environ.get("BATCH_DATABASE_URL", "").strip()
     try:
         settings = get_settings()

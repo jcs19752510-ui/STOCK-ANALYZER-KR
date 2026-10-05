@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterator
 from datetime import datetime
 
@@ -215,3 +216,21 @@ def test_collector_aborts_after_consecutive_kis_errors(monkeypatch, capsys):
     assert cif.main(["--codes", codes]) == 1
     assert len(calls) == cif.MAX_CONSECUTIVE_ERRORS
     assert "연속" in capsys.readouterr().err
+
+
+def test_dotenv_loader_reads_only_kis_keys_and_never_overrides(tmp_path, monkeypatch):
+    env = tmp_path / ".env"
+    env.write_text(
+        "# comment\nBATCH_DATABASE_URL=postgresql+psycopg://x:y@localhost:5432/local\n"
+        "KIS_APP_KEY=\"key-from-file\"\nKIS_APP_SECRET='secret-from-file'\nOTHER=1\nbroken line\n",
+        encoding="utf-8",
+    )
+    for k in ("KIS_APP_KEY", "KIS_APP_SECRET", "BATCH_DATABASE_URL", "OTHER"):
+        monkeypatch.delenv(k, raising=False)
+    assert cif.load_kis_keys_from_dotenv(env) == ["KIS_APP_KEY", "KIS_APP_SECRET"]
+    assert os.environ["KIS_APP_KEY"] == "key-from-file" and os.environ["KIS_APP_SECRET"] == "secret-from-file"
+    assert "BATCH_DATABASE_URL" not in os.environ and "OTHER" not in os.environ  # 로컬 DB 주소 등은 읽지 않는다
+    monkeypatch.setenv("KIS_APP_KEY", "already-set")
+    assert cif.load_kis_keys_from_dotenv(env) == []  # 이미 설정된 값은 덮어쓰지 않는다
+    assert os.environ["KIS_APP_KEY"] == "already-set"
+    assert cif.load_kis_keys_from_dotenv(tmp_path / "missing.env") == []
