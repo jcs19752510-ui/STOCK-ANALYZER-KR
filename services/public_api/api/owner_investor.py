@@ -2,7 +2,7 @@
 
 `GET /api/v1/internal/owner/stocks/{code}/investor` — 소유자 PC가 증권사에서 받아 적재한 값만 내려준다.
 세 겹으로 막는다: ① 내부 토큰(웹 서버만 호출) ② 웹이 전달한 로그인 아이디(`X-Auth-Username`)가 API의
-`PUBLIC_API_OWNER_USERNAME`과 같을 때만 ③ 소유자 설정이 없으면 404로 존재를 숨긴다.
+`PUBLIC_API_OWNER_USERNAME`(쉼표로 여러 명 가능)에 있을 때만 ③ 소유자 설정이 없으면 404로 존재를 숨긴다.
 소유자 외 회원은 403. 값이 없으면 빈 목록(0으로 채우지 않는다).
 """
 
@@ -31,16 +31,24 @@ KST = ZoneInfo("Asia/Seoul")
 OWNER_ENV = "PUBLIC_API_OWNER_USERNAME"
 
 
+def owner_usernames() -> list[str]:
+    """`PUBLIC_API_OWNER_USERNAME`은 쉼표로 여러 아이디를 둘 수 있다(예: `jcs1973,jcs1975`). 공백·대소문자는 무시한다."""
+    return [u for u in (x.strip().lower() for x in os.environ.get(OWNER_ENV, "").split(",")) if u]
+
+
 def require_owner(request: Request, response: Response) -> None:
-    owner = os.environ.get(OWNER_ENV, "").strip().lower()
+    owners = owner_usernames()
     token = os.environ.get("PUBLIC_API_INTERNAL_TOKEN", "").strip()
-    if not owner or not token:
+    if not owners or not token:
         raise ApiError(status_code=404, code="FEATURE_DISABLED", message="이 기능은 현재 제공되지 않습니다.")
     provided = request.headers.get("x-internal-token", "")
     if not provided or not hmac.compare_digest(provided.encode("utf-8"), token.encode("utf-8")):
         raise ApiError(status_code=401, code="AUTH_REQUIRED", message="인증이 필요합니다.")
     username = request.headers.get("x-auth-username", "").strip().lower()
-    if not username or not hmac.compare_digest(username.encode("utf-8"), owner.encode("utf-8")):
+    matched = False
+    for owner in owners:  # 전부 비교한다(일치하는 순간 멈추지 않아 비교 시간이 아이디 위치에 좌우되지 않는다)
+        matched |= hmac.compare_digest(username.encode("utf-8"), owner.encode("utf-8"))
+    if not username or not matched:
         raise ApiError(status_code=403, code="FORBIDDEN", message="접근 권한이 없습니다.")
     response.headers["Cache-Control"] = "no-store"
 

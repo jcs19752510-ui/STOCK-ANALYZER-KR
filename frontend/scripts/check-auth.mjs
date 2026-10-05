@@ -16,7 +16,7 @@ import {
   authEnabled,
   cookieSecure,
   isOwnerUsername,
-  ownerUsername,
+  ownerUsernames,
   sessionCookieName,
 } from "../src/lib/auth/config.ts";
 import { endUserIp } from "../src/lib/auth/endUserIp.ts";
@@ -265,7 +265,7 @@ test("소유자 전용 경로: 정확한 형식만 대행 허용(그 밖의 inte
 });
 
 test("isOwnerUsername: 설정이 없으면 아무도 소유자가 아니고, 대소문자·공백만 정규화", () => {
-  assert.equal(ownerUsername({}), "");
+  assert.deepEqual(ownerUsernames({}), []);
   assert.equal(isOwnerUsername("kim", {}), false);
   assert.equal(isOwnerUsername("", {}), false);
   assert.equal(isOwnerUsername(undefined, { OWNER_USERNAME: "" }), false);
@@ -274,6 +274,14 @@ test("isOwnerUsername: 설정이 없으면 아무도 소유자가 아니고, 대
   assert.equal(isOwnerUsername("kim", env), true);
   assert.equal(isOwnerUsername(" KIM", env), true);
   for (const other of ["kim2", "kimm", "ki", "park", null, undefined]) assert.equal(isOwnerUsername(other, env), false, String(other));
+});
+
+test("isOwnerUsername: 쉼표로 여러 명(jcs1973,jcs1975) — 목록에 있는 아이디만 허용", () => {
+  const env = { OWNER_USERNAME: " JCS1973 , jcs1975 ,, " };
+  assert.deepEqual(ownerUsernames(env), ["jcs1973", "jcs1975"]);
+  for (const ok of ["jcs1973", "jcs1975", " JCS1975 "]) assert.equal(isOwnerUsername(ok, env), true, ok);
+  for (const no of ["jcs1974", "jcs19731975", "jcs197", "", ",", null, undefined]) assert.equal(isOwnerUsername(no, env), false, String(no));
+  assert.equal(isOwnerUsername("x", { OWNER_USERNAME: ",,," }), false); // 빈 항목만 있으면 아무도 없음
 });
 
 // ------------------------------------------------------------------ 방문자 IP

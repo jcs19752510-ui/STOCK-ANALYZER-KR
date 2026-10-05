@@ -117,7 +117,7 @@ py -3.12 scripts/manage_users.py add jcs1973 --name "표시할 이름"
 |---|---|
 | `PUBLIC_API_INTERNAL_TOKEN` | 1단계 `TOKEN` |
 | `PUBLIC_API_AUTH_DATABASE_URL` | `postgresql+psycopg://auth_service:AUTH_PW@호스트/neondb?sslmode=require` |
-| `PUBLIC_API_OWNER_USERNAME` | `jcs1973` |
+| `PUBLIC_API_OWNER_USERNAME` | `jcs1973,jcs1975`(투자자 수급을 볼 수 있는 계정들, 쉼표로 구분) |
 | `PUBLIC_API_REQUIRE_INTERNAL_TOKEN` | `false`(비워 둬도 됨) |
 **확인**: API 배포 성공(`$API/api/v1/live` 200), 사이트 정상.
 
@@ -126,7 +126,7 @@ py -3.12 scripts/manage_users.py add jcs1973 --name "표시할 이름"
 |---|---|
 | `PUBLIC_API_INTERNAL_TOKEN` | 1단계 `TOKEN`(API와 동일) |
 | `SESSION_SECRET` | 1단계 `SESSION` |
-| `OWNER_USERNAME` | `jcs1973`(API의 `PUBLIC_API_OWNER_USERNAME`과 동일) |
+| `OWNER_USERNAME` | `jcs1973,jcs1975`(API의 `PUBLIC_API_OWNER_USERNAME`과 동일) |
 | `NEXT_PUBLIC_BROWSER_API_BASE_URL` | `same-origin` |
 | `NEXT_PUBLIC_AUTH_ENABLED` | `true` |
 | `AUTH_REQUIRED` | `true` |

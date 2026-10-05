@@ -234,3 +234,18 @@ def test_dotenv_loader_reads_only_kis_keys_and_never_overrides(tmp_path, monkeyp
     assert cif.load_kis_keys_from_dotenv(env) == []  # 이미 설정된 값은 덮어쓰지 않는다
     assert os.environ["KIS_APP_KEY"] == "already-set"
     assert cif.load_kis_keys_from_dotenv(tmp_path / "missing.env") == []
+
+
+def test_two_owners_via_comma_list_and_everyone_else_blocked(db, monkeypatch):
+    code = _stock_code(db)
+    path = f"/api/v1/internal/owner/stocks/{code}/investor"
+    _env(monkeypatch, owner=" JCS1973 , jcs1975 ,, ")
+    with api_client(db) as c:
+        assert c.get(path, headers=_hdr(username="jcs1973")).status_code == 200
+        assert c.get(path, headers=_hdr(username="jcs1975")).status_code == 200
+        assert c.get(path, headers=_hdr(username="Jcs1975 ")).status_code == 200
+        for no in ("jcs1974", "jcs19731975", "jcs197", "jcs1973,jcs1975", ","):
+            assert c.get(path, headers=_hdr(username=no)).status_code == 403, no
+    _env(monkeypatch, owner=" , ,")  # 빈 항목뿐이면 기능이 꺼진 것으로 본다(아무도 허용하지 않음)
+    with api_client(db) as c:
+        assert c.get(path, headers=_hdr(username="jcs1973")).status_code == 404

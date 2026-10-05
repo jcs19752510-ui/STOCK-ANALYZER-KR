@@ -79,7 +79,7 @@ def main() -> int:
         "NEXT_PUBLIC_BROWSER_API_BASE_URL": "same-origin",
         "NEXT_PUBLIC_AUTH_ENABLED": "true",
         "FRONTEND_TRUSTED_PROXY_HOPS": "0",
-        "OWNER_USERNAME": "kim",  # 소유자 전용 투자자 수급(DEC-068)
+        "OWNER_USERNAME": "kim, LEE",  # 소유자 전용 투자자 수급(DEC-068)
     }
     procs: list[subprocess.Popen] = []
     code = 1
@@ -114,7 +114,7 @@ def main() -> int:
                 "PUBLIC_API_HOST": "127.0.0.1",
                 "PUBLIC_API_PORT": str(API_PORT),
                 "PUBLIC_API_CORS_ALLOWED_ORIGINS": f"http://localhost:{WEB_PORT}",
-                "PUBLIC_API_OWNER_USERNAME": "kim",
+                "PUBLIC_API_OWNER_USERNAME": "kim,lee",
                 "PUBLIC_API_LOGIN_RATE_PER_MINUTE": "40",
                 "PUBLIC_API_LOGIN_GLOBAL_PER_MINUTE": "120",
                 "PYTHONPATH": str(REPO),

@@ -427,6 +427,17 @@ if (should("G")) {
   const ob = await r.json();
   rec("G 소유자 대행 호출: 200 + no-store + 2행", r.status() === 200 && /no-store/.test(r.headers()["cache-control"] ?? "") && ob.data.rows.length === 2, `${r.status()}`);
   await octx.close();
+  // 두 번째 소유자(lee, 쉼표 목록): 같은 화면에서 값이 보인다
+  const lctx = await newCtx(1280);
+  const lp = await lctx.newPage();
+  await uiLogin(lp, "lee", PW2);
+  await lp.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
+  await lp.goto("/stocks/T00001");
+  await lp.getByRole("tab", { name: "투자자" }).click();
+  await lp.waitForSelector(".daily-table", { timeout: 15000 }).catch(() => {});
+  const ltext = await lp.locator('[role="tabpanel"]:not([hidden])').innerText().catch(() => "");
+  rec("G 두 번째 소유자(lee): 투자자 탭에 같은 값(▼1,234 / ▲4,321)", /4,321/.test(ltext) && /1,234/.test(ltext) && !/준비 중/.test(ltext));
+  await lctx.close();
   // 일반 회원(park): 같은 화면은 '준비 중', 값 호출은 403
   const pctx = await newCtx(1280);
   const pp = await pctx.newPage();

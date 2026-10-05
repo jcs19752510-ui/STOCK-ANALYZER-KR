@@ -33,14 +33,17 @@ export function sessionSecret(env: Env = process.env): string {
   return (env.SESSION_SECRET ?? "").trim();
 }
 
-/** 소유자(투자자 수급을 볼 수 있는 단 한 명)의 아이디. 비어 있으면 소유자 없음(기능 꺼짐). 서버 전용 환경변수. */
-export function ownerUsername(env: Env = process.env): string {
-  return (env.OWNER_USERNAME ?? "").trim().toLowerCase();
+/** 투자자 수급을 볼 수 있는 계정들의 아이디(쉼표로 여러 명, 예 `jcs1973,jcs1975`). 비어 있으면 아무도 없음(기능 꺼짐). 서버 전용 환경변수. */
+export function ownerUsernames(env: Env = process.env): string[] {
+  return (env.OWNER_USERNAME ?? "")
+    .split(",")
+    .map((u) => u.trim().toLowerCase())
+    .filter((u) => u !== "");
 }
 
 export function isOwnerUsername(username: string | null | undefined, env: Env = process.env): boolean {
-  const owner = ownerUsername(env);
-  return owner !== "" && (username ?? "").trim().toLowerCase() === owner;
+  const name = (username ?? "").trim().toLowerCase();
+  return name !== "" && ownerUsernames(env).includes(name);
 }
 
 /** 설정이 안전하지 않으면 사용자에게 보일 수 있는 설명(값은 포함하지 않음), 괜찮으면 null. */
