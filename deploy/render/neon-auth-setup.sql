@@ -20,3 +20,9 @@ GRANT USAGE ON SEQUENCE auth.login_audit_audit_id_seq TO auth_service;
 -- 0017(로그인 상태 유지 30일, DEC-070): 서버 쪽 세션 목록
 GRANT SELECT, INSERT ON auth.user_sessions TO auth_service;
 GRANT UPDATE (last_check_at, revoked_at) ON auth.user_sessions TO auth_service;
+-- 0018(권한·가입 승인·관리자 기록, DEC-074)
+GRANT INSERT (username, display_name, password_hash) ON auth.app_users TO auth_service;
+GRANT UPDATE (display_name, role, is_active, approved_at) ON auth.app_users TO auth_service;
+GRANT DELETE ON auth.app_users TO auth_service;
+GRANT INSERT ON auth.admin_audit TO auth_service;
+GRANT USAGE ON SEQUENCE auth.admin_audit_audit_id_seq TO auth_service;

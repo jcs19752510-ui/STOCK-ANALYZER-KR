@@ -11,3 +11,11 @@ LOCK_LEVEL_CAP = 7
 # 세션 수명(DEC-067 8시간 + DEC-070 "로그인 상태 유지" 30일). 둘 다 **절대 만료**(사용해도 늘어나지 않는다).
 SESSION_SECONDS_DEFAULT = 8 * 60 * 60
 SESSION_SECONDS_REMEMBER = 30 * 24 * 60 * 60
+
+# 권한(DEC-074): 두 가지뿐. 권한의 기준은 DB(`auth.app_users.role`)이다.
+ROLE_USER = "user"
+ROLE_ADMIN = "admin"
+ROLES = (ROLE_USER, ROLE_ADMIN)
+
+# 가입 신청(승인 대기) 행이 이만큼 쌓이면 새 신청을 받지 않는다(표를 가득 채우는 공격 방지).
+MAX_PENDING_SIGNUPS = 200

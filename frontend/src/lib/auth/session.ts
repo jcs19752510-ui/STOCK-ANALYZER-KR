@@ -10,10 +10,11 @@ import { REMEMBER_MAX_AGE_SECONDS, SESSION_FRESH_SECONDS, SESSION_MAX_AGE_SECOND
  * 수명은 절대 만료다: 기본 8시간(`rm=0`), "로그인 상태 유지"는 30일(`rm=1`). 사용해도 늘어나지 않는다.
  */
 export interface SessionPayload {
-  v: 2;
+  v: 3;
   uid: string; // 회원 id(UUID)
   sid: string; // 서버 쪽 세션 id(UUID)
   rm: 0 | 1; // 1 = 로그인 상태 유지(30일)
+  rl: "u" | "a"; // 권한: u 일반 사용자 / a 관리자(화면 표시용 — 관리자 작업은 API가 매번 DB에서 다시 확인한다)
   un: string; // 아이디
   dn: string; // 표시 이름
   iat: number; // 발급 시각(초)
@@ -65,12 +66,13 @@ export function verifySession(
   if (typeof data !== "object" || data === null) return null;
   const p = data as Record<string, unknown>;
   if (
-    p.v !== 2 ||
+    p.v !== 3 ||
     typeof p.uid !== "string" ||
     !UUID.test(p.uid) ||
     typeof p.sid !== "string" ||
     !UUID.test(p.sid) ||
     (p.rm !== 0 && p.rm !== 1) ||
+    (p.rl !== "u" && p.rl !== "a") ||
     typeof p.un !== "string" ||
     p.un.length < 1 ||
     p.un.length > 32 ||
@@ -88,11 +90,11 @@ export function verifySession(
   const maxLife = p.rm === 1 ? REMEMBER_MAX_AGE_SECONDS : SESSION_MAX_AGE_SECONDS;
   if (p.exp - p.iat > maxLife + CLOCK_SKEW_SECONDS) return null; // 허용된 수명보다 긴 것
   if (p.chk > nowSeconds + CLOCK_SKEW_SECONDS || p.chk < p.iat - CLOCK_SKEW_SECONDS) return null;
-  return { v: 2, uid: p.uid.toLowerCase(), sid: p.sid.toLowerCase(), rm: p.rm, un: p.un, dn: p.dn, iat: p.iat, exp: p.exp, chk: p.chk };
+  return { v: 3, uid: p.uid.toLowerCase(), sid: p.sid.toLowerCase(), rm: p.rm, rl: p.rl, un: p.un, dn: p.dn, iat: p.iat, exp: p.exp, chk: p.chk };
 }
 
 export function newSession(
-  user: { uid: string; username: string; displayName: string },
+  user: { uid: string; username: string; displayName: string; role: "user" | "admin" },
   nowSeconds: number,
   options: { sessionId: string; remember: boolean; lifetimeSeconds?: number },
 ): SessionPayload {
@@ -100,10 +102,11 @@ export function newSession(
   // 수명은 API(서버 쪽 세션)가 정한 값을 따르되, 허용 상한을 넘지 않는다.
   const life = Math.min(Math.max(1, Math.floor(options.lifetimeSeconds ?? maxLife)), maxLife);
   return {
-    v: 2,
+    v: 3,
     uid: user.uid.toLowerCase(),
     sid: options.sessionId.toLowerCase(),
     rm: options.remember ? 1 : 0,
+    rl: user.role === "admin" ? "a" : "u",
     un: user.username,
     dn: user.displayName,
     iat: nowSeconds,

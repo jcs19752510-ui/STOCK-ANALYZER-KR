@@ -1,4 +1,4 @@
-# 로그인·소유자 투자자 수급 운영(Render + Neon) 적용 절차서 (DEC-067~071)
+# 로그인·회원가입·관리자·투자자 수급 운영(Render + Neon) 적용 절차서 (DEC-067~074)
 
 > 상태: **구현·내부 테스트 완료, 운영 미적용.** 사용자가 직접 수행한다(AI는 운영 배포·Neon 변경을 하지 않는다).
 > 모든 명령은 **PC의 PowerShell, 프로젝트 폴더(`C:\big21\vibe-coding\STOCK-ANALYZER-KR`)** 에서 실행한다.
@@ -15,7 +15,7 @@
 | 4 | Render에 **최신 코드 배포(로그인은 꺼진 채)** | 사이트는 지금과 동일해야 함 |
 | 5 | 로그인 켜기(API 설정 → 웹 설정·재빌드 → API 강제) | **로그인 필요해짐** |
 | 6 | 확인 체크리스트 | — |
-| 7 | 소유자 투자자 수급 수집 | 소유자만 표 확인 |
+| 7 | 투자자 수급 수집 | 관리자만 표 확인 |
 | 8 | 되돌리기 | — |
 
 ## 0. 점검
@@ -75,7 +75,7 @@
    py -3.12 -m alembic upgrade head
    py -3.12 -m alembic current
    ```
-   **확인**: 마지막 출력이 `0017 (head)`. (0015 `auth` 스키마·회원표·로그인 기록, 0016 투자자 수급 표, 0017 서버 쪽 세션표)
+   **확인**: 마지막 출력이 `0018 (head)`. (0015 `auth` 스키마·회원표·로그인 기록, 0016 투자자 수급 표, 0017 서버 쪽 세션표, **0018 권한(role)·가입 승인·관리자 작업 기록**)
 2. 로그인 전용 DB 계정 `auth_service` 만들기 + 권한(여러 번 실행해도 안전):
    ```powershell
    docker cp deploy\render\neon-auth-setup.sql stock-screener-pg:/tmp/neon-auth-setup.sql
@@ -87,13 +87,15 @@
    ```
    **확인**: 모든 줄이 `OK`(하나라도 `FAIL`이면 멈추고 알려 줄 것).
 
-## 3. 회원 등록 (관리자 스크립트, 가입 화면 없음)
+## 3. 최초 관리자 지정 (DB 기준 권한, 한 번만)
+권한은 **DB의 `role`(일반 `user` / 관리자 `admin`)** 이 기준이다(서버 환경변수에 아이디를 두지 않는다). 이미 등록된 회원은 마이그레이션 0018이 "승인된 일반 회원"으로 바꿔 둔다. 최초 관리자만 PC에서 한 줄로 지정하고, 그 뒤의 모든 회원 관리는 웹의 **관리자 화면**에서 한다.
 ```powershell
-py -3.12 scripts/manage_users.py add jcs1973 --name "표시할 이름"
+py -3.12 scripts/manage_users.py set-role jcs1973 admin
+py -3.12 scripts/manage_users.py list
 ```
-- 비밀번호는 **숨김 입력창**에 직접 입력(두 번). **8자 이상**, 아이디와 달라야 하고 흔한 비밀번호는 거부된다. 채팅에 노출된 비밀번호는 쓰지 말 것.
-- 다른 회원도 같은 방식으로 추가. 확인: `py -3.12 scripts/manage_users.py list`
-- 이후 관리: `set-password`(그 회원 전 기기 로그아웃), `disable`/`enable`, `unlock`, `delete`, `audit --limit 20`, `purge-audit --days 90`, `sessions`, `revoke-sessions <아이디>`(분실·탈취 대응 — 전 기기 즉시 취소), `purge-sessions --days 7`(월 1회).
+- `list`에서 `jcs1973`이 `관리자 / 활성`이면 성공.
+- 새 회원은 이제 **회원가입 화면**(`/signup`)에서 신청 → 관리자가 `/admin/members`에서 승인한다. 관리자가 직접 추가·수정·삭제·권한 변경·비밀번호 초기화·사용 중지·모든 기기 로그아웃도 같은 화면에서 한다.
+- 비상용(웹을 쓸 수 없을 때): `manage_users.py add/approve/set-role/set-password/disable/enable/unlock/delete/list/audit/admin-audit/sessions/revoke-sessions/purge-*`.
 
 ## 4. Render에 최신 코드 배포 — 로그인은 **꺼진 채** (사이트가 지금과 같아야 정상)
 1. Render → `stock-analyzer-api` → **Manual Deploy → Deploy latest commit**. 끝나면 **확인**:
@@ -117,7 +119,6 @@ py -3.12 scripts/manage_users.py add jcs1973 --name "표시할 이름"
 |---|---|
 | `PUBLIC_API_INTERNAL_TOKEN` | 1단계 `TOKEN` |
 | `PUBLIC_API_AUTH_DATABASE_URL` | `postgresql+psycopg://auth_service:AUTH_PW@호스트/neondb?sslmode=require` |
-| `PUBLIC_API_OWNER_USERNAME` | `jcs1973,jcs1975`(투자자 수급을 볼 수 있는 계정들, 쉼표로 구분) |
 | `PUBLIC_API_REQUIRE_INTERNAL_TOKEN` | `false`(비워 둬도 됨) |
 **확인**: API 배포 성공(`$API/api/v1/live` 200), 사이트 정상.
 
@@ -126,7 +127,6 @@ py -3.12 scripts/manage_users.py add jcs1973 --name "표시할 이름"
 |---|---|
 | `PUBLIC_API_INTERNAL_TOKEN` | 1단계 `TOKEN`(API와 동일) |
 | `SESSION_SECRET` | 1단계 `SESSION` |
-| `OWNER_USERNAME` | `jcs1973,jcs1975`(API의 `PUBLIC_API_OWNER_USERNAME`과 동일) |
 | `NEXT_PUBLIC_BROWSER_API_BASE_URL` | `same-origin` |
 | `NEXT_PUBLIC_AUTH_ENABLED` | `true` |
 | `AUTH_REQUIRED` | `true` |
@@ -148,17 +148,17 @@ curl.exe -s -o NUL -w "%{http_code}`n" "$API/api/v1/live"             # 200 (헬
 다시 브라우저에서 로그인 후 홈·조건 스크리닝·종목 상세가 정상이어야 한다.
 
 ## 6. 확인 체크리스트
-- [ ] 비로그인으로 `$WEB/stocks`, `$WEB/members` → 로그인 화면으로 이동
-- [ ] 로그인 성공 → 홈, "○○○님 · 회원 목록 · 로그아웃 · 모든 기기에서 로그아웃" 메뉴
+- [ ] 비로그인으로 `$WEB/stocks`, `$WEB/admin/members` → 로그인 화면으로 이동. `$WEB/signup`은 로그인 없이 열린다
+- [ ] 관리자(`jcs1973`) 로그인 → 홈, "○○○님 · 회원 관리 · 로그아웃 · 모든 기기에서 로그아웃" 메뉴(일반 사용자는 "회원 관리" 없음)
 - [ ] 틀린 비밀번호 5회 → 잠금 안내(풀기: `manage_users.py unlock jcs1973`)
-- [ ] 회원 목록에 아이디·이름만 표시
+- [ ] 시크릿 창에서 `/signup`으로 가입 신청 → 로그인 시 "관리자 승인 대기" 안내 → 관리자 화면 "승인 대기" 탭에서 승인 → 그 계정으로 로그인 가능, 일반 사용자는 `/admin/members`가 열리지 않음(홈으로 이동)
 - [ ] "아이디 저장"·"로그인 상태 유지(30일)" 체크박스, 브라우저 "비밀번호 저장" 제안이 뜨는지(자동화 시험으로는 창 표시를 확인하지 못함)
 - [ ] 로그아웃 → 로그인 화면, "모든 기기에서 로그아웃" → 확인창 → 로그인 화면
 - [ ] 15분 이상 쉰 뒤(서버 잠듦) 접속하면 "서버를 깨우는 중" 팝업이 나오고 이후 정상
 - [ ] 첫 로그인이 느리면(무료 CPU의 비밀번호 검증) 대기 팝업 후 성공하는지
 
-## 7. 소유자 전용 투자자 수급 (DEC-068)
-공개 서버에는 증권사 앱키를 넣지 않는다. 소유자 PC가 수집해 Neon에 올리고 **소유자 아이디로 로그인했을 때만** 표가 보인다(다른 회원은 "준비 중").
+## 7. 관리자 전용 투자자 수급 (DEC-068 → DEC-074)
+공개 서버에는 증권사 앱키를 넣지 않는다. 관리자 PC가 수집해 Neon에 올리고 **관리자 권한 계정으로 로그인했을 때만** 표가 보인다(일반 사용자는 "준비 중"). 권한은 DB 기준이며 API가 매 호출마다 DB에서 확인한다.
 1. 수집(소수 종목으로 먼저). 증권사 앱키(`KIS_APP_KEY`·`KIS_APP_SECRET`)는 프로젝트 `.env`에서 **그 두 개만** 자동으로 읽는다(`.env`의 DB 주소는 읽지 않음 — Neon 주소는 아래처럼 직접 지정):
    ```powershell
    $env:BATCH_DATABASE_URL = "postgresql+psycopg://batch_worker:$BAT_PW@$NEON_HOST/neondb?sslmode=require"
@@ -169,9 +169,9 @@ curl.exe -s -o NUL -w "%{http_code}`n" "$API/api/v1/live"             # 200 (헬
    ```powershell
    docker exec stock-screener-pg psql "$OWNER" -c "select * from public_serving.investor_flow_daily where stock_code='005930' order by trade_date desc limit 5"
    ```
-3. 브라우저: 소유자(`jcs1973`)로 로그인 → 종목 상세 → **투자자** 탭에 표. 다른 회원으로 로그인하면 "준비 중".
+3. 브라우저: 관리자(`jcs1973`)로 로그인 → 종목 상세 → **투자자** 탭에 표. 일반 사용자로 로그인하면 "준비 중". 다른 사람에게 보이게 하려면 관리자 화면에서 그 회원을 관리자로 바꾼다(증권사 시세를 다른 사람에게 보여 주는 것의 약관은 미확인).
 4. 전 종목 수집(호출 약 2,800회, 수 분): `py -3.12 scripts/collect_investor_flow.py` — 장 마감 후(**KST 20시 이후**) 하루 한 번(당일 행은 20시 이전에는 적재하지 않음, 확정 시각은 미확인). 연속 20회 실패하면 스스로 중단한다.
-5. 끄기: 두 환경변수(`PUBLIC_API_OWNER_USERNAME`, `OWNER_USERNAME`)를 비우면 모두 "준비 중".
+5. 끄기: 관리자 화면에서 해당 계정을 일반으로 바꾸면 그 계정은 "준비 중"으로 돌아간다(환경변수 없음).
 
 ## 8. 되돌리기 (1분)
 - 로그인만 끄기: Web `AUTH_REQUIRED` = `false` 저장(재시작) + API `PUBLIC_API_REQUIRE_INTERNAL_TOKEN` = `false`. **단, 웹을 `same-origin`으로 빌드했다면 브라우저의 API 호출이 막히므로** `NEXT_PUBLIC_BROWSER_API_BASE_URL`을 비우고 `NEXT_PUBLIC_AUTH_ENABLED`를 `false`로 한 뒤 **재빌드**("Save, rebuild, and deploy")해야 완전히 이전 상태가 된다.
@@ -186,6 +186,7 @@ curl.exe -s -o NUL -w "%{http_code}`n" "$API/api/v1/live"             # 200 (헬
 - 로그인 시도 한도(키당 분당 10, 전체 30)는 공격 시 정상 로그인을 일시 방해할 수 있다(잠금과 별개).
 - 무료 CPU에서의 비밀번호 검증 시간, `onrender.com` 쿠키 동작, 실기기 재방문은 **실서버에서 확인 전**이다.
 - VPS용 `deploy/db/init/01-roles.sh`에는 `auth_service`가 아직 없다(VPS 경로 적용 시 추가 필요).
+- **가입 신청 폭주 방지**: 접속 주소당 10분 5회·서버 전체 시간당 60회·승인 대기 200건 상한(`PUBLIC_API_SIGNUP_PER_10MIN`, `PUBLIC_API_SIGNUP_GLOBAL_PER_HOUR`로 조정). 접속 주소를 알 수 없는 설정(`FRONTEND_TRUSTED_PROXY_HOPS=0`)에서는 모든 신청이 한 묶음으로 집계된다. 봇 방지(CAPTCHA·이메일 인증)는 없다 — 대신 관리자 승인이 최종 관문이다.
 - 이 절차서는 자동화 시험(임시 DB·임시 서버)으로 검증된 코드 기준이며 **실제 Render·Neon·KIS 환경에서 실행한 적은 없다.**
 
 ## 10. 막혔을 때 (증상 → 조치)
@@ -197,4 +198,4 @@ curl.exe -s -o NUL -w "%{http_code}`n" "$API/api/v1/live"             # 200 (헬
 | 로그인은 되는데 조건 스크리닝이 비어 있음 | 웹이 `same-origin`으로 빌드되지 않았거나 API 강제(5-3) 전에 웹이 옛 빌드. 5-2 재빌드 확인 |
 | `alembic upgrade`가 권한 오류 | 소유자 URL이 아님(`neondb_owner`) 또는 풀러 주소(`-pooler`) 사용. 직접 주소로 |
 | `manage_users.py check`가 FAIL | `neon-auth-setup.sql`을 다시 실행(2-2) |
-| 투자자 탭에 "불러오지 못했습니다" | 아직 수집 안 됨(7-1), 두 환경변수 불일치, 소유자 아이디 철자 |
+| 투자자 탭에 "불러오지 못했습니다" | 아직 수집 안 됨(7-1) 또는 관리자 권한이 아님(관리자 화면에서 권한 확인) |

@@ -2770,3 +2770,173 @@ main {
   color: var(--color-text-secondary);
   font-weight: 600;
 }
+
+/* 로그인·가입 보조 문구, 숨긴 봇 칸, 가입 완료, 관리자 회원 관리 (DEC-074) */
+.login-form__signup {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.login-form__signup a,
+.signup-done__link {
+  color: var(--color-brand-primary);
+}
+
+.login-form__field select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  background: var(--color-surface-bg);
+  color: var(--color-text-primary);
+  font-size: 16px;
+}
+
+.signup-hp {
+  position: absolute;
+  left: -10000px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.signup-done {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+}
+
+.signup-done__title {
+  margin: 0;
+  font-size: 20px;
+}
+
+.signup-done__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.admin-members {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.admin-members__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.admin-members__tab {
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  background: var(--color-surface-bg);
+  color: var(--color-text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.admin-members__tab[aria-pressed="true"] {
+  border-color: var(--color-brand-primary);
+  background: var(--color-brand-primary);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.admin-members__tab:focus-visible,
+.admin-actions button:focus-visible,
+.admin-editor__cancel:focus-visible,
+.login-form__field select:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.admin-members__notice {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  line-height: 1.5;
+}
+
+.admin-members__notice--error {
+  border-color: var(--color-semantic-error);
+  color: var(--color-semantic-error);
+  background: #fef2f2;
+}
+
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.admin-actions button,
+.admin-editor__cancel {
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  background: var(--color-surface-bg);
+  color: var(--color-brand-primary);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.admin-actions button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.admin-actions__danger {
+  color: var(--color-semantic-error) !important;
+}
+
+.members-table.admin-table {
+  max-width: none; /* 일반 회원 표(560px 상한)와 달리 작업 열이 넓어야 한다 */
+}
+
+.admin-table td,
+.admin-table th {
+  white-space: nowrap;
+  padding: var(--space-2) var(--space-3);
+}
+
+.admin-table td:last-child {
+  min-width: 340px;
+  max-width: 420px;
+  white-space: normal;
+}
+
+.admin-editor,
+.admin-create {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 420px;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+}
+
+.admin-editor__title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.admin-editor__buttons {
+  display: flex;
+  gap: var(--space-2);
+}

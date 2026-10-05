@@ -11,5 +11,5 @@ export async function GET() {
   const store = await cookies();
   const session = verifySession(store.get(sessionCookieName())?.value, sessionSecret(), nowSeconds());
   if (!session) return json({ ok: false, code: "AUTH_REQUIRED" }, 401);
-  return json({ ok: true, username: session.un, display_name: session.dn });
+  return json({ ok: true, username: session.un, display_name: session.dn, role: session.rl === "a" ? "admin" : "user" });
 }

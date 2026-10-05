@@ -35,7 +35,7 @@ function sign(payload, secret = SECRET) {
 const nowS = () => Math.floor(Date.now() / 1000);
 function payloadFor(uid, username, name, over = {}) {
   const t = nowS();
-  return { v: 2, uid, sid: randomUUID(), rm: 0, un: username, dn: name, iat: t, exp: t + 3600, chk: t, ...over };
+  return { v: 3, uid, sid: randomUUID(), rm: 0, rl: "u", un: username, dn: name, iat: t, exp: t + 3600, chk: t, ...over };
 }
 // 서버 쪽 세션 행을 직접 만든다(5분 확인을 통과하는 진짜 세션이 필요한 시험용). 세션 id를 돌려준다.
 const realSid = (username, remember = false) =>
@@ -72,7 +72,7 @@ if (should("A")) {
   const p = await ctx.newPage();
   const errs = [];
   p.on("pageerror", (e) => errs.push(e.message.slice(0, 200)));
-  for (const [path, expectNext] of [["/", null], ["/stocks", "/stocks"], ["/screener", "/screener"], ["/watchlist", "/watchlist"], ["/about", "/about"], ["/members", "/members"], ["/stocks/T00001", "/stocks/T00001"], ["/screener/pattern", "/screener/pattern"]]) {
+  for (const [path, expectNext] of [["/", null], ["/stocks", "/stocks"], ["/screener", "/screener"], ["/watchlist", "/watchlist"], ["/about", "/about"], ["/members", "/members"], ["/admin/members", "/admin/members"], ["/stocks/T00001", "/stocks/T00001"], ["/screener/pattern", "/screener/pattern"]]) {
     const resp = await p.goto(path, { waitUntil: "domcontentloaded" });
     const u = new URL(p.url());
     rec(`A 비로그인 ${path}: 로그인 화면으로 이동`, u.pathname === "/login" && (expectNext ? u.searchParams.get("next") === expectNext : !u.searchParams.has("next")), `→ ${u.pathname}${u.search}`);
@@ -124,7 +124,7 @@ if (should("A")) {
 
   // API 서버를 직접 부르는 우회 시도
   const direct = async (path, headers = {}) => (await fetch(`${API}${path}`, { headers })).status;
-  for (const path of ["/api/v1/market-summary", "/api/v1/stocks?query=T0", "/api/v1/screen", "/docs", "/openapi.json", "/redoc", "/api/v1/internal/members", "/api/v1/health"]) {
+  for (const path of ["/api/v1/market-summary", "/api/v1/stocks?query=T0", "/api/v1/screen", "/docs", "/openapi.json", "/redoc", "/api/v1/internal/admin/members", "/api/v1/internal/auth/signup", "/api/v1/health"]) {
     rec(`A API 직접 호출 ${path}: 토큰 없이 401`, (await direct(path)) === 401);
     rec(`A API 직접 호출 ${path}: 틀린 토큰 401`, (await direct(path, { "X-Internal-Token": "wrong" })) === 401);
   }
@@ -142,7 +142,7 @@ if (should("B")) {
     const labels = await p.locator("label").allInnerTexts();
     rec(`B 로그인 화면 ${w}px: 라벨(아이디·비밀번호)`, labels.includes("아이디") && labels.includes("비밀번호"), labels.join(","));
     rec(`B 로그인 화면 ${w}px: 자동완성 속성`, (await p.getAttribute("#login-username", "autocomplete")) === "username" && (await p.getAttribute("#login-password", "autocomplete")) === "current-password" && (await p.getAttribute("#login-password", "type")) === "password");
-    rec(`B 로그인 화면 ${w}px: 가입 안내 문구(가입 기능 없음)`, /회원 가입 기능은 없습니다/.test(await p.locator(".login-page__intro").innerText()));
+    rec(`B 로그인 화면 ${w}px: 안내 문구(가입 후 관리자 승인)`, /관리자의 승인을 받은 회원/.test(await p.locator(".login-page__intro").innerText()));
     rec(`B 로그인 화면 ${w}px: 가로 넘침 없음`, !(await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)));
     const sizes = await p.evaluate(() => [...document.querySelectorAll("#login-username,#login-password,button[type=submit]")].map((e) => Math.round(e.getBoundingClientRect().height)));
     rec(`B 로그인 화면 ${w}px: 입력칸·버튼 높이 44px 이상`, sizes.every((h) => h >= 44), sizes.join(","));
@@ -168,7 +168,7 @@ if (should("B")) {
   await p.fill("#login-password", PW);
   await p.click("button[type=submit]");
   await p.waitForTimeout(1500);
-  rec("B 비활성 회원은 맞는 비밀번호여도 같은 문구, 이동 없음", (await alert.innerText()).trim() === GENERIC && new URL(p.url()).pathname === "/login");
+  rec("B 사용 중지 회원은 맞는 비밀번호일 때만 '사용 중지' 안내(DEC-074), 이동 없음", /사용이 중지된 계정/.test(await alert.innerText()) && new URL(p.url()).pathname === "/login");
   const cookies = (await ctx.cookies()).filter((c) => c.name === COOKIE);
   rec("B 실패한 로그인은 쿠키를 만들지 않는다", cookies.length === 0);
   await ctx.close();
@@ -206,11 +206,11 @@ if (should("C")) {
   rec("C 세션 쿠키: 수명 8시간 이하", ttl > 0 && ttl <= 8 * 3600 + 5, `${ttl}s`);
   rec("C 세션 쿠키: 값에 비밀번호·해시 없음, JS(document.cookie)로 읽을 수 없음", cookie && !cookie.value.includes(PW) && !cookie.value.includes("argon2") && !(await p.evaluate(() => document.cookie)).includes("session"));
   const decoded = JSON.parse(Buffer.from(cookie.value.split(".")[0], "base64url").toString("utf8"));
-  rec("C 세션 내용: 회원 id·아이디·이름·시각만", Object.keys(decoded).sort().join(",") === "chk,dn,exp,iat,rm,sid,uid,un,v" && decoded.un === "kim" && decoded.rm === 0 && /^[0-9a-f-]{36}$/.test(decoded.sid));
+  rec("C 세션 내용: 회원 id·아이디·이름·시각만", Object.keys(decoded).sort().join(",") === "chk,dn,exp,iat,rl,rm,sid,uid,un,v" && decoded.un === "kim" && decoded.rl === "a" && decoded.rm === 0 && /^[0-9a-f-]{36}$/.test(decoded.sid));
   const menu = p.locator(".member-menu");
   await menu.waitFor({ timeout: 10000 });
   const menuText = await menu.innerText();
-  rec("C 회원 메뉴: 이름·회원 목록·로그아웃", /김철수님/.test(menuText) && /회원 목록/.test(menuText) && /로그아웃/.test(menuText), menuText.replace(/\s+/g, " "));
+  rec("C 회원 메뉴(관리자): 이름·회원 관리·로그아웃", /김철수님/.test(menuText) && /회원 관리/.test(menuText) && /로그아웃/.test(menuText), menuText.replace(/\s+/g, " "));
   // 홈(서버 화면)
   await p.goto("/");
   await p.waitForSelector("h1.home-page__title", { timeout: 20000 });
@@ -233,7 +233,7 @@ if (should("C")) {
   rec("C 대행 응답 헤더: no-store, JSON", /no-store/.test(r.headers()["cache-control"] ?? "") && /json/.test(r.headers()["content-type"] ?? ""));
   r = await rq.get(`${BASE}/api/v1/stocks?query=T0&market=ALL`);
   rec("C 대행 /api/v1/stocks 검색: 200", r.status() === 200, `${r.status()}`);
-  for (const [path, label] of [["/api/v1/local/status", "개인 로컬 모드 경로"], ["/api/v1/internal/members", "내부 회원 경로"], ["/api/v1/internal/auth/login", "내부 로그인 경로"], ["/api/v1/live", "헬스체크"], ["/api/v1/health", "헬스(DB)"], ["/api/v1/stocks/T00001", "허용 목록 밖 종목 경로"], ["/api/v1/stocks/T00001/../../internal/members", "경로 탈출 시도"]]) {
+  for (const [path, label] of [["/api/v1/local/status", "개인 로컬 모드 경로"], ["/api/v1/internal/admin/members", "내부 관리자 경로"], ["/api/v1/internal/admin/action", "내부 관리자 작업 경로"], ["/api/v1/internal/auth/login", "내부 로그인 경로"], ["/api/v1/live", "헬스체크"], ["/api/v1/health", "헬스(DB)"], ["/api/v1/stocks/T00001", "허용 목록 밖 종목 경로"], ["/api/v1/stocks/T00001/../../internal/members", "경로 탈출 시도"]]) {
     r = await rq.get(`${BASE}${path}`);
     rec(`C 대행 차단 ${label}(${path}): 404`, r.status() === 404, `${r.status()}`);
   }
@@ -241,21 +241,25 @@ if (should("C")) {
   rec("C 대행 경로는 조회(GET)만: POST → 405", r.status() === 405, `${r.status()}`);
   r = await rq.get(`${BASE}/api/v1/screen?${"a=1&".repeat(700)}`);
   rec("C 대행: 과도하게 긴 쿼리 → 400", r.status() === 400, `${r.status()}`);
-  // 회원 목록
+  // 관리자 회원 관리 화면(옛 /members는 여기로 합쳐짐)
   await p.goto("/members");
+  await p.waitForURL((u) => u.pathname === "/admin/members", { timeout: 15000 });
+  rec("C 옛 /members 주소는 관리자 회원 관리로 이동", new URL(p.url()).pathname === "/admin/members");
+  await p.waitForSelector(".admin-members", { timeout: 15000 });
+  await p.getByRole("button", { name: /^전체/ }).click();
   await p.waitForSelector(".members-table", { timeout: 15000 });
   const rows = await p.locator(".members-table tbody tr").allInnerTexts();
   const flat = rows.map((t) => t.replace(/\s+/g, " ").trim());
-  rec("C 회원 목록: 활성 회원만(비활성 '퇴사자' 제외), 이름순", flat.length === 5 && !flat.some((t) => t.includes("퇴사자")) && flat.some((t) => t.startsWith("kim")) && flat.some((t) => t.startsWith("lee")), flat.join(" | "));
-  rec("C 회원 목록: 전체 N명 표시", /전체 5명/.test(await p.locator("[data-testid='members-count']").innerText()));
-  rec("C 회원 목록: 열 제목은 아이디·이름뿐(해시·시각·상태 없음)", (await p.locator(".members-table thead th").allInnerTexts()).join(",") === "아이디,이름" && !(await p.content()).includes("argon2"));
-  rec("C 회원 목록: 이름의 스크립트는 글자로만 보이고 실행되지 않는다", (await p.evaluate(() => window.__xss === 1)) === false && flat.some((t) => t.includes("<script>")));
+  rec("C 회원 관리: 모든 상태(승인 대기·활성·사용 중지) 회원이 보인다", flat.length === 7 && flat.some((t) => t.includes("퇴사자") && t.includes("사용 중지")) && flat.some((t) => t.startsWith("kim") && t.includes("관리자") && t.includes("(나)")) && flat.some((t) => t.startsWith("wait") && t.includes("승인 대기")), flat.join(" | "));
+  rec("C 회원 관리: 열 제목(아이디·이름·권한·상태·마지막 로그인·로그인 중·작업), 해시 없음", (await p.locator(".members-table thead th").allInnerTexts()).join(",") === "아이디,이름,권한,상태,마지막 로그인,로그인 중,작업" && !(await p.content()).includes("argon2"));
+  rec("C 회원 관리: 이름의 스크립트는 글자로만 보이고 실행되지 않는다", (await p.evaluate(() => window.__xss === 1)) === false && flat.some((t) => t.includes("<script>")));
+  rec("C 회원 관리: 본인(kim) 행에는 사용 중지·삭제·권한 변경 버튼이 없다", (await p.locator('tr[data-username="kim"] button').allInnerTexts()).every((t) => !/사용 중지|삭제|일반으로|관리자로/.test(t)));
   for (const w of [360, 1280]) {
     await p.setViewportSize({ width: w, height: 800 });
-    rec(`C 회원 목록 ${w}px: 가로 넘침 없음`, !(await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)));
+    rec(`C 회원 관리 ${w}px: 페이지 가로 넘침 없음(표는 안쪽 스크롤)`, !(await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)));
     const axe = await runAxe(p);
-    rec(`C 회원 목록 ${w}px: axe 위반 없음`, axe.length === 0, axe.map((v) => v.id).join(","));
-    await p.screenshot({ path: `${OUT}/members-${w}.png` });
+    rec(`C 회원 관리 ${w}px: axe 위반 없음`, axe.length === 0, axe.map((v) => v.id).join(","));
+    await p.screenshot({ path: `${OUT}/admin-members-${w}.png` });
   }
   // 로그아웃
   await p.setViewportSize({ width: 1280, height: 800 });
@@ -407,10 +411,15 @@ if (should("E")) {
   await ctx.close();
 }
 
-// ───────────────────────── G. 소유자 전용 투자자 수급(DEC-068)
+// ───────────────────────── G. 관리자 전용 투자자 수급(DEC-074: 권한은 DB의 관리자 권한)
 if (should("G")) {
-  const OWNER_PATH = "/api/v1/internal/owner/stocks/T00001/investor";
-  // 소유자(kim): 화면에 값이 보인다
+  const PATH = "/api/v1/internal/admin/stocks/T00001/investor";
+  const apiIdentity = async (username, pw, ip) => {
+    const r = await fetch(`${API}/api/v1/internal/auth/login`, { method: "POST", headers: { "Content-Type": "application/json", "X-Internal-Token": TOKEN, "X-End-User-IP": ip }, body: JSON.stringify({ username, password: pw }) });
+    const d = (await r.json()).data;
+    return { "X-Internal-Token": TOKEN, "X-Auth-User": d.user_id, "X-Auth-Session": d.session_id };
+  };
+  // 관리자(kim): 화면에 값이 보인다
   const octx = await newCtx(1280);
   const op = await octx.newPage();
   await uiLogin(op, "kim", PW);
@@ -419,26 +428,15 @@ if (should("G")) {
   await op.getByRole("tab", { name: "투자자" }).click();
   await op.waitForSelector(".daily-table", { timeout: 15000 }).catch(() => {});
   const otext = await op.locator('[role="tabpanel"]:not([hidden])').innerText().catch(() => "");
-  rec("G 소유자: 투자자 탭에 수집 값 표(▼1,234 / ▲4,321)", /4,321/.test(otext) && /1,234/.test(otext) && !/준비 중/.test(otext), otext.replace(/\s+/g, " ").slice(0, 120));
-  rec("G 소유자: 결측 값은 0이 아니라 '–'", /–/.test(otext));
-  rec("G 소유자: 최근 날짜가 위(2026-10-01 → 2026-09-30)", otext.indexOf("2026-10-01") !== -1 && otext.indexOf("2026-10-01") < otext.indexOf("2026-09-30"));
-  rec("G 소유자: 수집 안내 문구 표시", /소유자 계정에게만 보입니다/.test(otext));
-  let r = await octx.request.get(`${BASE}${OWNER_PATH}`);
+  rec("G 관리자: 투자자 탭에 수집 값 표(▼1,234 / ▲4,321)", /4,321/.test(otext) && /1,234/.test(otext) && !/준비 중/.test(otext), otext.replace(/\s+/g, " ").slice(0, 120));
+  rec("G 관리자: 결측 값은 0이 아니라 '–'", /–/.test(otext));
+  rec("G 관리자: 최근 날짜가 위(2026-10-01 → 2026-09-30)", otext.indexOf("2026-10-01") !== -1 && otext.indexOf("2026-10-01") < otext.indexOf("2026-09-30"));
+  rec("G 관리자: 수집 안내 문구 표시", /관리자 PC에서/.test(otext));
+  let r = await octx.request.get(`${BASE}${PATH}`);
   const ob = await r.json();
-  rec("G 소유자 대행 호출: 200 + no-store + 2행", r.status() === 200 && /no-store/.test(r.headers()["cache-control"] ?? "") && ob.data.rows.length === 2, `${r.status()}`);
+  rec("G 관리자 대행 호출: 200 + no-store + 2행", r.status() === 200 && /no-store/.test(r.headers()["cache-control"] ?? "") && ob.data.rows.length === 2, `${r.status()}`);
   await octx.close();
-  // 두 번째 소유자(lee, 쉼표 목록): 같은 화면에서 값이 보인다
-  const lctx = await newCtx(1280);
-  const lp = await lctx.newPage();
-  await uiLogin(lp, "lee", PW2);
-  await lp.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
-  await lp.goto("/stocks/T00001");
-  await lp.getByRole("tab", { name: "투자자" }).click();
-  await lp.waitForSelector(".daily-table", { timeout: 15000 }).catch(() => {});
-  const ltext = await lp.locator('[role="tabpanel"]:not([hidden])').innerText().catch(() => "");
-  rec("G 두 번째 소유자(lee): 투자자 탭에 같은 값(▼1,234 / ▲4,321)", /4,321/.test(ltext) && /1,234/.test(ltext) && !/준비 중/.test(ltext));
-  await lctx.close();
-  // 일반 회원(park): 같은 화면은 '준비 중', 값 호출은 403
+  // 일반 사용자(park): 같은 화면은 '준비 중', 값 호출은 403
   const pctx = await newCtx(1280);
   const pp = await pctx.newPage();
   await uiLogin(pp, "park", PW2);
@@ -447,29 +445,34 @@ if (should("G")) {
   await pp.getByRole("tab", { name: "투자자" }).click();
   await pp.waitForTimeout(800);
   const ptext = await pp.locator('[role="tabpanel"]:not([hidden])').innerText().catch(() => "");
-  rec("G 일반 회원: 투자자 탭은 '준비 중', 값 없음", /준비 중/.test(ptext) && !/4,321/.test(ptext) && !/1,234/.test(ptext));
-  r = await pctx.request.get(`${BASE}${OWNER_PATH}`);
-  const pb = await r.text();
-  rec("G 일반 회원이 주소를 직접 호출: 403, 값 없음", r.status() === 403 && !/4321|1234|rows/.test(pb), `${r.status()}`);
+  rec("G 일반 사용자: 투자자 탭은 '준비 중', 값 없음", /준비 중/.test(ptext) && !/4,321/.test(ptext) && !/1,234/.test(ptext));
+  r = await pctx.request.get(`${BASE}${PATH}`);
+  rec("G 일반 사용자가 주소를 직접 호출: 403, 값 없음", r.status() === 403 && !/4321|1234|rows/.test(await r.text()), `${r.status()}`);
   await pctx.close();
-  // 비로그인: 401 / 쿠키 없는 API 직접 호출 거부
-  r = await fetch(`${BASE}${OWNER_PATH}`);
+  // 비로그인·API 직접 호출
+  r = await fetch(`${BASE}${PATH}`);
   rec("G 비로그인 대행 호출: 401", r.status === 401, `${r.status}`);
-  r = await fetch(`${API}${OWNER_PATH}`);
+  r = await fetch(`${API}${PATH}`);
   rec("G API 직접 호출(토큰 없음): 401", r.status === 401, `${r.status}`);
-  r = await fetch(`${API}${OWNER_PATH}`, { headers: { "X-Internal-Token": TOKEN } });
-  rec("G API 직접 호출(토큰만, 아이디 없음): 403", r.status === 403, `${r.status}`);
-  r = await fetch(`${API}${OWNER_PATH}`, { headers: { "X-Internal-Token": TOKEN, "X-Auth-Username": "park" } });
-  rec("G API 직접 호출(다른 아이디): 403", r.status === 403, `${r.status}`);
-  r = await fetch(`${API}${OWNER_PATH}`, { headers: { "X-Internal-Token": TOKEN, "X-Auth-Username": "kim" } });
-  rec("G API 직접 호출(토큰+소유자 아이디): 200", r.status === 200, `${r.status}`);
+  const admin = await apiIdentity("kim", PW, "198.51.100.31");
+  const plain = await apiIdentity("park", PW2, "198.51.100.32");
+  r = await fetch(`${API}${PATH}`, { headers: { "X-Internal-Token": TOKEN } });
+  rec("G API 직접 호출(토큰만, 로그인 정보 없음): 403", r.status === 403, `${r.status}`);
+  r = await fetch(`${API}${PATH}`, { headers: plain });
+  rec("G API 직접 호출(일반 사용자의 유효한 세션): 403", r.status === 403, `${r.status}`);
+  r = await fetch(`${API}${PATH}`, { headers: admin });
+  rec("G API 직접 호출(관리자의 유효한 세션): 200", r.status === 200, `${r.status}`);
+  r = await fetch(`${API}${PATH}`, { headers: { ...plain, "X-Auth-User": admin["X-Auth-User"] } });
+  rec("G 일반 사용자 세션에 관리자 id를 섞어도 403(세션 소유자와 id가 다름)", r.status === 403, `${r.status}`);
+  r = await fetch(`${API}${PATH}`, { headers: { ...admin, "X-Auth-Username": "kim", "X-Auth-Role": "admin" } });
+  rec("G 옛 방식 헤더(아이디·권한)는 아무 효과가 없다(관리자 세션이면 200, 헤더만으로는 403)", r.status === 200 && (await fetch(`${API}${PATH}`, { headers: { "X-Internal-Token": TOKEN, "X-Auth-Username": "kim", "X-Auth-Role": "admin" } })).status === 403);
   // 브라우저가 보낸 가짜 헤더는 대행 경로가 무시한다
   const fctx = await newCtx(1280);
   const fp = await fctx.newPage();
-  await uiLogin(fp, "park", PW2);
+  await uiLogin(fp, "lee", PW2);
   await fp.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
-  r = await fctx.request.get(`${BASE}${OWNER_PATH}`, { headers: { "X-Auth-Username": "kim", "X-Internal-Token": TOKEN } });
-  rec("G 일반 회원이 소유자 아이디 헤더를 위조해도 403", r.status() === 403, `${r.status()}`);
+  r = await fctx.request.get(`${BASE}${PATH}`, { headers: { "X-Auth-Session": admin["X-Auth-Session"], "X-Auth-User": admin["X-Auth-User"], "X-Internal-Token": TOKEN, "X-Auth-Role": "admin" } });
+  rec("G 일반 사용자가 관리자 세션 헤더를 위조해도 403(대행 경로가 브라우저 헤더를 무시)", r.status() === 403, `${r.status()}`);
   await fctx.close();
 }
 
@@ -786,6 +789,268 @@ if (should("J")) {
   rec("J 이미 취소된 세션 쿠키(5분 안의 복사본)로는 전체 로그아웃도 못 한다(401, 서버가 거부)", rr.status() === 401, `${rr.status()}`);
   await rc.close();
   for (const x of [d1, d2, lee, again]) await x.c.close();
+}
+
+// ───────────────────────── K. 회원가입 신청(승인 대기) (DEC-074)
+if (should("K")) {
+  const origin = new URL(BASE).origin;
+  const row = (u) => psql(`SELECT role, is_active, approved_at IS NOT NULL FROM auth.app_users WHERE username='${u}'`);
+  const count = (u) => Number(psql(`SELECT count(*) FROM auth.app_users WHERE username='${u}'`));
+  for (const w of [360, 1280]) {
+    const ctx = await newCtx(w);
+    const p = await ctx.newPage();
+    await p.goto("/login");
+    rec(`K ${w}px: 로그인 화면에 '회원가입' 링크`, (await p.locator(".login-form__signup a").innerText()) === "회원가입");
+    await p.click(".login-form__signup a");
+    await p.waitForURL((u) => u.pathname === "/signup", { timeout: 10000 });
+    await p.waitForSelector("#signup-username", { timeout: 15000 });
+    const labels = await p.locator("label").allInnerTexts();
+    rec(`K ${w}px: 가입 화면 라벨(아이디·이름·비밀번호·비밀번호 확인)`, ["아이디", "이름", "비밀번호", "비밀번호 확인"].every((l) => labels.includes(l)), labels.join(","));
+    rec(`K ${w}px: 승인 후 로그인 안내 문구`, /관리자가 확인한 뒤 승인/.test(await p.locator(".login-page__intro").innerText()));
+    rec(`K ${w}px: 숨긴 봇 칸은 화면 밖·키보드 불가·aria-hidden`, await p.evaluate(() => { const hp = document.querySelector(".signup-hp"); const inp = hp?.querySelector("input"); const r = hp?.getBoundingClientRect(); return !!hp && hp.getAttribute("aria-hidden") === "true" && inp?.tabIndex === -1 && r.right <= 1 && r.width <= 2; }));
+    rec(`K ${w}px: 가로 넘침 없음·입력칸 44px 이상`, !(await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)) && (await p.evaluate(() => [...document.querySelectorAll(".login-form input:not([tabindex='-1']), .login-form__submit")].every((e) => e.getBoundingClientRect().height >= 44))));
+    const axe = await runAxe(p);
+    rec(`K ${w}px: axe 위반 없음`, axe.length === 0, axe.map((v) => v.id).join(","));
+    if (w === 360) await p.screenshot({ path: `${OUT}/signup-360.png` });
+    await ctx.close();
+  }
+  const ctx = await newCtx(1280);
+  const p = await ctx.newPage();
+  let signupCalls = 0;
+  p.on("request", (rq) => { if (rq.url().endsWith("/auth/signup") && rq.method() === "POST") signupCalls += 1; });
+  const fill = async (u, n, pw, pw2) => { await p.fill("#signup-username", u); await p.fill("#signup-name", n); await p.fill("#signup-password", pw); await p.fill("#signup-password-confirm", pw2); };
+  await p.goto("/signup");
+  await fill("newbie1", "신입사원", "Qw8!rT5zLp", "Qw8!rT5zLX");
+  await p.click("button[type=submit]");
+  rec("K 비밀번호 확인이 다르면 서버에 보내지 않고 안내", /서로 다릅니다/.test(await p.locator(".login-form__message").innerText()) && signupCalls === 0);
+  await fill("newbie1", "신입사원", "12345678", "12345678");
+  await p.click("button[type=submit]");
+  await p.waitForFunction(() => /흔하거나|연속된/.test(document.querySelector(".login-form__message")?.textContent ?? ""), null, { timeout: 15000 }).catch(() => {});
+  rec("K 약한 비밀번호: 서버 문구 표시, 계정 만들어지지 않음", /흔하거나|연속된/.test(await p.locator(".login-form__message").innerText()) && count("newbie1") === 0);
+  await fill("ab", "신입사원", "Qw8!rT5zLp", "Qw8!rT5zLp");
+  await p.click("button[type=submit]");
+  await p.waitForFunction(() => /아이디는 3~32자/.test(document.querySelector(".login-form__message")?.textContent ?? ""), null, { timeout: 15000 }).catch(() => {});
+  rec("K 아이디 형식 오류: 서버 문구 표시, 계정 없음", /아이디는 3~32자/.test(await p.locator(".login-form__message").innerText()) && count("ab") === 0);
+  await fill("newbie1", "신입사원", "Qw8!rT5zLp", "Qw8!rT5zLp");
+  await p.click("button[type=submit]");
+  await p.locator(".signup-done").waitFor({ timeout: 20000 });
+  rec("K 가입 신청 성공: 접수 안내(로그인되지 않음)", /가입 신청이 접수/.test(await p.locator(".signup-done").innerText()) && (await ctx.cookies()).filter((c) => c.name === COOKIE).length === 0);
+  rec("K DB: 일반 권한·비활성·미승인(승인 대기)", row("newbie1") === "user|f|f", row("newbie1"));
+  rec("K DB: 비밀번호는 argon2id 해시(원문 아님)", psql("SELECT password_hash FROM auth.app_users WHERE username='newbie1'").startsWith("$argon2id$"));
+  // 승인 전 로그인
+  const lp = await ctx.newPage();
+  await lp.goto("/login");
+  await lp.fill("#login-username", "newbie1");
+  await lp.fill("#login-password", "Qw8!rT5zLp");
+  await lp.click("button[type=submit]");
+  await lp.locator(".login-form__message").waitFor({ timeout: 20000 });
+  rec("K 승인 전 로그인(비밀번호 맞음): '관리자 승인 대기' 안내, 로그인 안 됨", /승인 대기/.test(await lp.locator(".login-form__message").innerText()) && (await ctx.cookies()).filter((c) => c.name === COOKIE).length === 0 && new URL(lp.url()).pathname === "/login");
+  await lp.fill("#login-password", "wrong-password-xyz");
+  await lp.click("button[type=submit]");
+  await lp.waitForFunction(() => /올바르지 않습니다/.test(document.querySelector(".login-form__message")?.textContent ?? ""), null, { timeout: 15000 }).catch(() => {});
+  rec("K 승인 전 로그인(비밀번호 틀림): 평범한 실패 문구(승인 대기 여부를 알려 주지 않음)", /올바르지 않습니다/.test(await lp.locator(".login-form__message").innerText()));
+  rec("K 승인 전에는 서버 세션이 만들어지지 않는다", Number(psql("SELECT count(*) FROM auth.user_sessions s JOIN auth.app_users u USING (user_id) WHERE u.username='newbie1'")) === 0);
+  // 중복
+  await p.goto("/signup");
+  await fill("NewBie1", "다른사람", "Zx9!kM2vBn", "Zx9!kM2vBn");
+  await p.click("button[type=submit]");
+  await p.locator(".login-form__message").waitFor({ timeout: 15000 });
+  rec("K 아이디 중복(대소문자 무관): 안내, 처음 신청은 그대로", /이미 사용 중/.test(await p.locator(".login-form__message").innerText()) && count("newbie1") === 1);
+  // 웹 가입 경로 직접 호출: 권한 주입·교차 사이트·잘못된 형식
+  const post = (body, headers = {}) => fetch(`${BASE}/auth/signup`, { method: "POST", headers: { "Content-Type": "application/json", Origin: origin, ...headers }, body: JSON.stringify(body) });
+  let r = await post({ username: "sneaky1", displayName: "교활", password: "Vb7!nM3xQz", role: "admin", is_active: true, approved_at: "2020-01-01" });
+  rec("K 가입 요청에 role/is_active/approved_at을 넣어도 무시: 승인 대기 일반 계정으로만 생성", r.status === 200 && row("sneaky1") === "user|f|f", `${r.status} ${row("sneaky1")}`);
+  r = await post({ username: "evil1", displayName: "x", password: "Vb7!nM3xQz" }, { Origin: "https://evil.example.com" });
+  rec("K 다른 사이트에서 온 가입 요청: 403, 계정 없음", r.status === 403 && count("evil1") === 0);
+  r = await fetch(`${BASE}/auth/signup`, { method: "POST", headers: { "Content-Type": "text/plain", Origin: origin }, body: "x" });
+  rec("K JSON이 아닌 가입 요청: 415", r.status === 415);
+  r = await post({ username: "x".repeat(70), displayName: "x", password: "Vb7!nM3xQz" });
+  rec("K 너무 긴 아이디: 400", r.status === 400);
+  r = await post({ username: "bot1", displayName: "봇", password: "Vb7!nM3xQz", website: "http://spam.example" });
+  rec("K 숨긴 칸을 채운 요청(봇): 성공처럼 응답하지만 계정은 만들지 않는다", r.status === 200 && count("bot1") === 0);
+  // 로그인한 사용자가 /signup을 열면 홈으로
+  const lctx = await newCtx(1280);
+  const lpg = await lctx.newPage();
+  await uiLogin(lpg, "park", PW2);
+  await lpg.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
+  await lpg.goto("/signup");
+  rec("K 로그인한 회원이 /signup을 열면 홈으로", new URL(lpg.url()).pathname === "/");
+  await lctx.close();
+  // 신청 빈도 제한(접속 주소당 10분 30회, E2E 설정)
+  const apiSignup = (u, ip) => fetch(`${API}/api/v1/internal/auth/signup`, { method: "POST", headers: { "Content-Type": "application/json", "X-Internal-Token": TOKEN, "X-End-User-IP": ip }, body: JSON.stringify({ username: u, display_name: "연타", password: "Vb7!nM3xQz" }) });
+  const codes = [];
+  for (let i = 0; i < 32; i += 1) codes.push((await apiSignup(`burst${String(i).padStart(2, "0")}x`, "198.51.100.177")).status);
+  const first429 = codes.indexOf(429);
+  rec("K 같은 접속 주소의 가입 신청이 10분에 30회를 넘으면 429", first429 >= 29 && first429 <= 31, `첫 429 위치 ${first429}`);
+  rec("K 다른 접속 주소는 영향 없음", (await apiSignup("burst99x", "198.51.100.179")).status === 200);
+  psql("DELETE FROM auth.app_users WHERE username LIKE 'burst%' OR username IN ('sneaky1')");
+  await ctx.close();
+}
+
+// ───────────────────────── L. 관리자 회원 관리 화면 (DEC-074)
+if (should("L")) {
+  const origin = new URL(BASE).origin;
+  const decode = (c) => JSON.parse(Buffer.from(c.value.split(".")[0], "base64url").toString("utf8"));
+  const cookieOf = async (ctx) => (await ctx.cookies()).find((c) => c.name === COOKIE);
+  const staleOf = (pl) => sign({ ...pl, iat: pl.iat - 700, exp: pl.exp - 700, chk: nowS() - 600 });
+  const dbrow = (u) => psql(`SELECT role, is_active, approved_at IS NOT NULL, display_name FROM auth.app_users WHERE username='${u}'`);
+  const exists = (u) => Number(psql(`SELECT count(*) FROM auth.app_users WHERE username='${u}'`)) === 1;
+  psql("DELETE FROM auth.app_users WHERE username IN ('spam1','added1')");
+  if (!exists("newbie1")) { await fetch(`${API}/api/v1/internal/auth/signup`, { method: "POST", headers: { "Content-Type": "application/json", "X-Internal-Token": TOKEN, "X-End-User-IP": "198.51.100.90" }, body: JSON.stringify({ username: "newbie1", display_name: "신입사원", password: "Qw8!rT5zLp" }) }); }
+  await fetch(`${API}/api/v1/internal/auth/signup`, { method: "POST", headers: { "Content-Type": "application/json", "X-Internal-Token": TOKEN, "X-End-User-IP": "198.51.100.91" }, body: JSON.stringify({ username: "spam1", display_name: "스팸", password: "Qw8!rT5zLp" }) });
+  const octx = await newCtx(1280);
+  const op = await octx.newPage();
+  op.on("dialog", (d) => d.accept());
+  await uiLogin(op, "kim", PW);
+  await op.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
+  await op.click(".member-menu__link");
+  await op.waitForURL((u) => u.pathname === "/admin/members", { timeout: 15000 });
+  await op.waitForSelector(".admin-members", { timeout: 15000 });
+  rec("L 관리자 메뉴의 '회원 관리' 링크로 이동", new URL(op.url()).pathname === "/admin/members");
+  rec("L 승인 대기 신청이 있으면 '승인 대기' 탭이 먼저 열린다", (await op.getByRole("button", { name: /^승인 대기/ }).getAttribute("aria-pressed")) === "true" && (await op.locator('tr[data-username="newbie1"]').count()) === 1);
+  const notice = () => op.locator(".admin-members__notice");
+  const act = async (u, label) => { await op.locator(`tr[data-username="${u}"]`).getByRole("button", { name: new RegExp(`${label}$`) }).click(); };
+  const waitNotice = async (re) => { await op.waitForFunction((src) => new RegExp(src).test(document.querySelector(".admin-members__notice")?.textContent ?? ""), re.source, { timeout: 15000 }).catch(() => {}); return (await notice().innerText().catch(() => "")); };
+  // 확인창에서 취소하면 변화 없음
+  op.removeAllListeners("dialog");
+  op.once("dialog", (d) => d.dismiss());
+  await act("spam1", "거절");
+  await op.waitForTimeout(600);
+  rec("L 확인창에서 취소하면 아무 변화 없음", exists("spam1"));
+  op.on("dialog", (d) => d.accept());
+  // 거절
+  await act("spam1", "거절");
+  rec("L 가입 신청 거절: 안내 + 계정 삭제", /거절/.test(await waitNotice(/거절/)) && !exists("spam1"));
+  // 승인 → 로그인 가능, 일반 사용자는 관리자 화면 접근 불가
+  await act("newbie1", "승인");
+  rec("L 가입 신청 승인: 안내 + DB 활성·승인됨", /승인했습니다/.test(await waitNotice(/승인했습니다/)) && dbrow("newbie1").startsWith("user|t|t"), dbrow("newbie1"));
+  const nctx = await newCtx(1280);
+  const np = await nctx.newPage();
+  await uiLogin(np, "newbie1", "Qw8!rT5zLp");
+  await np.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
+  rec("L 승인된 사용자는 로그인되고 일반 권한(회원 관리 링크 없음)", (await np.locator(".member-menu").innerText()).includes("신입사원님") && (await np.locator(".member-menu__link").count()) === 0 && decode(await cookieOf(nctx)).rl === "u");
+  await np.goto("/admin/members", { waitUntil: "commit" });
+  await np.waitForURL((u) => u.pathname === "/", { timeout: 15000 }).catch(() => {});
+  rec("L 일반 사용자가 /admin/members를 열면 홈으로", new URL(np.url()).pathname === "/");
+  await np.goto("/members", { waitUntil: "commit" });
+  await np.waitForURL((u) => u.pathname === "/", { timeout: 15000 }).catch(() => {});
+  rec("L 일반 사용자가 옛 /members를 열어도 홈으로", new URL(np.url()).pathname === "/");
+  // 회원 추가
+  await op.getByRole("button", { name: /^전체/ }).click();
+  await op.fill("#admin-create-username", "added1");
+  await op.fill("#admin-create-name", "추가회원");
+  await op.fill("#admin-create-password", "weak");
+  await op.click(".admin-create button[type=submit]");
+  rec("L 회원 추가: 약한 비밀번호는 서버 문구로 거부", /흔하거나|8자 이상/.test(await waitNotice(/8자|흔하거나/)) && !exists("added1"));
+  await op.fill("#admin-create-password", "Add!pass77x");
+  await op.click(".admin-create button[type=submit]");
+  rec("L 회원 추가: 성공 안내 + 활성·승인된 일반 회원", /추가했습니다/.test(await waitNotice(/추가했습니다/)) && dbrow("added1").startsWith("user|t|t|추가회원"), dbrow("added1"));
+  await op.fill("#admin-create-username", "added1");
+  await op.fill("#admin-create-name", "중복");
+  await op.fill("#admin-create-password", "Add!pass77x");
+  await op.click(".admin-create button[type=submit]");
+  rec("L 회원 추가: 아이디 중복은 거부", /이미 사용 중/.test(await waitNotice(/이미 사용 중/)));
+  const actx = await newCtx(1280);
+  const ap = await actx.newPage();
+  await uiLogin(ap, "added1", "Add!pass77x");
+  await ap.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
+  rec("L 추가한 회원은 바로 로그인 가능", new URL(ap.url()).pathname === "/");
+  // 이름 수정
+  await act("added1", "이름 수정");
+  await op.fill("#admin-editor-input", "새이름");
+  await op.click(".admin-editor button[type=submit]");
+  rec("L 이름 수정: 안내 + DB 반영", /수정했습니다/.test(await waitNotice(/수정했습니다/)) && dbrow("added1").endsWith("새이름"));
+  // 비밀번호 초기화: 기존 로그인 끊김, 새 비밀번호 사용
+  const addedSid = decode(await cookieOf(actx)).sid;
+  await act("added1", "비밀번호 초기화");
+  await op.fill("#admin-editor-input", "123");
+  await op.click(".admin-editor button[type=submit]");
+  rec("L 비밀번호 초기화: 약한 비밀번호 거부(상태 불변)", /8자|흔하거나/.test(await waitNotice(/8자|흔하거나/)) && Number(psql(`SELECT count(*) FROM auth.user_sessions WHERE session_id='${addedSid}' AND revoked_at IS NULL`)) === 1);
+  await op.fill("#admin-editor-input", "Reset!pass88y");
+  await op.click(".admin-editor button[type=submit]");
+  rec("L 비밀번호 초기화: 안내 + 그 회원의 기존 로그인 세션 취소", /초기화했습니다/.test(await waitNotice(/초기화했습니다/)) && Number(psql(`SELECT count(*) FROM auth.user_sessions WHERE session_id='${addedSid}' AND revoked_at IS NOT NULL`)) === 1);
+  const rctx = await newCtx(1280);
+  const rp = await rctx.newPage();
+  await uiLogin(rp, "added1", "Add!pass77x");
+  await rp.locator(".login-form__message").waitFor({ timeout: 15000 });
+  rec("L 초기화 뒤 옛 비밀번호는 거부", /올바르지 않습니다/.test(await rp.locator(".login-form__message").innerText()));
+  await rctx.close();
+  await uiLogin(await (async () => { const c = await newCtx(1280); return c.newPage(); })(), "added1", "Reset!pass88y");
+  // 권한 변경: lee를 관리자로 → 서버가 즉시 인정, 화면 표시는 5분 확인 때 갱신
+  const lctx = await newCtx(1280);
+  const lp = await lctx.newPage();
+  await uiLogin(lp, "lee", PW2);
+  await lp.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
+  const leePl = decode(await cookieOf(lctx));
+  await act("lee", "관리자로");
+  rec("L 권한 변경(일반→관리자): 안내 + DB 반영", /바꿨습니다/.test(await waitNotice(/바꿨습니다/)) && dbrow("lee").startsWith("admin|t|t"), dbrow("lee"));
+  await setSessionCookie(lctx, staleOf(leePl));
+  await lp.goto("/stocks/T00001");
+  await lp.waitForURL((u) => u.pathname === "/stocks/T00001", { timeout: 20000 });
+  rec("L 5분 확인 뒤 새 권한 반영: 쿠키 rl=a, 회원 관리 링크, 투자자 탭 표", decode(await cookieOf(lctx)).rl === "a" && (await lp.locator(".member-menu__link").count()) === 1);
+  await lp.getByRole("tab", { name: "투자자" }).click();
+  await lp.waitForSelector(".daily-table", { timeout: 15000 }).catch(() => {});
+  rec("L 새 관리자(lee)는 투자자 탭에 값이 보인다", /4,321/.test(await lp.locator('[role="tabpanel"]:not([hidden])').innerText().catch(() => "")));
+  // 강등: 쿠키는 아직 rl=a여도 서버(API)가 즉시 거부
+  const leeAdminCookie = (await cookieOf(lctx)).value;
+  await act("lee", "일반으로");
+  rec("L 권한 변경(관리자→일반): DB 반영", /바꿨습니다/.test(await waitNotice(/바꿨습니다/)) && dbrow("lee").startsWith("user|t|t"));
+  await setSessionCookie(lctx, leeAdminCookie);
+  let r = await lctx.request.get(`${BASE}/api/v1/internal/admin/stocks/T00001/investor`);
+  rec("L 강등된 사용자의 옛 쿠키(rl=a)로도 투자자 값 요청은 403(서버가 DB로 확인)", r.status() === 403, `${r.status()}`);
+  r = await lctx.request.post(`${BASE}/admin/actions`, { data: { action: "delete", username: "park" }, headers: { origin } });
+  rec("L 강등된 사용자의 옛 쿠키로 관리 작업 요청도 403, 아무것도 바뀌지 않음", r.status() === 403 && exists("park"), `${r.status()}`);
+  await lctx.close();
+  // 사용 중지 / 다시 사용
+  const pctx = await newCtx(1280);
+  const pp = await pctx.newPage();
+  await uiLogin(pp, "park", PW2);
+  await pp.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
+  const parkPl = decode(await cookieOf(pctx));
+  await act("park", "사용 중지");
+  rec("L 사용 중지: 안내 + DB 비활성 + 그 회원의 로그인 세션 취소", /사용 중지했습니다/.test(await waitNotice(/사용 중지했습니다/)) && dbrow("park").startsWith("user|f|t") && Number(psql(`SELECT count(*) FROM auth.user_sessions WHERE session_id='${parkPl.sid}' AND revoked_at IS NOT NULL`)) === 1);
+  await setSessionCookie(pctx, staleOf(parkPl));
+  rec("L 사용 중지된 회원의 쿠키는 서버 확인에서 거부(401)", (await pctx.request.get(`${BASE}/api/v1/market-summary`)).status() === 401);
+  const dctx = await newCtx(1280);
+  const dp = await dctx.newPage();
+  await uiLogin(dp, "park", PW2);
+  await dp.locator(".login-form__message").waitFor({ timeout: 15000 });
+  rec("L 사용 중지된 회원이 로그인(비밀번호 맞음): '사용 중지' 안내", /사용이 중지/.test(await dp.locator(".login-form__message").innerText()));
+  await act("park", "다시 사용");
+  rec("L 다시 사용: DB 활성(이전 로그인은 되살아나지 않음)", /다시 사용할 수 있게/.test(await waitNotice(/다시 사용할 수 있게/)) && dbrow("park").startsWith("user|t|t"));
+  await dp.fill("#login-password", PW2);
+  await dp.click("button[type=submit]");
+  await dp.waitForURL((u) => u.pathname === "/", { timeout: 20000 });
+  rec("L 다시 사용 뒤 로그인 가능", new URL(dp.url()).pathname === "/");
+  await pctx.close(); await dctx.close();
+  // 모든 기기 로그아웃 / 삭제
+  await act("park", "모든 기기 로그아웃");
+  rec("L 회원의 모든 기기 로그아웃: 안내 + 그 회원 유효 세션 0", /로그아웃시켰/.test(await waitNotice(/로그아웃시켰/)) && Number(psql("SELECT count(*) FROM auth.user_sessions s JOIN auth.app_users u USING (user_id) WHERE u.username='park' AND s.revoked_at IS NULL AND s.expires_at > now()")) === 0);
+  await act("added1", "삭제");
+  rec("L 회원 삭제: 안내 + 계정·세션 삭제", /삭제했습니다/.test(await waitNotice(/삭제했습니다/)) && !exists("added1") && Number(psql("SELECT count(*) FROM auth.user_sessions WHERE user_id NOT IN (SELECT user_id FROM auth.app_users)")) === 0);
+  // 본인 보호
+  r = await octx.request.post(`${BASE}/admin/actions`, { data: { action: "disable", username: "kim" }, headers: { origin } });
+  const rb = await r.json();
+  rec("L 본인 비활성화 요청(우회 호출)은 서버가 거부(409)", r.status() === 409 && rb.code === "SELF_PROTECTED" && dbrow("kim").startsWith("admin|t|t"), `${r.status()} ${rb.code}`);
+  r = await octx.request.post(`${BASE}/admin/actions`, { data: { action: "set_role", username: "kim", role: "user" }, headers: { origin } });
+  rec("L 본인 강등 요청(우회 호출)도 409", r.status() === 409);
+  // 관리 작업 경로 보호
+  const anon = await fetch(`${BASE}/admin/actions`, { method: "POST", headers: { "Content-Type": "application/json", Origin: origin }, body: JSON.stringify({ action: "delete", username: "kim" }) });
+  rec("L 로그인 없이 관리 작업: 401", anon.status === 401);
+  r = await octx.request.post(`${BASE}/admin/actions`, { data: { action: "delete", username: "evil" }, headers: { origin: "https://evil.example.com" } });
+  rec("L 다른 사이트에서 온 관리 작업: 403, 변화 없음", r.status() === 403 && exists("evil"));
+  for (const bad of [{ action: "explode", username: "evil" }, { action: "delete" }, { username: "evil" }, { action: "set_role", username: "evil", role: "root" }, { action: "delete", username: "x".repeat(70) }]) {
+    r = await octx.request.post(`${BASE}/admin/actions`, { data: bad, headers: { origin } });
+    rec(`L 잘못된 관리 작업 요청 ${JSON.stringify(bad).slice(0, 40)}: 400`, r.status() === 400, `${r.status()}`);
+  }
+  r = await octx.request.post(`${BASE}/admin/actions`, { data: "not json", headers: { origin, "content-type": "application/json" } });
+  rec("L 깨진 JSON 관리 작업: 400", r.status() === 400);
+  // 관리 기록
+  const audit = psql("SELECT count(*) FROM auth.admin_audit");
+  const secrets = psql("SELECT count(*) FROM auth.admin_audit WHERE coalesce(detail,'') ~* '(pass|argon|\\$)' OR action ~* 'pass.*[0-9]'");
+  rec("L 관리 작업 기록이 남는다(비밀번호·해시는 기록 안 됨)", Number(audit) >= 10 && Number(secrets) === 0, `기록 ${audit}건`);
+  await op.screenshot({ path: `${OUT}/admin-members-after-1280.png` });
+  for (const x of [octx, nctx, actx]) await x.close();
 }
 
 // ───────────────────────── F. 로그인 시도 제한(API)

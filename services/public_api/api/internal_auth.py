@@ -4,7 +4,7 @@
 - `POST /api/v1/internal/auth/session-check` : 이 세션이 취소·만료되지 않았고 회원이 아직 활성인지(웹이 5분마다 확인).
 - `POST /api/v1/internal/auth/logout` : 이 세션 하나를 서버에서 취소(DEC-070).
 - `POST /api/v1/internal/auth/logout-all` : 이 회원의 모든 세션 취소(DEC-071). 요청한 세션이 살아 있을 때만.
-- `GET  /api/v1/internal/members` : 로그인 가능한 회원(활성)의 아이디·이름 목록.
+- `POST /api/v1/internal/auth/signup` : 회원가입 신청(승인 대기 계정 생성, DEC-074).
 
 모든 경로는 **강제 스위치와 무관하게** 항상 내부 토큰을 요구한다(로컬에서 스위치가 꺼져 있어도 열려 있지 않다).
 회원 DB 주소(`PUBLIC_API_AUTH_DATABASE_URL`)나 토큰이 설정되지 않으면 404로 존재 자체를 숨긴다.
@@ -24,14 +24,15 @@ from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.orm import Session
 
 from services.public_api.auth.service import (
+    SignupError,
     authenticate,
     check_session_user,
     create_session,
-    list_active_members,
     revoke_all_sessions,
     revoke_session,
+    signup,
 )
-from services.public_api.auth.throttle import allow_login_attempt
+from services.public_api.auth.throttle import allow_login_attempt, allow_signup_attempt
 from services.public_api.core.config import get_auth_database_url
 from services.public_api.db.auth_session import get_auth_db
 from services.public_api.errors import ApiError
@@ -41,10 +42,10 @@ from services.public_api.schemas.auth import (
     LogoutAllData,
     LogoutData,
     LogoutRequest,
-    MemberItem,
-    MembersData,
     SessionCheckData,
     SessionCheckRequest,
+    SignupData,
+    SignupRequest,
 )
 from services.public_api.schemas.envelope import Envelope, Meta
 
@@ -90,6 +91,10 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_auth_d
             message="로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.",
         )
     outcome = authenticate(db, body.username, body.password, ip)
+    if outcome.state == "pending":  # 비밀번호가 맞은 본인에게만 알려 준다
+        raise ApiError(status_code=403, code="PENDING_APPROVAL", message="관리자 승인 대기 중입니다. 승인된 뒤에 로그인할 수 있습니다.")
+    if outcome.state == "disabled":
+        raise ApiError(status_code=403, code="ACCOUNT_DISABLED", message="사용이 중지된 계정입니다. 관리자에게 문의해 주세요.")
     if not outcome.ok or outcome.user is None:
         raise ApiError(status_code=401, code="INVALID_CREDENTIALS", message=_INVALID_CREDENTIALS)
     user = outcome.user
@@ -100,6 +105,7 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_auth_d
             user_id=user.user_id,
             username=user.username,
             display_name=user.display_name,
+            role=user.role,
             session_id=session_id,
             expires_in_seconds=expires_in,
         ),
@@ -110,7 +116,7 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_auth_d
 def session_check(body: SessionCheckRequest, db: Session = Depends(get_auth_db)) -> Envelope[SessionCheckData]:
     user = check_session_user(db, body.user_id, body.session_id)
     data = (
-        SessionCheckData(active=True, username=user.username, display_name=user.display_name)
+        SessionCheckData(active=True, username=user.username, display_name=user.display_name, role=user.role)
         if user
         else SessionCheckData(active=False)
     )
@@ -130,7 +136,15 @@ def logout_all(body: LogoutRequest, db: Session = Depends(get_auth_db)) -> Envel
     return Envelope[LogoutAllData](meta=_meta(), data=LogoutAllData(revoked_count=count))
 
 
-@router.get("/members", response_model=Envelope[MembersData])
-def members(db: Session = Depends(get_auth_db)) -> Envelope[MembersData]:
-    items = [MemberItem(**m) for m in list_active_members(db)]
-    return Envelope[MembersData](meta=_meta(), data=MembersData(items=items, total=len(items)))
+@router.post("/auth/signup", response_model=Envelope[SignupData])
+def signup_request(body: SignupRequest, request: Request, db: Session = Depends(get_auth_db)) -> Envelope[SignupData]:
+    """회원가입 신청(DEC-074). 승인 대기 계정만 만들고 로그인은 관리자 승인 뒤에 가능하다."""
+    if not allow_signup_attempt(_client_ip(request)):
+        raise ApiError(status_code=429, code="SIGNUP_RATE_LIMITED", message="가입 신청이 너무 많습니다. 잠시 후 다시 시도해 주세요.")
+    if body.website.strip():  # 숨긴 칸이 채워짐 = 봇. 접수한 것처럼 응답하고 아무것도 만들지 않는다.
+        return Envelope[SignupData](meta=_meta(), data=SignupData(status="pending"))
+    try:
+        signup(db, body.username, body.display_name, body.password)
+    except SignupError as exc:
+        raise ApiError(status_code=exc.status, code=exc.code, message=exc.message) from exc
+    return Envelope[SignupData](meta=_meta(), data=SignupData(status="pending"))

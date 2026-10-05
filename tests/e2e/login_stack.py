@@ -79,7 +79,6 @@ def main() -> int:
         "NEXT_PUBLIC_BROWSER_API_BASE_URL": "same-origin",
         "NEXT_PUBLIC_AUTH_ENABLED": "true",
         "FRONTEND_TRUSTED_PROXY_HOPS": "0",
-        "OWNER_USERNAME": "kim, LEE",  # 소유자 전용 투자자 수급(DEC-068)
     }
     procs: list[subprocess.Popen] = []
     code = 1
@@ -91,11 +90,15 @@ def main() -> int:
         with temp_database() as tdb:
             prepare_database(tdb)
             admin = create_engine(TempDb.render(tdb.migrator_url))
-            users = [("kim", "김철수", GOOD_PW), ("lee", "이영희", OTHER_PW), ("off", "퇴사자", GOOD_PW),
-                     ("evil", "<script>window.__xss=1</script>", GOOD_PW), ("lock", "잠금시험", GOOD_PW), ("park", "박민수", OTHER_PW)]
-            for username, name, pw in users:
-                mu.add_user(admin, username, name, pw)
+            # 권한은 DB 기준(DEC-074): kim만 관리자, 나머지는 일반. wait는 가입 신청 후 승인 대기 중인 계정.
+            users = [("kim", "김철수", GOOD_PW, "admin"), ("lee", "이영희", OTHER_PW, "user"), ("off", "퇴사자", GOOD_PW, "user"),
+                     ("evil", "<script>window.__xss=1</script>", GOOD_PW, "user"), ("lock", "잠금시험", GOOD_PW, "user"), ("park", "박민수", OTHER_PW, "user"),
+                     ("wait", "대기자", OTHER_PW, "user")]
+            for username, name, pw, role in users:
+                mu.add_user(admin, username, name, pw, role)
             mu.set_active(admin, "off", False)
+            with admin.begin() as conn:
+                conn.execute(text("UPDATE auth.app_users SET is_active = false, approved_at = NULL WHERE username = 'wait'"))
             with admin.begin() as conn:  # 소유자 전용 투자자 수급 시험 값(T00001)
                 conn.execute(text(
                     "INSERT INTO public_serving.investor_flow_daily (stock_code, trade_date, personal_quantity, foreign_quantity, institution_quantity,"
@@ -114,9 +117,10 @@ def main() -> int:
                 "PUBLIC_API_HOST": "127.0.0.1",
                 "PUBLIC_API_PORT": str(API_PORT),
                 "PUBLIC_API_CORS_ALLOWED_ORIGINS": f"http://localhost:{WEB_PORT}",
-                "PUBLIC_API_OWNER_USERNAME": "kim,lee",
+                "PUBLIC_API_SIGNUP_PER_10MIN": "30",
+                "PUBLIC_API_SIGNUP_GLOBAL_PER_HOUR": "500",
                 "PUBLIC_API_LOGIN_RATE_PER_MINUTE": "40",
-                "PUBLIC_API_LOGIN_GLOBAL_PER_MINUTE": "120",
+                "PUBLIC_API_LOGIN_GLOBAL_PER_MINUTE": "3000",
                 "PYTHONPATH": str(REPO),
             }
             # 자식 프로세스까지 한꺼번에 끌 수 있게 새 프로세스 그룹으로 띄운다(npx가 만든 next-server가 남아 포트를 붙잡는 것을 막는다).

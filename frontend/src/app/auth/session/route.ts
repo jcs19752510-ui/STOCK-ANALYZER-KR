@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     clearSessionCookie(response);
     return response;
   }
-  const next = refreshed({ ...session, un: check.user.username, dn: check.user.displayName }, now);
+  const next = refreshed({ ...session, un: check.user.username, dn: check.user.displayName, rl: check.user.role === "admin" ? "a" : "u" }, now);
   const response = json({ ok: true });
   setSessionCookie(response, signSession(next, sessionSecret()), remainingSeconds(next, now));
   return response;

@@ -23,7 +23,7 @@ function securityHeaders(response: NextResponse): NextResponse {
 
 function unauthorized(request: NextRequest): NextResponse {
   const { pathname, search } = request.nextUrl;
-  if (pathname.startsWith("/api/")) {
+  if (pathname.startsWith("/api/") || pathname === "/admin/actions") {
     return securityHeaders(
       NextResponse.json(
         { data: null, error: { code: "AUTH_REQUIRED", message: "로그인이 필요합니다." } },
@@ -46,6 +46,17 @@ export function proxy(request: NextRequest): NextResponse {
   }
 
   const { pathname } = request.nextUrl;
+  if (pathname === "/signup") {
+    // 회원가입 신청 화면은 로그인 전 누구나 열 수 있다. 이미 로그인한 회원은 홈으로.
+    const nowS = Math.floor(Date.now() / 1000);
+    if (verifySession(request.cookies.get(sessionCookieName())?.value, sessionSecret(), nowS)) {
+      const target = request.nextUrl.clone();
+      target.pathname = "/";
+      target.search = "";
+      return securityHeaders(NextResponse.redirect(target));
+    }
+    return securityHeaders(NextResponse.next());
+  }
   if (pathname === "/login") {
     // 이미 로그인한 회원이 로그인 화면을 열면 로그인 화면을 보여 주지 않고 바로 원래 가려던 곳으로 보낸다(깜빡임 없이).
     const nowS = Math.floor(Date.now() / 1000);
@@ -62,8 +73,8 @@ export function proxy(request: NextRequest): NextResponse {
   if (SELF_CHECKING_PREFIXES.some((p) => pathname.startsWith(p))) {
     return securityHeaders(NextResponse.next());
   }
-  if (pathname.startsWith("/api/")) {
-    // 대행 경로가 직접 로그인·신선도를 확인한다(쿠키 갱신이 필요해서). 여기서는 쿠키가 아예 없는 요청만 걸러낸다.
+  if (pathname.startsWith("/api/") || pathname === "/admin/actions") {
+    // 대행 경로·관리 작업 경로가 직접 로그인·신선도를 확인한다(쿠키 갱신이 필요해서). 여기서는 쿠키가 아예 없는 요청만 걸러낸다.
     const has = request.cookies.get(sessionCookieName())?.value;
     return has ? securityHeaders(NextResponse.next()) : unauthorized(request);
   }

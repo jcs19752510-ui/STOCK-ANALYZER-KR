@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import copy from "@/content/copy.ko.json";
 import { browserStorage, loadSavedUsername, persistUsername } from "@/lib/auth/savedUsername";
@@ -62,7 +63,7 @@ export function LoginForm({ next, expired }: { next: string; expired: boolean })
         credentials: "same-origin",
         body: JSON.stringify({ username, password, next, remember: keepRef.current?.checked === true }),
       });
-      const body = (await response.json().catch(() => null)) as { ok?: boolean; next?: unknown } | null;
+      const body = (await response.json().catch(() => null)) as { ok?: boolean; next?: unknown; code?: unknown } | null;
       if (response.ok && body?.ok) {
         const target = typeof body.next === "string" && body.next.startsWith("/") && !body.next.startsWith("//") ? body.next : "/";
         persistUsername(browserStorage(), username, rememberRef.current?.checked === true);
@@ -71,6 +72,9 @@ export function LoginForm({ next, expired }: { next: string; expired: boolean })
         return; // 화면이 바뀌므로 입력 잠금은 그대로 둔다
       }
       if (response.status === 401) setMessage(copy.auth.errorInvalid);
+      else if (response.status === 403) {
+        setMessage(body?.code === "PENDING_APPROVAL" ? copy.auth.errorPending : body?.code === "ACCOUNT_DISABLED" ? copy.auth.errorDisabled : copy.auth.errorBadRequest);
+      }
       else if (response.status === 429) setMessage(copy.auth.errorRateLimited);
       else if (response.status === 400) setMessage(copy.auth.errorBadRequest);
       else setMessage(copy.auth.errorUnavailable);
@@ -133,6 +137,9 @@ export function LoginForm({ next, expired }: { next: string; expired: boolean })
       <button type="submit" className="login-form__submit" disabled={pending}>
         {pending ? copy.auth.submitting : copy.auth.submit}
       </button>
+      <p className="login-form__signup">
+        {copy.auth.signupPrompt} <Link href="/signup">{copy.auth.signupLink}</Link>
+      </p>
     </form>
   );
 }

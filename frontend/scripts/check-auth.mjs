@@ -15,8 +15,6 @@ import {
   authConfigProblem,
   authEnabled,
   cookieSecure,
-  isOwnerUsername,
-  ownerUsernames,
   sessionCookieName,
 } from "../src/lib/auth/config.ts";
 import { endUserIp } from "../src/lib/auth/endUserIp.ts";
@@ -29,7 +27,7 @@ const SECRET = "s".repeat(48);
 const UID = "11111111-1111-4111-8111-111111111111";
 const NOW = 1_800_000_000;
 const SID = "22222222-2222-4222-8222-222222222222";
-const user = { uid: UID, username: "kim", displayName: "김철수" };
+const user = { uid: UID, username: "kim", displayName: "김철수", role: "user" };
 const mk = (u = user, now = NOW, o = {}) => newSession(u, now, { sessionId: SID, remember: false, ...o });
 const headers = (h) => ({ get: (k) => h[k.toLowerCase()] ?? null });
 
@@ -112,7 +110,7 @@ test("만료·미래 발급·과도한 수명·확인 시각 이상은 null", ()
 test("필드 형식 검사: 올바른 서명이어도 모양이 틀리면 거부", () => {
   const s = mk();
   for (const bad of [
-    { ...s, v: 1 }, { ...s, v: 3 }, { ...s, sid: undefined }, { ...s, sid: "nope" }, { ...s, sid: 5 }, { ...s, rm: 2 }, { ...s, rm: "1" }, { ...s, rm: undefined }, { ...s, uid: "not-a-uuid" }, { ...s, uid: 5 }, { ...s, un: "" }, { ...s, un: "k".repeat(33) },
+    { ...s, v: 1 }, { ...s, v: 2 }, { ...s, v: 4 }, { ...s, sid: undefined }, { ...s, sid: "nope" }, { ...s, sid: 5 }, { ...s, rm: 2 }, { ...s, rm: "1" }, { ...s, rm: undefined }, { ...s, uid: "not-a-uuid" }, { ...s, uid: 5 }, { ...s, un: "" }, { ...s, un: "k".repeat(33) },
     { ...s, dn: "" }, { ...s, dn: "가".repeat(41) }, { ...s, iat: "1" }, { ...s, exp: 1.5 }, { ...s, chk: -1 }, { ...s, exp: null },
   ]) {
     assert.equal(verifySession(signSession(bad, SECRET), SECRET, NOW), null, JSON.stringify(bad).slice(0, 60));
@@ -196,11 +194,27 @@ test("로그인 상태 유지: 5분 확인(refreshed)은 30일 만료를 늘리�
   assert.equal(isFresh(kept, NOW + 3 * 24 * 3600), false); // 3일 뒤 첫 요청은 반드시 서버 확인을 거친다
 });
 
-test("옛 형식 쿠키(v1, 세션 id 없음)는 거부된다(배포 후 한 번 다시 로그인)", () => {
-  const { sid, rm, ...legacy } = mk();
-  assert.ok(sid && rm === 0);
+test("옛 형식 쿠키(v1·v2: 세션 id·권한 표시 없음)는 거부된다(배포 후 한 번 다시 로그인)", () => {
+  const { sid, rm, rl, ...legacy } = mk();
+  assert.ok(sid && rm === 0 && rl === "u");
   assert.equal(verifySession(signSession({ ...legacy, v: 1 }, SECRET), SECRET, NOW), null);
+  assert.equal(verifySession(signSession({ ...legacy, sid, rm, v: 2 }, SECRET), SECRET, NOW), null); // v2는 권한 표시(rl)가 없다
   assert.equal(verifySession(signSession(legacy, SECRET), SECRET, NOW), null);
+});
+
+test("권한 표시(rl): 일반 u / 관리자 a만 허용하고 서명 없이 바꿀 수 없다", () => {
+  assert.equal(mk().rl, "u");
+  const admin = mk({ ...user, role: "admin" });
+  assert.equal(admin.rl, "a");
+  assert.deepEqual(verifySession(signSession(admin, SECRET), SECRET, NOW), admin);
+  for (const bad of ["admin", "x", "", 1, null, undefined]) assert.equal(verifySession(signSession({ ...admin, rl: bad }, SECRET), SECRET, NOW), null, String(bad));
+  // 일반 사용자 쿠키의 rl을 a로 바꿔 같은 서명을 붙이면 거부
+  const [, sig] = signSession(mk(), SECRET).split(".");
+  const forged = Buffer.from(JSON.stringify({ ...mk(), rl: "a" }), "utf8").toString("base64url");
+  assert.equal(verifySession(`${forged}.${sig}`, SECRET, NOW), null);
+  // 확인 갱신은 새 권한을 반영할 수 있다(5분 확인 때 API가 알려 준 값)
+  const demoted = refreshed({ ...admin, rl: "u" }, NOW + 10);
+  assert.equal(demoted.rl, "u");
 });
 
 // ------------------------------------------------------------------ 리다이렉트 안전성
@@ -256,32 +270,13 @@ test("isAllowedBffPath: 조회 화면에 필요한 경로만 허용", () => {
   assert.ok(MAX_QUERY_LENGTH > 0);
 });
 
-test("소유자 전용 경로: 정확한 형식만 대행 허용(그 밖의 internal 경로는 계속 막힘)", () => {
-  assert.equal(isAllowedBffPath("/api/v1/internal/owner/stocks/005930/investor"), true);
+test("관리자 전용 투자자 경로: 정확한 형식만 대행 허용(그 밖의 internal 경로는 계속 막힘)", () => {
+  assert.equal(isAllowedBffPath("/api/v1/internal/admin/stocks/005930/investor"), true);
   for (const p of [
-    "/api/v1/internal/owner/stocks/005930", "/api/v1/internal/owner/stocks/0059301/investor", "/api/v1/internal/owner/stocks/005930/investor/",
-    "/api/v1/internal/owner/stocks/../investor", "/api/v1/internal/owner", "/api/v1/internal/owner/members", "/api/v1/internal/auth/session-check",
+    "/api/v1/internal/admin/stocks/005930", "/api/v1/internal/admin/stocks/0059301/investor", "/api/v1/internal/admin/stocks/005930/investor/",
+    "/api/v1/internal/admin/stocks/../investor", "/api/v1/internal/admin", "/api/v1/internal/admin/members", "/api/v1/internal/admin/action",
+    "/api/v1/internal/owner/stocks/005930/investor", "/api/v1/internal/members", "/api/v1/internal/auth/signup", "/api/v1/internal/auth/session-check",
   ]) assert.equal(isAllowedBffPath(p), false, p);
-});
-
-test("isOwnerUsername: 설정이 없으면 아무도 소유자가 아니고, 대소문자·공백만 정규화", () => {
-  assert.deepEqual(ownerUsernames({}), []);
-  assert.equal(isOwnerUsername("kim", {}), false);
-  assert.equal(isOwnerUsername("", {}), false);
-  assert.equal(isOwnerUsername(undefined, { OWNER_USERNAME: "" }), false);
-  assert.equal(isOwnerUsername("", { OWNER_USERNAME: "   " }), false);
-  const env = { OWNER_USERNAME: " Kim " };
-  assert.equal(isOwnerUsername("kim", env), true);
-  assert.equal(isOwnerUsername(" KIM", env), true);
-  for (const other of ["kim2", "kimm", "ki", "park", null, undefined]) assert.equal(isOwnerUsername(other, env), false, String(other));
-});
-
-test("isOwnerUsername: 쉼표로 여러 명(jcs1973,jcs1975) — 목록에 있는 아이디만 허용", () => {
-  const env = { OWNER_USERNAME: " JCS1973 , jcs1975 ,, " };
-  assert.deepEqual(ownerUsernames(env), ["jcs1973", "jcs1975"]);
-  for (const ok of ["jcs1973", "jcs1975", " JCS1975 "]) assert.equal(isOwnerUsername(ok, env), true, ok);
-  for (const no of ["jcs1974", "jcs19731975", "jcs197", "", ",", null, undefined]) assert.equal(isOwnerUsername(no, env), false, String(no));
-  assert.equal(isOwnerUsername("x", { OWNER_USERNAME: ",,," }), false); // 빈 항목만 있으면 아무도 없음
 });
 
 // ------------------------------------------------------------------ 방문자 IP

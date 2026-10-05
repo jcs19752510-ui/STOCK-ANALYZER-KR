@@ -2,7 +2,10 @@
 """회원 관리 스크립트 (DEC-067). 회원 가입 화면이 없으므로 회원은 **이 스크립트로만** 추가·변경한다. PC에서 실행한다.
 
 사용법 (프로젝트 루트):
-    python scripts/manage_users.py add <아이디> --name "표시 이름"      # 비밀번호는 숨김 입력(두 번)
+    python scripts/manage_users.py add <아이디> --name "표시 이름" [--role admin]   # 비밀번호는 숨김 입력(두 번). 기본 권한은 일반(user)
+    python scripts/manage_users.py approve <아이디>                     # 가입 신청 승인(관리자 화면이 있으므로 비상용)
+    python scripts/manage_users.py set-role <아이디> admin|user         # 권한 변경(**최초 관리자 지정에 한 번 사용**)
+    python scripts/manage_users.py admin-audit [--limit 20]             # 관리자 화면 작업 기록
     python scripts/manage_users.py set-password <아이디>
     python scripts/manage_users.py disable <아이디>  /  enable <아이디>  /  unlock <아이디>
     python scripts/manage_users.py delete <아이디>                      # 확인을 위해 아이디를 다시 입력
@@ -69,17 +72,19 @@ def _read_password(args: argparse.Namespace, username: str) -> str:
     return first
 
 
-def add_user(engine: Engine, username: str, display_name: str, password: str) -> None:
+def add_user(engine: Engine, username: str, display_name: str, password: str, role: str = "user") -> None:
+    if role not in ("user", "admin"):
+        raise UserError("권한은 user 또는 admin이어야 합니다.")
     username = normalize_username(username)
     display_name = normalize_display_name(display_name)
     password_hash = hash_password(password, username=username)
     with engine.begin() as conn:
         row = conn.execute(
             text(
-                "INSERT INTO auth.app_users (username, display_name, password_hash) "
-                "VALUES (:u, :d, :h) ON CONFLICT (username) DO NOTHING RETURNING user_id"
+                "INSERT INTO auth.app_users (username, display_name, password_hash, role, is_active, approved_at) "
+                "VALUES (:u, :d, :h, :r, true, now()) ON CONFLICT (username) DO NOTHING RETURNING user_id"
             ),
-            {"u": username, "d": display_name, "h": password_hash},
+            {"u": username, "d": display_name, "h": password_hash, "r": role},
         ).first()
     if row is None:
         raise UserError(f"이미 있는 아이디입니다: {username}")
@@ -158,9 +163,47 @@ def _update_flag(engine: Engine, username: str, sql: str) -> None:
 def set_active(engine: Engine, username: str, active: bool) -> None:
     if not active:
         revoke_sessions(engine, username)  # 막으면 로그인 중인 기기도 즉시 끊는다
-    reset = ", failed_attempts = 0, lockout_level = 0, locked_until = NULL" if active else ""
+    reset = ", failed_attempts = 0, lockout_level = 0, locked_until = NULL, approved_at = COALESCE(approved_at, now())" if active else ""
     flag = "true" if active else "false"
     _update_flag(engine, username, f"UPDATE auth.app_users SET is_active = {flag}{reset}, updated_at = now() WHERE username = :u")
+
+
+def approve(engine: Engine, username: str) -> None:
+    username = normalize_username(username)
+    with engine.begin() as conn:
+        n = conn.execute(
+            text("UPDATE auth.app_users SET is_active = true, approved_at = now(), updated_at = now() WHERE username = :u AND approved_at IS NULL"),
+            {"u": username},
+        ).rowcount
+    if n == 0:
+        raise UserError(f"승인 대기 중인 신청이 아닙니다: {username}")
+
+
+def set_role(engine: Engine, username: str, role: str) -> None:
+    if role not in ("user", "admin"):
+        raise UserError("권한은 user 또는 admin이어야 합니다.")
+    username = normalize_username(username)
+    with engine.begin() as conn:
+        row = conn.execute(text("SELECT role, is_active FROM auth.app_users WHERE username = :u FOR UPDATE"), {"u": username}).first()
+        if row is None:
+            raise UserError(f"없는 아이디입니다: {username}")
+        if role == "user" and row[0] == "admin" and row[1]:
+            others = conn.execute(text("SELECT count(*) FROM auth.app_users WHERE role = 'admin' AND is_active AND username <> :u"), {"u": username}).scalar_one()
+            if others < 1:
+                raise UserError("마지막 활성 관리자는 일반 사용자로 바꿀 수 없습니다.")
+        conn.execute(text("UPDATE auth.app_users SET role = :r, updated_at = now() WHERE username = :u"), {"r": role, "u": username})
+
+
+def admin_audit_rows(engine: Engine, limit: int) -> list[dict]:
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT occurred_at, actor_username, action, target_username, detail FROM auth.admin_audit "
+                "ORDER BY occurred_at DESC, audit_id DESC LIMIT :n"
+            ),
+            {"n": limit},
+        ).mappings()
+        return [dict(r) for r in rows]
 
 
 def unlock(engine: Engine, username: str) -> None:
@@ -179,7 +222,7 @@ def list_users(engine: Engine) -> list[dict]:
     with engine.connect() as conn:
         rows = conn.execute(
             text(
-                "SELECT username, display_name, is_active, locked_until, last_login_at, created_at "
+                "SELECT username, display_name, role, is_active, (approved_at IS NULL) AS is_pending, locked_until, last_login_at, created_at "
                 "FROM auth.app_users ORDER BY created_at, username"
             )
         ).mappings()
@@ -224,10 +267,14 @@ def check_privileges(engine: Engine) -> list[tuple[str, bool, str]]:
         expect = [
             ("auth_service: auth 스키마 USAGE", "SELECT has_schema_privilege('auth_service', 'auth', 'USAGE')", True),
             ("auth_service: app_users SELECT", "SELECT has_table_privilege('auth_service', 'auth.app_users', 'SELECT')", True),
-            ("auth_service: app_users INSERT 없음", "SELECT has_table_privilege('auth_service', 'auth.app_users', 'INSERT')", False),
-            ("auth_service: app_users DELETE 없음", "SELECT has_table_privilege('auth_service', 'auth.app_users', 'DELETE')", False),
-            ("auth_service: 아이디 열 UPDATE 없음", "SELECT has_column_privilege('auth_service', 'auth.app_users', 'username', 'UPDATE')", False),
-            ("auth_service: is_active 열 UPDATE 없음", "SELECT has_column_privilege('auth_service', 'auth.app_users', 'is_active', 'UPDATE')", False),
+            ("auth_service: 가입 신청용 열 INSERT(아이디·이름·해시)", "SELECT has_column_privilege('auth_service', 'auth.app_users', 'username', 'INSERT') AND has_column_privilege('auth_service', 'auth.app_users', 'display_name', 'INSERT') AND has_column_privilege('auth_service', 'auth.app_users', 'password_hash', 'INSERT')", True),
+            ("auth_service: 가입 때 role 열 INSERT 없음(권한을 정할 수 없다)", "SELECT has_column_privilege('auth_service', 'auth.app_users', 'role', 'INSERT')", False),
+            ("auth_service: 가입 때 is_active 열 INSERT 없음", "SELECT has_column_privilege('auth_service', 'auth.app_users', 'is_active', 'INSERT')", False),
+            ("auth_service: 가입 때 approved_at 열 INSERT 없음", "SELECT has_column_privilege('auth_service', 'auth.app_users', 'approved_at', 'INSERT')", False),
+            ("auth_service: app_users 관리용 DELETE", "SELECT has_table_privilege('auth_service', 'auth.app_users', 'DELETE')", True),
+            ("auth_service: 아이디 열 UPDATE 없음(아이디 변경 불가)", "SELECT has_column_privilege('auth_service', 'auth.app_users', 'username', 'UPDATE')", False),
+            ("auth_service: role·is_active·approved_at 열 UPDATE(관리 작업)", "SELECT has_column_privilege('auth_service', 'auth.app_users', 'role', 'UPDATE') AND has_column_privilege('auth_service', 'auth.app_users', 'is_active', 'UPDATE') AND has_column_privilege('auth_service', 'auth.app_users', 'approved_at', 'UPDATE')", True),
+            ("auth_service: admin_audit INSERT·SELECT 없음", "SELECT has_table_privilege('auth_service', 'auth.admin_audit', 'INSERT') AND NOT has_table_privilege('auth_service', 'auth.admin_audit', 'SELECT')", True),
             ("auth_service: failed_attempts 열 UPDATE", "SELECT has_column_privilege('auth_service', 'auth.app_users', 'failed_attempts', 'UPDATE')", True),
             ("auth_service: login_audit INSERT", "SELECT has_table_privilege('auth_service', 'auth.login_audit', 'INSERT')", True),
             ("auth_service: login_audit SELECT 없음", "SELECT has_table_privilege('auth_service', 'auth.login_audit', 'SELECT')", False),
@@ -258,7 +305,15 @@ def build_parser() -> argparse.ArgumentParser:
     a = sub.add_parser("add", help="회원 추가")
     a.add_argument("username")
     a.add_argument("--name", required=True, help="화면에 보일 이름")
+    a.add_argument("--role", choices=["user", "admin"], default="user", help="권한(기본 user)")
     a.add_argument("--password-stdin", action="store_true", help="표준입력 한 줄에서 비밀번호를 읽음(자동화용)")
+    ap = sub.add_parser("approve", help="가입 신청 승인(비상용)")
+    ap.add_argument("username")
+    sr = sub.add_parser("set-role", help="권한 변경")
+    sr.add_argument("username")
+    sr.add_argument("role", choices=["user", "admin"])
+    aa = sub.add_parser("admin-audit", help="관리자 화면 작업 기록")
+    aa.add_argument("--limit", type=int, default=20)
     s = sub.add_parser("set-password", help="비밀번호 재설정(실패 횟수·잠금도 초기화)")
     s.add_argument("username")
     s.add_argument("--password-stdin", action="store_true")
@@ -286,8 +341,17 @@ def main(argv: list[str] | None = None, *, engine: Engine | None = None) -> int:
     eng = engine if engine is not None else _engine()
     try:
         if args.cmd == "add":
-            add_user(eng, args.username, args.name, _read_password(args, args.username))
-            print(f"추가했습니다: {normalize_username(args.username)}")
+            add_user(eng, args.username, args.name, _read_password(args, args.username), args.role)
+            print(f"추가했습니다: {normalize_username(args.username)} ({'관리자' if args.role == 'admin' else '일반 사용자'})")
+        elif args.cmd == "approve":
+            approve(eng, args.username)
+            print(f"승인했습니다: {normalize_username(args.username)}")
+        elif args.cmd == "set-role":
+            set_role(eng, args.username, args.role)
+            print(f"권한을 바꿨습니다: {normalize_username(args.username)} → {'관리자' if args.role == 'admin' else '일반 사용자'}")
+        elif args.cmd == "admin-audit":
+            for r in admin_audit_rows(eng, max(1, min(args.limit, 500))):
+                print(f"{_fmt(r['occurred_at'])}  {_fmt(r['actor_username']):<16}{r['action']:<16}{_fmt(r['target_username']):<20}{_fmt(r['detail'])}")
         elif args.cmd == "set-password":
             set_password(eng, args.username, _read_password(args, args.username))
             print(f"비밀번호를 바꿨습니다: {normalize_username(args.username)}")
@@ -310,9 +374,10 @@ def main(argv: list[str] | None = None, *, engine: Engine | None = None) -> int:
             print(f"삭제했습니다: {username}")
         elif args.cmd == "list":
             rows = list_users(eng)
-            print(f"{'아이디':<20}{'이름':<20}{'상태':<8}{'잠금 해제 시각':<28}{'마지막 로그인':<28}")
+            print(f"{'아이디':<20}{'이름':<20}{'권한':<8}{'상태':<10}{'잠금 해제 시각':<28}{'마지막 로그인':<28}")
             for r in rows:
-                print(f"{r['username']:<20}{r['display_name']:<20}{'활성' if r['is_active'] else '비활성':<8}{_fmt(r['locked_until']):<28}{_fmt(r['last_login_at']):<28}")
+                status = "승인 대기" if r["is_pending"] else ("활성" if r["is_active"] else "비활성")
+                print(f"{r['username']:<20}{r['display_name']:<20}{'관리자' if r['role'] == 'admin' else '일반':<8}{status:<10}{_fmt(r['locked_until']):<28}{_fmt(r['last_login_at']):<28}")
             print(f"총 {len(rows)}명")
         elif args.cmd == "audit":
             for r in audit_rows(eng, max(1, min(args.limit, 500))):

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 const MAX_BODY_CHARS = 4096;
 
-/** 로그인(DEC-067). 같은 사이트 화면에서 온 JSON 요청만 받고, 실패 이유는 로그인 확인 결과 그대로 세 가지(틀림·시도 많음·서버 문제)로만 알린다. */
+/** 로그인(DEC-067). 같은 사이트 화면에서 온 JSON 요청만 받는다. 실패는 틀림·시도 많음·서버 문제와, 비밀번호가 맞은 경우에만 "승인 대기"·"사용 중지"(DEC-074)로 알린다. */
 export async function POST(request: Request) {
   if (!authEnabled()) return json({ ok: false, code: "NOT_FOUND" }, 404);
   if (authConfigProblem()) return json({ ok: false, code: "MISCONFIGURED" }, 503);
@@ -43,6 +43,8 @@ export async function POST(request: Request) {
 
   const result = await apiLogin(username, password, endUserIp(request.headers), remember === true);
   if (result.kind === "invalid") return json({ ok: false, code: "INVALID_CREDENTIALS" }, 401);
+  if (result.kind === "pending") return json({ ok: false, code: "PENDING_APPROVAL" }, 403);
+  if (result.kind === "disabled") return json({ ok: false, code: "ACCOUNT_DISABLED" }, 403);
   if (result.kind === "rate_limited") return json({ ok: false, code: "LOGIN_RATE_LIMITED" }, 429);
   if (result.kind !== "ok") return json({ ok: false, code: "SERVICE_UNAVAILABLE" }, 503);
 

@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { authEnabled, sessionCookieName, sessionSecret } from "@/lib/auth/config";
 import { nowSeconds } from "@/lib/auth/http";
 import { isFresh, verifySession, type SessionPayload } from "@/lib/auth/session";
@@ -21,5 +21,16 @@ export async function requireMember(nextPath: string): Promise<SessionPayload | 
   const encoded = encodeURIComponent(nextPath);
   if (!session) redirect(`/login?next=${encoded}`);
   if (!isFresh(session, nowSeconds())) redirect(`/auth/renew?next=${encoded}`);
+  return session;
+}
+
+/**
+ * 관리자 전용 화면의 입구(DEC-074). 로그인 확인 + 쿠키가 관리자 권한이면 통과, 아니면 홈으로 보낸다. 쿠키의 권한 표시는 **화면 안내용**이고(최대 5분 늦게 반영),
+ * 실제 데이터와 작업은 API가 매번 DB에서 관리자 권한을 확인해 막는다. 로그인을 끈 환경(로컬)에는 이 화면이 없다.
+ */
+export async function requireAdmin(nextPath: string): Promise<SessionPayload> {
+  const session = await requireMember(nextPath);
+  if (!session) notFound();
+  if (session.rl !== "a") redirect("/");
   return session;
 }

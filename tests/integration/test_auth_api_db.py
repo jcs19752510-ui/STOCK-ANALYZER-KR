@@ -55,14 +55,18 @@ def _admin(db: TempDb, sql: str, **params):
         eng.dispose()
 
 
-def _add_user(db: TempDb, username: str, name: str = "김철수", *, active: bool = True, password_hash: str = HASH):
+def _add_user(db: TempDb, username: str, name: str = "김철수", *, active: bool = True, password_hash: str = HASH, role: str = "user", pending: bool = False):
+    """시험용 회원. 기본은 승인된 일반 회원(active면 활성, 아니면 사용 중지). pending=True면 승인 대기."""
     _admin(
         db,
-        "INSERT INTO auth.app_users (username, display_name, password_hash, is_active) VALUES (:u, :n, :h, :a)",
+        "INSERT INTO auth.app_users (username, display_name, password_hash, is_active, approved_at, role) "
+        "VALUES (:u, :n, :h, :a, CASE WHEN :p THEN NULL ELSE now() END, :r)",
         u=username,
         n=name,
         h=password_hash,
-        a=active,
+        a=active and not pending,
+        p=pending,
+        r=role,
     )
 
 
@@ -102,6 +106,7 @@ def api(db: TempDb, monkeypatch) -> Iterator[TestClient]:
     reset_rate_limit_state()
     throttle.reset_login_throttle()
     _admin(db, "DELETE FROM auth.login_audit")
+    _admin(db, "DELETE FROM auth.admin_audit")
     _admin(db, "DELETE FROM auth.app_users")
     try:
         yield TestClient(app)
@@ -133,7 +138,7 @@ def test_login_success_returns_member_info_and_records_it(db, api):
     assert r.status_code == 200
     data = r.json()["data"]
     assert data["username"] == "kim" and data["display_name"] == "김철수" and len(data["user_id"]) == 36
-    assert set(data) == {"user_id", "username", "display_name", "session_id", "expires_in_seconds"}  # 해시·상태 등은 응답에 없다
+    assert set(data) == {"user_id", "username", "display_name", "role", "session_id", "expires_in_seconds"}  # 해시·상태 등은 응답에 없다
     assert data["expires_in_seconds"] == 8 * 3600
     assert GOOD not in r.text and HASH not in r.text
     failed, level, locked, logged_in, _hash, _secs = _row(db, "kim")
@@ -152,14 +157,12 @@ def test_audit_ip_is_null_for_missing_or_invalid_header(db, api):
 # ------------------------------------------------------------------ 실패는 모두 같은 모양
 def test_all_failure_reasons_look_identical_to_the_caller(db, api):
     _add_user(db, "kim")
-    _add_user(db, "off", active=False)
     _add_user(db, "lock")
     _admin(db, "UPDATE auth.app_users SET locked_until = now() + interval '1 hour' WHERE username='lock'")
     cases = [
         ("kim", "wrong-password-xyz"),  # 비밀번호 틀림
         ("nobody", GOOD),  # 없는 아이디
         ("Ab", GOOD),  # 형식이 틀린 아이디
-        ("off", GOOD),  # 비활성 + 맞는 비밀번호
         ("lock", GOOD),  # 잠김 + 맞는 비밀번호
         ("' OR '1'='1", GOOD),
         ("kim; DROP TABLE auth.app_users;--", GOOD),
@@ -168,8 +171,8 @@ def test_all_failure_reasons_look_identical_to_the_caller(db, api):
     assert all(s == shapes[0] for s in shapes), shapes
     assert shapes[0] == (401, "INVALID_CREDENTIALS", GENERIC_MESSAGE, None)
     # 이유는 기록에만 남는다
-    assert [a[1] for a in _audit(db)] == ["FAIL", "FAIL", "FAIL", "INACTIVE", "LOCKED", "FAIL", "FAIL"]
-    assert _admin(db, "SELECT count(*) FROM auth.app_users")[0][0] == 3  # 주입 시도가 아무 영향도 주지 않았다
+    assert [a[1] for a in _audit(db)] == ["FAIL", "FAIL", "FAIL", "LOCKED", "FAIL", "FAIL"]
+    assert _admin(db, "SELECT count(*) FROM auth.app_users")[0][0] == 2  # 주입 시도가 아무 영향도 주지 않았다
 
 
 def test_unknown_inactive_and_locked_still_do_a_full_cost_hash(db, api, monkeypatch):
@@ -181,11 +184,13 @@ def test_unknown_inactive_and_locked_still_do_a_full_cost_hash(db, api, monkeypa
     real_dummy, real_verify = auth_service.dummy_verify, auth_service.verify_password
     monkeypatch.setattr(auth_service, "dummy_verify", lambda p: (calls.__setitem__("dummy", calls["dummy"] + 1), real_dummy(p))[1])
     monkeypatch.setattr(auth_service, "verify_password", lambda h, p: (calls.__setitem__("verify", calls["verify"] + 1), real_verify(h, p))[1])
-    for user in ("nobody", "off", "lock"):
+    for user in ("nobody", "lock"):  # 없는 아이디·잠긴 계정: 비밀번호를 보지 않고 같은 비용의 더미 계산
         _login(api, user, GOOD)
-    assert calls == {"dummy": 3, "verify": 0}
+    assert calls == {"dummy": 2, "verify": 0}
+    _login(api, "off", GOOD)  # 사용 중지(DEC-074): 실제 비밀번호 검증과 같은 비용(맞으면 이유를 알려 준다)
+    assert calls == {"dummy": 2, "verify": 1}
     _login(api, "kim", "wrong-password-xyz")
-    assert calls["verify"] == 1
+    assert calls["verify"] == 2
 
 
 # ------------------------------------------------------------------ 잠금
@@ -329,7 +334,6 @@ def test_internal_endpoints_always_require_the_token(db, api):
     for token in (None, "", "wrong", TOKEN[:-1], TOKEN + "x"):
         r = _login(api, "kim", GOOD, token=token)
         assert r.status_code == 401 and r.json()["error"]["code"] == "AUTH_REQUIRED", token
-    assert api.get("/api/v1/internal/members").status_code == 401
     assert api.post("/api/v1/internal/auth/session-check", json={"user_id": "11111111-1111-4111-8111-111111111111", "session_id": "11111111-1111-4111-8111-111111111111"}).status_code == 401
     assert _audit(db) == []  # 토큰이 틀린 호출은 인증 로직에 닿지도 않는다
 
@@ -365,31 +369,11 @@ def test_session_check_reports_active_state(db, api):
     sid = _admin(db, "INSERT INTO auth.user_sessions (user_id, remember, expires_at) VALUES (CAST(:u AS uuid), false, now() + interval '8 hours') RETURNING session_id::text", u=uid)[0][0]
     off_sid = _admin(db, "INSERT INTO auth.user_sessions (user_id, remember, expires_at) VALUES (CAST(:u AS uuid), false, now() + interval '8 hours') RETURNING session_id::text", u=off)[0][0]
     ok = api.post("/api/v1/internal/auth/session-check", json={"user_id": uid, "session_id": sid}, headers=h).json()["data"]
-    assert ok == {"active": True, "username": "kim", "display_name": "김철수"}
+    assert ok == {"active": True, "username": "kim", "display_name": "김철수", "role": "user"}
     for gone, gsid in ((off, off_sid), ("99999999-9999-4999-8999-999999999999", sid)):
-        assert api.post("/api/v1/internal/auth/session-check", json={"user_id": gone, "session_id": gsid}, headers=h).json()["data"] == {"active": False, "username": None, "display_name": None}
+        assert api.post("/api/v1/internal/auth/session-check", json={"user_id": gone, "session_id": gsid}, headers=h).json()["data"] == {"active": False, "username": None, "display_name": None, "role": None}
     for bad in ({"user_id": "x", "session_id": sid}, {"user_id": uid, "session_id": sid, "extra": 1}, {"user_id": uid}, {}):
         assert api.post("/api/v1/internal/auth/session-check", json=bad, headers=h).status_code == 400
-
-
-def test_members_lists_only_active_members_with_id_and_name_only(db, api):
-    _add_user(db, "lee", "이영희")
-    _add_user(db, "kim", "김철수")
-    _add_user(db, "off", "퇴사자", active=False)
-    _add_user(db, "evil", "<script>alert(1)</script>")
-    r = api.get("/api/v1/internal/members", headers={"X-Internal-Token": TOKEN})
-    assert r.status_code == 200
-    data = r.json()["data"]
-    assert data["total"] == 3
-    assert [m["username"] for m in data["items"]] == ["evil", "kim", "lee"]  # 이름 순
-    assert all(set(m) == {"username", "display_name"} for m in data["items"])
-    assert "off" not in r.text and "퇴사자" not in r.text and "argon2" not in r.text
-    assert data["items"][0]["display_name"] == "<script>alert(1)</script>"  # 서버는 원문 그대로, 화면이 이스케이프한다
-
-
-def test_members_empty_list(db, api):
-    r = api.get("/api/v1/internal/members", headers={"X-Internal-Token": TOKEN})
-    assert r.status_code == 200 and r.json()["data"] == {"items": [], "total": 0}
 
 
 def test_existing_data_api_paths_are_unaffected_by_the_new_router(db, api):
@@ -592,3 +576,300 @@ def test_logout_all_validation_and_internal_token(db, api):
     for bad in ({}, {"user_id": a["user_id"]}, {"session_id": a["session_id"]}, {**body, "extra": 1}, {"user_id": "x", "session_id": "y"}):
         assert api.post(LOGOUT_ALL, json=bad, headers=H).status_code == 400, bad
     assert _check(api, a["user_id"], a["session_id"]) is True  # 거부된 요청은 아무것도 바꾸지 않는다
+
+
+# ------------------------------------------------------------------ 회원가입 신청(승인 대기) (DEC-074)
+SIGNUP = "/api/v1/internal/auth/signup"
+GOODPW2 = "Qw8!rT5zLp"
+
+
+def _signup(api, username="newbie", name="신입", password=GOODPW2, ip=None, token=TOKEN, **extra):
+    headers = {"X-Internal-Token": token} if token else {}
+    if ip:
+        headers["X-End-User-IP"] = ip
+    body = {"username": username, "display_name": name, "password": password, **extra}
+    return api.post(SIGNUP, json=body, headers=headers)
+
+
+def _urow(db, username):
+    rows = _admin(db, "SELECT role, is_active, approved_at IS NOT NULL, password_hash FROM auth.app_users WHERE username = :u", u=username)
+    return rows[0] if rows else None
+
+
+@pytest.fixture(autouse=True)
+def _reset_signup_throttle(monkeypatch):
+    from services.public_api.auth import throttle as th
+
+    monkeypatch.setenv("PUBLIC_API_SIGNUP_PER_10MIN", "600")  # 시험이 많이 가입해도 막히지 않게(제한 시험만 낮춘다)
+    monkeypatch.setenv("PUBLIC_API_SIGNUP_GLOBAL_PER_HOUR", "10000")
+    th.reset_signup_throttle()
+    yield
+    th.reset_signup_throttle()
+
+
+def test_signup_creates_a_pending_user_who_cannot_log_in_yet(db, api):
+    r = _signup(api)
+    assert r.status_code == 200 and r.json()["data"] == {"status": "pending"}
+    role, active, approved, h = _urow(db, "newbie")
+    assert (role, active, approved) == ("user", False, False)  # 일반 권한, 비활성, 미승인
+    assert h.startswith("$argon2id$") and GOODPW2 not in h and GOODPW2 not in r.text
+    # 비밀번호가 맞으면 본인에게만 "승인 대기"를 알려 준다. 틀리면 평범한 실패와 같다.
+    ok = _login(api, "newbie", GOODPW2)
+    assert ok.status_code == 403 and ok.json()["error"]["code"] == "PENDING_APPROVAL"
+    bad = _login(api, "newbie", "wrong-password-xyz")
+    assert _error_shape(bad) == (401, "INVALID_CREDENTIALS", GENERIC_MESSAGE, None)
+    assert [a[1] for a in _audit(db)] == ["PENDING", "FAIL"]
+    assert _admin(db, "SELECT count(*) FROM auth.user_sessions")[0][0] == 0  # 세션이 만들어지지 않는다
+
+
+def test_pending_user_cannot_use_an_existing_session_id_or_anything_else(db, api):
+    _signup(api)
+    uid = _admin(db, "SELECT user_id::text FROM auth.app_users WHERE username='newbie'")[0][0]
+    # 승인 전에는 (우회로) 세션을 만들 수도 없고, 만들어 둔 것이 있어도 확인에서 거부된다
+    sid = _admin(db, "INSERT INTO auth.user_sessions (user_id, remember, expires_at) VALUES (CAST(:u AS uuid), false, now() + interval '8 hours') RETURNING session_id::text", u=uid)[0][0]
+    assert _check(api, uid, sid) is False
+
+
+def test_signup_validation_rejects_bad_input_and_creates_nothing(db, api):
+    bad = [
+        dict(username="ab"), dict(username="Has Space"), dict(username="한글아이디"), dict(username="x" * 33),
+        dict(password="short7!"), dict(password="12345678"), dict(password="password"), dict(password="aaaaaaaa"),
+        dict(username="kimkim", password="kimkim"), dict(name=""), dict(name="가" * 41), dict(name="이\x00름"),
+    ]
+    for kw in bad:
+        r = _signup(api, **kw)
+        assert r.status_code in (400,), kw
+    for extra in ({"role": "admin"}, {"is_active": True}, {"approved_at": "2026-01-01"}, {"user_id": "x"}):
+        assert _signup(api, **extra).status_code == 400, extra  # 권한·활성·승인은 신청으로 정할 수 없다
+    assert _admin(db, "SELECT count(*) FROM auth.app_users")[0][0] == 0
+    assert api.post(SIGNUP, json={"username": "newbie"}, headers=H).status_code == 400
+
+
+def test_signup_duplicate_username_is_rejected_case_insensitively_and_keeps_the_first(db, api):
+    assert _signup(api, "newbie", password=GOODPW2).status_code == 200
+    first_hash = _urow(db, "newbie")[3]
+    r = _signup(api, " NewBie ", password="Another-pass-77")
+    assert r.status_code == 409 and r.json()["error"]["code"] == "USERNAME_TAKEN"
+    assert _urow(db, "newbie")[3] == first_hash
+    _add_user(db, "kim")  # 이미 승인된 회원 아이디도 마찬가지
+    assert _signup(api, "kim").status_code == 409
+
+
+def test_signup_honeypot_pretends_success_but_creates_nothing(db, api):
+    r = _signup(api, website="http://spam.example")
+    assert r.status_code == 200 and r.json()["data"] == {"status": "pending"}
+    assert _admin(db, "SELECT count(*) FROM auth.app_users")[0][0] == 0
+
+
+def test_signup_requires_internal_token_and_is_rate_limited(db, api, monkeypatch):
+    assert _signup(api, token=None).status_code == 401
+    assert _signup(api, token="wrong").status_code == 401
+    monkeypatch.setenv("PUBLIC_API_SIGNUP_PER_10MIN", "3")
+    codes = [_signup(api, f"user{i}x", ip="203.0.113.9").status_code for i in range(4)]
+    assert codes == [200, 200, 200, 429]
+    r = _signup(api, "other1x", ip="203.0.113.9")
+    assert r.json()["error"]["code"] == "SIGNUP_RATE_LIMITED"
+    assert _signup(api, "other2x", ip="203.0.113.10").status_code == 200  # 다른 접속 주소는 독립
+    from services.public_api.auth import throttle as th
+
+    th.reset_signup_throttle()
+    monkeypatch.setenv("PUBLIC_API_SIGNUP_GLOBAL_PER_HOUR", "2")
+    assert [_signup(api, f"glob{i}x", ip=f"198.51.100.{i}").status_code for i in range(3)] == [200, 200, 429]  # 서버 전체 상한
+
+
+def test_signup_closes_when_too_many_requests_are_waiting(db, api, monkeypatch):
+    monkeypatch.setattr(auth_service, "MAX_PENDING_SIGNUPS", 2)
+    assert _signup(api, "wait1x").status_code == 200
+    assert _signup(api, "wait2x").status_code == 200
+    r = _signup(api, "wait3x")
+    assert r.status_code == 503 and r.json()["error"]["code"] == "SIGNUP_CLOSED"
+    _add_user(db, "kim")  # 승인된 회원은 대기 수에 포함되지 않는다
+    assert _admin(db, "SELECT count(*) FROM auth.app_users")[0][0] == 3
+
+
+# ------------------------------------------------------------------ 관리자 회원 관리 (DEC-074)
+ADMIN_LIST = "/api/v1/internal/admin/members"
+ADMIN_ACT = "/api/v1/internal/admin/action"
+
+
+def _login_hdr(api, username, password=GOOD):
+    d = _login_data(api, username=username, password=password)
+    return {"X-Internal-Token": TOKEN, "X-Auth-User": d["user_id"], "X-Auth-Session": d["session_id"]}, d
+
+
+def _act(api, h, action, username, **kw):
+    return api.post(ADMIN_ACT, json={"action": action, "username": username, **kw}, headers=h)
+
+
+def _two_admins(db, api):
+    _add_user(db, "boss", "관리자", role="admin")
+    _add_user(db, "chief", "부관리자", role="admin")
+    hb, db_ = _login_hdr(api, "boss")
+    hc, dc = _login_hdr(api, "chief")
+    return (hb, db_), (hc, dc)
+
+
+def test_admin_endpoints_reject_everyone_but_active_admins_with_a_live_session(db, api):
+    _add_user(db, "boss", "관리자", role="admin")
+    _add_user(db, "plain", "일반")
+    hb, db_ = _login_hdr(api, "boss")
+    hp, _dp = _login_hdr(api, "plain")
+    assert api.get(ADMIN_LIST, headers=hb).status_code == 200
+    assert api.get(ADMIN_LIST, headers=hp).status_code == 403  # 일반 사용자
+    assert _act(api, hp, "delete", "boss").status_code == 403
+    assert api.get(ADMIN_LIST, headers={"X-Internal-Token": TOKEN}).status_code == 403  # 로그인 정보 없음
+    assert api.get(ADMIN_LIST, headers={k: v for k, v in hb.items() if k != "X-Internal-Token"}).status_code == 401  # 내부 토큰 없음
+    assert api.get(ADMIN_LIST, headers={**hb, "X-Auth-Session": hp["X-Auth-Session"]}).status_code == 403  # 남의 세션
+    # 권한·상태가 DB에서 바뀌면 같은 세션도 바로 거부(쿠키·웹 말을 믿지 않는다)
+    _admin(db, "UPDATE auth.app_users SET role = 'user' WHERE username='boss'")
+    assert api.get(ADMIN_LIST, headers=hb).status_code == 403
+    _admin(db, "UPDATE auth.app_users SET role = 'admin' WHERE username='boss'")
+    assert api.get(ADMIN_LIST, headers=hb).status_code == 200
+    api.post(LOGOUT, json={"user_id": db_["user_id"], "session_id": db_["session_id"]}, headers=H)
+    assert api.get(ADMIN_LIST, headers=hb).status_code == 403  # 로그아웃한 세션
+    assert _admin(db, "SELECT count(*) FROM auth.app_users")[0][0] == 2  # 거부된 요청은 아무것도 바꾸지 않았다
+
+
+def test_admin_list_shows_statuses_pending_first_and_no_secrets(db, api):
+    _add_user(db, "boss", "관리자", role="admin")
+    _add_user(db, "plain", "일반")
+    _add_user(db, "off", "중지", active=False)
+    _signup(api, "newbie")
+    hb, _ = _login_hdr(api, "boss")
+    r = api.get(ADMIN_LIST, headers=hb)
+    data = r.json()["data"]
+    assert data["total"] == 4 and data["pending"] == 1
+    assert [(m["username"], m["status"], m["role"]) for m in data["items"]] == [
+        ("newbie", "pending", "user"), ("boss", "active", "admin"), ("off", "disabled", "user"), ("plain", "active", "user"),
+    ] or [m["username"] for m in data["items"]][0] == "newbie"
+    assert all(set(m) == {"username", "display_name", "role", "status", "created_at", "last_login_at", "locked", "active_sessions"} for m in data["items"])
+    assert "argon2" not in r.text and "password" not in r.text
+    assert next(m for m in data["items"] if m["username"] == "boss")["active_sessions"] == 1
+
+
+def test_admin_approves_a_signup_then_the_user_can_log_in_and_reject_deletes(db, api):
+    _add_user(db, "boss", "관리자", role="admin")
+    _signup(api, "newbie")
+    _signup(api, "spammer")
+    hb, _ = _login_hdr(api, "boss")
+    assert _act(api, hb, "approve", "newbie").json()["data"] == {"result": "approved"}
+    assert _urow(db, "newbie")[:3] == ("user", True, True)
+    d = _login_data(api, username="newbie", password=GOODPW2)
+    assert d["role"] == "user"
+    assert _act(api, hb, "approve", "newbie").status_code == 409  # 이미 승인됨
+    assert _act(api, hb, "reject", "newbie").status_code == 409  # 승인된 회원은 거절이 아니라 삭제
+    assert _act(api, hb, "reject", "spammer").json()["data"] == {"result": "rejected"}
+    assert _urow(db, "spammer") is None
+    assert _act(api, hb, "approve", "nobody").status_code == 404
+    actions = [r[0] for r in _admin(db, "SELECT action FROM auth.admin_audit ORDER BY audit_id")]
+    assert actions == ["approve", "reject"]
+
+
+def test_admin_create_edit_role_disable_enable_and_delete(db, api):
+    _add_user(db, "boss", "관리자", role="admin")
+    hb, _ = _login_hdr(api, "boss")
+    r = _act(api, hb, "create", "made1", display_name="만든이", password=GOODPW2, role="user")
+    assert r.status_code == 200 and r.json()["data"] == {"result": "created"}
+    assert _urow(db, "made1")[:3] == ("user", True, True)
+    assert _login_data(api, username="made1", password=GOODPW2)["role"] == "user"  # 바로 로그인 가능
+    assert _act(api, hb, "create", "made1", display_name="x", password=GOODPW2, role="user").status_code == 409
+    assert _act(api, hb, "create", "made2", display_name="x", password="weak", role="user").status_code == 400
+    assert _act(api, hb, "create", "made2", display_name="x", password=GOODPW2, role="root").status_code == 400
+    assert _act(api, hb, "create", "made2", display_name="x", password=GOODPW2).status_code == 400  # 권한 필수
+    assert _act(api, hb, "rename", "made1", display_name="새이름").json()["data"] == {"result": "renamed"}
+    assert _admin(db, "SELECT display_name FROM auth.app_users WHERE username='made1'")[0][0] == "새이름"
+    assert _act(api, hb, "rename", "made1", display_name="").status_code == 400
+    assert _act(api, hb, "set_role", "made1", role="admin").json()["data"] == {"result": "role_changed"}
+    assert _login_data(api, username="made1", password=GOODPW2)["role"] == "admin"
+    assert _act(api, hb, "set_role", "made1", role="admin").status_code == 409  # 같은 권한
+    assert _act(api, hb, "set_role", "made1", role="user").status_code == 200
+    d = _login_data(api, username="made1", password=GOODPW2)
+    assert _check(api, d["user_id"], d["session_id"]) is True
+    assert _act(api, hb, "disable", "made1").json()["data"] == {"result": "disabled"}
+    assert _check(api, d["user_id"], d["session_id"]) is False  # 비활성화하면 로그인 중인 기기도 끊김
+    r = _login(api, "made1", GOODPW2)
+    assert r.status_code == 403 and r.json()["error"]["code"] == "ACCOUNT_DISABLED"
+    assert _act(api, hb, "enable", "made1").status_code == 200
+    assert _check(api, d["user_id"], d["session_id"]) is False  # 다시 켜도 이전 로그인은 되살아나지 않는다
+    assert _login(api, "made1", GOODPW2).status_code == 200
+    assert _act(api, hb, "delete", "made1").json()["data"] == {"result": "deleted"}
+    assert _urow(db, "made1") is None
+    assert _admin(db, "SELECT count(*) FROM auth.user_sessions WHERE user_id NOT IN (SELECT user_id FROM auth.app_users)")[0][0] == 0
+
+
+def test_admin_reset_password_enforces_policy_clears_lock_and_ends_sessions(db, api):
+    _add_user(db, "boss", "관리자", role="admin")
+    _add_user(db, "plain", "일반")
+    hb, _ = _login_hdr(api, "boss")
+    d = _login_data(api, username="plain")
+    for _ in range(5):
+        _login(api, "plain", "wrong-password-xyz")
+    assert _login(api, "plain", GOOD).status_code == 401  # 잠김
+    assert _act(api, hb, "reset_password", "plain", password="123").status_code == 400  # 정책 위반은 거부, 상태 불변
+    assert _act(api, hb, "reset_password", "plain").status_code == 400
+    assert _check(api, d["user_id"], d["session_id"]) is True
+    r = _act(api, hb, "reset_password", "plain", password=GOODPW2)
+    assert r.json()["data"] == {"result": "password_reset"} and GOODPW2 not in r.text
+    assert _check(api, d["user_id"], d["session_id"]) is False  # 기존 로그인은 모두 끊김
+    assert _login(api, "plain", GOOD).status_code == 401  # 옛 비밀번호 거부
+    assert _login(api, "plain", GOODPW2).status_code == 200  # 잠금이 풀리고 새 비밀번호 사용 가능
+    audit = _admin(db, "SELECT action, detail FROM auth.admin_audit ORDER BY audit_id")
+    assert audit == [("reset_password", None)]  # 비밀번호·해시는 기록하지 않는다
+
+
+def test_admin_cannot_lock_themselves_out_or_remove_the_last_admin(db, api):
+    (hb, db_), (hc, dc) = _two_admins(db, api)
+    for action, kw in (("disable", {}), ("delete", {}), ("set_role", {"role": "user"})):
+        r = _act(api, hb, action, "boss", **kw)
+        assert r.status_code == 409 and r.json()["error"]["code"] == "SELF_PROTECTED", action
+    assert _urow(db, "boss")[:2] == ("admin", True)
+    assert _act(api, hb, "rename", "boss", display_name="내이름").status_code == 200  # 이름 수정은 본인도 가능
+    assert _act(api, hc, "set_role", "boss", role="user").status_code == 200  # 다른 관리자가 강등
+    # boss는 이제 일반 사용자: 관리자 기능 불가, chief가 유일한 관리자 → chief 본인은 자신을 없앨 수 없다
+    assert api.get(ADMIN_LIST, headers=hb).status_code == 403
+    assert _act(api, hc, "disable", "chief").json()["error"]["code"] == "SELF_PROTECTED"
+    assert _admin(db, "SELECT count(*) FROM auth.app_users WHERE role='admin' AND is_active")[0][0] == 1
+
+
+def test_two_admins_cannot_remove_each_other_at_the_same_time(db, api):
+    (hb, _db), (hc, _dc) = _two_admins(db, api)
+    results = {}
+
+    def go(name, h, target):
+        results[name] = _act(api, h, "disable", target).status_code
+
+    t1 = threading.Thread(target=go, args=("b", hb, "chief"))
+    t2 = threading.Thread(target=go, args=("c", hc, "boss"))
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+    assert _admin(db, "SELECT count(*) FROM auth.app_users WHERE role='admin' AND is_active")[0][0] >= 1, results
+    assert sorted(results.values()) != [200, 200], results  # 둘 다 성공하면 관리자가 0명이 된다
+
+
+def test_admin_action_input_validation_and_audit_trail(db, api):
+    _add_user(db, "boss", "관리자", role="admin")
+    _add_user(db, "plain", "일반")
+    hb, d = _login_hdr(api, "boss")
+    for body in (
+        {"action": "explode", "username": "plain"}, {"action": "delete"}, {"username": "plain"},
+        {"action": "delete", "username": "plain", "extra": 1}, {"action": "delete", "username": "x"},
+        {"action": "set_role", "username": "plain", "role": "superuser"}, {"action": "rename", "username": "plain", "display_name": "가" * 101},
+    ):
+        assert api.post(ADMIN_ACT, json=body, headers=hb).status_code == 400, body
+    assert _act(api, hb, "disable", "nobody").status_code == 404
+    assert _urow(db, "plain")[:2] == ("user", True)  # 잘못된 요청은 아무것도 바꾸지 않았다
+    assert _act(api, hb, "revoke_sessions", "plain").json()["data"] == {"result": "sessions_revoked"}
+    assert _act(api, hb, "disable", "plain").status_code == 200
+    rows = _admin(db, "SELECT actor_username, action, target_username FROM auth.admin_audit ORDER BY audit_id")
+    assert rows == [("boss", "revoke_sessions", "plain"), ("boss", "disable", "plain")]
+    assert d["user_id"]  # keep
+
+
+def test_admin_delete_removes_audit_actor_link_without_losing_the_record(db, api):
+    (hb, _), (hc, _dc) = _two_admins(db, api)
+    _act(api, hb, "rename", "chief", display_name="바뀜")
+    assert _act(api, hc, "delete", "boss").status_code == 200
+    rows = _admin(db, "SELECT actor_user_id IS NULL, actor_username, action FROM auth.admin_audit ORDER BY audit_id")
+    assert rows == [(True, "boss", "rename"), (False, "chief", "delete")]  # 삭제된 행위자의 id는 비워지지만 기록(이름·행동)은 남는다

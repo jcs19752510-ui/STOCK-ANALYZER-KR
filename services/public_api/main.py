@@ -17,6 +17,7 @@ from services.public_api.api import (
     calendar,
     earnings,
     health,
+    internal_admin,
     internal_auth,
     local_intraday,
     market_summary,
@@ -131,7 +132,8 @@ app.include_router(local_intraday.router, prefix="/api/v1")
 # 로그인 내부 경로(DEC-067): 웹 서버 전용. 회원 DB 주소가 없으면 404로 꺼져 있고,
 # 스위치와 무관하게 항상 내부 토큰을 요구한다.
 app.include_router(internal_auth.router, prefix="/api/v1")
-app.include_router(owner_investor.router, prefix="/api/v1")  # DEC-068 소유자 전용 투자자 수급
+app.include_router(internal_admin.router, prefix="/api/v1")  # DEC-074 관리자 회원 관리
+app.include_router(owner_investor.router, prefix="/api/v1")  # DEC-074 관리자 전용 투자자 수급
 
 
 def _error_envelope(status_code: int, code: str, message: str) -> JSONResponse:

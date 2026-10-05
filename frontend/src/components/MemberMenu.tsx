@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import copy from "@/content/copy.ko.json";
 
 /**
- * 머리글의 회원 메뉴(DEC-067): 이름 + "회원 목록" 링크 + 로그아웃. 로그인을 켠 빌드(`NEXT_PUBLIC_AUTH_ENABLED=true`)에서만 동작하며,
+ * 머리글의 회원 메뉴(DEC-067): 이름 + (관리자만) "회원 관리" 링크 + 로그아웃. 로그인을 켠 빌드(`NEXT_PUBLIC_AUTH_ENABLED=true`)에서만 동작하며,
  * 쿠키를 서버(`/auth/me`)에 물어 이름을 받는다(쿠키는 JS가 읽을 수 없다). 로그인 전이면 아무것도 그리지 않는다.
  * 정적 화면이 많아 서버에서 쿠키를 읽지 않고 이렇게 브라우저에서 확인한다.
  */
@@ -13,6 +13,7 @@ const AUTH_BUILD = process.env.NEXT_PUBLIC_AUTH_ENABLED === "true";
 
 export function MemberMenu() {
   const [name, setName] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -23,8 +24,11 @@ export function MemberMenu() {
       try {
         const response = await fetch("/auth/me", { credentials: "same-origin", cache: "no-store" });
         if (!response.ok) return;
-        const body = (await response.json()) as { display_name?: unknown };
-        if (!cancelled && typeof body.display_name === "string") setName(body.display_name);
+        const body = (await response.json()) as { display_name?: unknown; role?: unknown };
+        if (!cancelled && typeof body.display_name === "string") {
+          setName(body.display_name);
+          setIsAdmin(body.role === "admin"); // 화면 표시용. 관리자 화면·작업은 서버가 매번 다시 확인한다
+        }
       } catch {
         /* 메뉴는 보조 기능이라 실패하면 그리지 않는다 */
       }
@@ -68,9 +72,11 @@ export function MemberMenu() {
         {name}
         {copy.auth.memberSuffix}
       </span>
-      <Link href="/members" className="member-menu__link">
-        {copy.auth.membersLink}
-      </Link>
+      {isAdmin ? (
+        <Link href="/admin/members" className="member-menu__link">
+          {copy.auth.adminLink}
+        </Link>
+      ) : null}
       <button type="button" className="member-menu__logout" onClick={logout}>
         {copy.auth.logout}
       </button>

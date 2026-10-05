@@ -8,7 +8,6 @@ import { StockDetailTabs } from "@/components/StockDetailTabs";
 import { StockQuoteHeader } from "@/components/StockQuoteHeader";
 import { ValuationMetricCard } from "@/components/ValuationMetricCard";
 import copy from "@/content/copy.ko.json";
-import { isOwnerUsername } from "@/lib/auth/config";
 import { requireMember } from "@/lib/auth/current";
 import { mapApiErrorCodeToDisplay } from "@/lib/errorMapping";
 import { formatSignedPercent, percentDirectionLabel, percentValueClassName } from "@/lib/formatPercent";
@@ -32,7 +31,7 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
   const { code } = await params;
   const { date } = await searchParams;
   const session = await requireMember(date ? `/stocks/${code}?date=${date}` : `/stocks/${code}`); // 로그인 확인(프록시와 이중 방어)
-  const isOwner = isOwnerUsername(session?.un); // 소유자 전용 투자자 수급(DEC-068). 서버(API)가 아이디를 다시 확인한다
+  const isAdmin = session?.rl === "a"; // 관리자 전용 투자자 수급(DEC-074). 표시용 — API가 매 호출마다 DB에서 관리자 권한을 다시 확인한다
   // 서버 호출은 2건만(첫 화면에 필요한 것). 실적·조건 체크는 탭을 열 때 브라우저가 호출한다.
   // 시세 원값 비공개(DEC-048, 기본)면 일봉을 호출하지 않는다.
   const [result, pricesResult] = await Promise.all([
@@ -90,10 +89,10 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
       {!PRICE_EXPOSURE_ENABLED ? (
         <>
           <p className="stock-quote__basis">{copy.stockDetail.pricesHiddenNote}</p>
-          <StockDetailTabs stockCode={data.stock_code} stockName={data.name} prices={[]} showPrices={false} isOwner={isOwner} />
+          <StockDetailTabs stockCode={data.stock_code} stockName={data.name} prices={[]} showPrices={false} isAdmin={isAdmin} />
         </>
       ) : pricesResult?.kind === "success" && prices.length > 0 ? (
-        <StockDetailTabs stockCode={data.stock_code} stockName={data.name} prices={prices} isOwner={isOwner} />
+        <StockDetailTabs stockCode={data.stock_code} stockName={data.name} prices={prices} isAdmin={isAdmin} />
       ) : (
         <p className="stock-tabs__pending">
           {pricesResult?.kind === "success"

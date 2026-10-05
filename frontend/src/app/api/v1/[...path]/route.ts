@@ -48,7 +48,7 @@ export async function GET(request: Request) {
       clearSessionCookie(response);
       return response;
     }
-    const next = refreshed({ ...session, un: check.user.username, dn: check.user.displayName }, now);
+    const next = refreshed({ ...session, un: check.user.username, dn: check.user.displayName, rl: check.user.role === "admin" ? "a" : "u" }, now);
     refreshedCookie = { token: signSession(next, sessionSecret()), maxAge: remainingSeconds(next, now) };
   }
 
@@ -56,7 +56,7 @@ export async function GET(request: Request) {
   const upstreamHeaders: Record<string, string> = {
     "X-Internal-Token": (process.env.PUBLIC_API_INTERNAL_TOKEN ?? "").trim(),
     "X-Auth-User": session.uid,
-    "X-Auth-Username": session.un, // 소유자 전용 경로가 API에서 한 번 더 확인한다(DEC-068)
+    "X-Auth-Session": session.sid, // 관리자 전용 경로가 API에서 "유효한 세션 + 관리자"를 DB로 다시 확인한다(DEC-074)
     Accept: "application/json",
   };
   if (ip) upstreamHeaders["X-End-User-IP"] = ip;

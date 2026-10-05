@@ -138,3 +138,12 @@ def get_login_rate_limits() -> tuple[int, int]:
         _env_number("PUBLIC_API_LOGIN_GLOBAL_PER_MINUTE", 30, minimum=1, maximum=3000)
     )
     return per_key, global_limit
+
+
+def get_signup_rate_limits() -> tuple[int, int]:
+    """(접속 주소당 10분 가입 신청 상한, 서버 전체 1시간 상한). 해시 계산·대기 행 폭주 방지."""
+    per_key = int(_env_number("PUBLIC_API_SIGNUP_PER_10MIN", 5, minimum=1, maximum=600))
+    global_limit = int(
+        _env_number("PUBLIC_API_SIGNUP_GLOBAL_PER_HOUR", 60, minimum=1, maximum=10000)
+    )
+    return per_key, global_limit

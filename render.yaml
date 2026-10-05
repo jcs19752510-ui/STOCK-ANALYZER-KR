@@ -26,8 +26,6 @@ services:
         sync: false
       - key: PUBLIC_API_AUTH_DATABASE_URL      # postgresql+psycopg://auth_service:비번@(직접 접속 주소)/neondb?sslmode=require
         sync: false
-      - key: PUBLIC_API_OWNER_USERNAME         # 소유자 전용 투자자 수급(DEC-068): 소유자 로그인 아이디 1개. 비우면 기능 꺼짐
-        sync: false
       - key: PUBLIC_API_TRUSTED_PROXY_IPS      # Render 프록시 대역(CIDR). 확인 전에는 비워 둔다 → 절차서 §7
         sync: false
       - key: PUBLIC_API_REQUIRE_TRUSTED_PROXY  # 확인 전 false(+LOG_PEER_IPS=1), 대역 입력 후 true
@@ -61,8 +59,6 @@ services:
     healthCheckPath: /healthz          # 화면·로그인 설정과 무관하게 항상 200. /login으로 걸면 그 화면이 없는 커밋 배포가 실패한다(2026-10-05)
     envVars:
       - key: AUTH_REQUIRED              # 로그인 도입(DEC-067). true=로그인 필요. 되돌릴 때 false
-        sync: false
-      - key: OWNER_USERNAME             # 소유자 전용 투자자 수급(DEC-068): API의 PUBLIC_API_OWNER_USERNAME과 같은 아이디. 비우면 모두 "준비 중"
         sync: false
       - key: SESSION_SECRET             # 세션 쿠키 서명키(32자 이상 무작위). 바꾸면 모두 로그아웃
         sync: false

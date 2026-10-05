@@ -79,7 +79,7 @@ def clean(db: TempDb):
 def _insert_user(db: TempDb, username="kim", name="김철수", password_hash="h"):
     _run(
         db.migrator_url,
-        "INSERT INTO auth.app_users (username, display_name, password_hash) VALUES (:u, :n, :h)",
+        "INSERT INTO auth.app_users (username, display_name, password_hash, is_active, approved_at) VALUES (:u, :n, :h, true, now())",
         u=username,
         n=name,
         h=password_hash,
@@ -92,7 +92,7 @@ def test_schema_and_tables_exist(db):
         db.migrator_url,
         "SELECT table_name FROM information_schema.tables WHERE table_schema = 'auth' ORDER BY 1",
     )
-    assert [r[0] for r in rows] == ["app_users", "login_audit", "user_sessions"]
+    assert [r[0] for r in rows] == ["admin_audit", "app_users", "login_audit", "user_sessions"]
     assert _run(db.migrator_url, "SELECT count(*) FROM auth.app_users")[0][0] == 0
     cols = {r[0] for r in _run(db.migrator_url, "SELECT column_name FROM information_schema.columns WHERE table_schema='auth' AND table_name='app_users'")}
     assert {"user_id", "username", "display_name", "password_hash", "is_active", "failed_attempts", "lockout_level", "locked_until", "last_login_at"} <= cols
@@ -145,13 +145,22 @@ def test_auth_service_can_do_only_what_the_design_allows(db, clean):
     assert _run(url, "UPDATE auth.app_users SET failed_attempts = 3, lockout_level = 1, locked_until = now(), last_login_at = now(), updated_at = now()") == 1
     assert _run(url, "UPDATE auth.app_users SET password_hash = 'rehashed'") == 1  # 재해시 갱신용
     assert _run(url, "INSERT INTO auth.login_audit (username_attempted, result, client_ip) VALUES ('kim', 'FAIL', '203.0.113.x')") == 1
+    # 가입 신청: 아이디·이름·해시 열만 INSERT 가능 → 승인 대기(is_active false, approved_at NULL, role user)로 만들어진다
+    assert _run(url, "INSERT INTO auth.app_users (username, display_name, password_hash) VALUES ('new', 'n', 'h')") == 1
+    assert _run(db.migrator_url, "SELECT is_active, approved_at IS NULL, role FROM auth.app_users WHERE username='new'") == [(False, True, "user")]
+    # 관리 작업용(DEC-074): 이름·권한·활성·승인 열 UPDATE, 삭제, 관리 기록 INSERT
+    assert _run(url, "UPDATE auth.app_users SET display_name = 'x', role = 'admin', is_active = false, approved_at = now() WHERE username = 'kim'") == 1
+    assert _run(url, "DELETE FROM auth.app_users WHERE username = 'new'") == 1
+    assert _run(url, "INSERT INTO auth.admin_audit (actor_username, action, target_username) VALUES ('kim', 'approve', 'new')") == 1
     # 허용하지 않은 것
     for sql in (
         "UPDATE auth.app_users SET username = 'other'",
-        "UPDATE auth.app_users SET is_active = false",
-        "UPDATE auth.app_users SET display_name = 'x'",
-        "INSERT INTO auth.app_users (username, display_name, password_hash) VALUES ('new', 'n', 'h')",
-        "DELETE FROM auth.app_users",
+        "INSERT INTO auth.app_users (username, display_name, password_hash, role) VALUES ('evil', 'n', 'h', 'admin')",
+        "INSERT INTO auth.app_users (username, display_name, password_hash, is_active) VALUES ('evil', 'n', 'h', true)",
+        "INSERT INTO auth.app_users (username, display_name, password_hash, approved_at) VALUES ('evil', 'n', 'h', now())",
+        "SELECT * FROM auth.admin_audit",
+        "UPDATE auth.admin_audit SET action = 'x'",
+        "DELETE FROM auth.admin_audit",
         "SELECT * FROM auth.login_audit",
         "UPDATE auth.login_audit SET result = 'SUCCESS'",
         "DELETE FROM auth.login_audit",
@@ -194,15 +203,15 @@ def test_check_command_passes_on_correct_setup(db, capsys):
 
 def test_check_command_detects_a_privilege_violation(db, capsys):
     _auth_url(db)
-    _run(db.migrator_url, "GRANT DELETE ON auth.app_users TO auth_service")
+    _run(db.migrator_url, "GRANT INSERT (role) ON auth.app_users TO auth_service")  # 가입 때 권한을 정할 수 있게 되는 잘못된 설정
     eng = _engine(db.migrator_url)
     try:
         assert mu.main(["check"], engine=eng) == 1
     finally:
         eng.dispose()
-        _run(db.migrator_url, "REVOKE DELETE ON auth.app_users FROM auth_service")
+        _run(db.migrator_url, "REVOKE INSERT (role) ON auth.app_users FROM auth_service")
     out = capsys.readouterr().out
-    assert "FAIL" in out and "app_users DELETE" in out
+    assert "FAIL" in out and "role 열 INSERT" in out
 
 
 # ------------------------------------------------------------------ 마이그레이션 되돌리기·역할 없음
@@ -211,7 +220,7 @@ def test_downgrade_and_upgrade_cycle(db):
     assert _run(db.migrator_url, "SELECT count(*) FROM information_schema.schemata WHERE schema_name='auth'")[0][0] == 0
     assert _run(db.migrator_url, "SELECT count(*) FROM public_serving.stock_master")[0][0] == 0  # 기존 스키마는 그대로
     assert run_alembic(db, "upgrade", "head").returncode == 0
-    assert _run(db.migrator_url, "SELECT count(*) FROM information_schema.tables WHERE table_schema='auth'")[0][0] == 3
+    assert _run(db.migrator_url, "SELECT count(*) FROM information_schema.tables WHERE table_schema='auth'")[0][0] == 4
 
 
 def _admin_psql(*extra: str) -> list[str]:
@@ -231,7 +240,7 @@ def test_migration_succeeds_without_auth_service_role_then_setup_sql_applies_gra
         subprocess.run(_admin_psql("-v", "ON_ERROR_STOP=1", "-c", "ALTER ROLE auth_service RENAME TO auth_service_tmp"), check=True, capture_output=True, text=True)
         renamed = True
         with temp_database() as tdb:  # 내부에서 alembic upgrade head 실행 — 역할이 없어도 성공해야 한다
-            assert _run(tdb.migrator_url, "SELECT count(*) FROM information_schema.tables WHERE table_schema='auth'")[0][0] == 3
+            assert _run(tdb.migrator_url, "SELECT count(*) FROM information_schema.tables WHERE table_schema='auth'")[0][0] == 4
             acl = _run(tdb.migrator_url, "SELECT relacl::text FROM pg_class WHERE oid = 'auth.app_users'::regclass")[0][0]
             assert acl is None or "auth_service" not in acl
             sess_acl = _run(tdb.migrator_url, "SELECT relacl::text FROM pg_class WHERE oid = 'auth.user_sessions'::regclass")[0][0]
@@ -422,6 +431,48 @@ def test_cli_revoke_sessions_sessions_summary_and_purge(db, cli):
     after = _run(db.migrator_url, "SELECT count(*) FROM auth.user_sessions")[0][0]
     assert code == 0 and before - after == 1  # 10일 전 만료된 한 건만(kim의 방금 취소분·어제 만료분은 7일 안)
     assert cli("purge-sessions", "--days", "-1")[0] == 1
+
+
+def test_cli_add_with_role_approve_set_role_list_and_admin_audit(db, cli):
+    assert cli("add", "boss", "--name", "관리", "--role", "admin", "--password-stdin", stdin=STRONG + "\n")[0] == 0
+    assert _run(db.migrator_url, "SELECT role, is_active, approved_at IS NOT NULL FROM auth.app_users WHERE username='boss'") == [("admin", True, True)]
+    cli("add", "kim", "--name", "김", "--password-stdin", stdin=STRONG2 + "\n")
+    assert _run(db.migrator_url, "SELECT role FROM auth.app_users WHERE username='kim'") == [("user",)]  # 기본은 일반
+    # 가입 신청(승인 대기) → approve
+    _run(db.migrator_url, "INSERT INTO auth.app_users (username, display_name, password_hash) VALUES ('wait', '대기', 'h')")
+    code, out, _e = cli("list")
+    assert "승인 대기" in next(line for line in out.splitlines() if line.startswith("wait"))
+    assert "관리자" in next(line for line in out.splitlines() if line.startswith("boss"))
+    assert cli("approve", "wait")[0] == 0
+    assert _run(db.migrator_url, "SELECT is_active, approved_at IS NOT NULL FROM auth.app_users WHERE username='wait'") == [(True, True)]
+    assert cli("approve", "wait")[0] == 1  # 이미 승인됨
+    assert cli("approve", "nobody")[0] == 1
+    # 권한 변경 + 마지막 관리자 보호
+    assert cli("set-role", "kim", "admin")[0] == 0 and cli("set-role", "kim", "user")[0] == 0
+    assert cli("set-role", "boss", "user")[0] == 1  # 마지막 활성 관리자
+    assert _run(db.migrator_url, "SELECT role FROM auth.app_users WHERE username='boss'") == [("admin",)]
+    assert cli("set-role", "nobody", "admin")[0] == 1
+    # enable은 승인 대기 계정도 승인 처리(비상용), disable은 세션 취소
+    _run(db.migrator_url, "INSERT INTO auth.app_users (username, display_name, password_hash) VALUES ('wait2', '대기2', 'h')")
+    assert cli("enable", "wait2")[0] == 0
+    assert _run(db.migrator_url, "SELECT is_active, approved_at IS NOT NULL FROM auth.app_users WHERE username='wait2'") == [(True, True)]
+    _run(db.migrator_url, "INSERT INTO auth.admin_audit (actor_username, action, target_username) VALUES ('boss', 'approve', 'wait')")
+    code, out, _e = cli("admin-audit")
+    assert code == 0 and "approve" in out and "wait" in out
+
+
+def test_migration_0018_keeps_existing_members_active_and_approved(db):
+    assert run_alembic(db, "downgrade", "0017").returncode == 0
+    _run(db.migrator_url, "INSERT INTO auth.app_users (username, display_name, password_hash, is_active) VALUES ('old1', '옛회원', 'h', true), ('old2', '중지', 'h', false)")
+    assert run_alembic(db, "upgrade", "head").returncode == 0
+    rows = _run(db.migrator_url, "SELECT username, role, is_active, approved_at = created_at FROM auth.app_users WHERE username IN ('old1','old2') ORDER BY 1")
+    assert rows == [("old1", "user", True, True), ("old2", "user", False, True)]  # 기존 회원은 모두 승인된 일반 회원
+    # 새 규칙: 활성인데 승인 안 된 행은 DB가 거부한다
+    with pytest.raises(IntegrityError):
+        _run(db.migrator_url, "INSERT INTO auth.app_users (username, display_name, password_hash, is_active) VALUES ('bad', 'x', 'h', true)")
+    with pytest.raises(IntegrityError):
+        _run(db.migrator_url, "INSERT INTO auth.app_users (username, display_name, password_hash, role) VALUES ('bad2', 'x', 'h', 'root')")
+    _run(db.migrator_url, "DELETE FROM auth.app_users WHERE username IN ('old1','old2')")
 
 
 def test_cli_db_errors_do_not_leak_connection_strings(monkeypatch, capsys):

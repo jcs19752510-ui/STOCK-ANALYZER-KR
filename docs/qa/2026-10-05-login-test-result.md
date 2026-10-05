@@ -1,5 +1,8 @@
 # 로그인 기능 내부 테스트 결과서 (DEC-067)
 
+> **갱신 안내(DEC-074)**: 회원 목록·소유자 환경변수 관련 내용은 `2026-10-05-auth-redesign-test-result.md`로 대체되었다. 이 문서의 나머지 시험(로그인·30일 유지·전체 로그아웃 등)은 인증 재개발 뒤 모두 재실행되어 통과했다(E2E 317건).
+
+
 - 작성일: 2026-10-05 / 대상 커밋: 4205fb9(U1 DB·관리), 826ba2c(U2 API), c69c47d(U3 웹) 및 후속(purge-audit, render.yaml, 절차서)
 - 범위: 회원가입 없음, 관리자가 넣은 회원만 로그인, 로그인 회원은 회원 목록(아이디·이름만) 조회, 운영(Render)만 적용, 로컬은 변경 없음.
 - 설계서: `docs/harness/login-feature-design.md` / 적용 절차: `docs/ops/login-rollout-runbook.md`

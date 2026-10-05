@@ -21,15 +21,20 @@ from services.public_api.auth.policy import (
     LOCK_LEVEL_CAP,
     LOCK_MAX_MINUTES,
     MAX_FAILED_ATTEMPTS,
+    MAX_PENDING_SIGNUPS,
+    ROLE_ADMIN,
     SESSION_SECONDS_DEFAULT,
     SESSION_SECONDS_REMEMBER,
 )
 from shared.auth.passwords import (
     PolicyError,
     dummy_verify,
+    hash_password,
     hash_password_unchecked,
     needs_rehash,
+    normalize_display_name,
     normalize_username,
+    validate_password,
     verify_password,
 )
 
@@ -39,12 +44,16 @@ class AuthUser:
     user_id: str
     username: str
     display_name: str
+    role: str = "user"
 
 
 @dataclass(frozen=True)
 class AuthOutcome:
     ok: bool
     user: AuthUser | None = None
+    # 실패 때의 상태: "invalid"(틀림·없음·잠김 등 구분 불가) / "pending"(가입 승인 대기) / "disabled"(사용 중지).
+    # pending·disabled는 **비밀번호가 맞았을 때만** 알려 준다(계정 존재 여부를 비밀번호 없이는 알 수 없다).
+    state: str = "invalid"
 
 
 def mask_ip(raw: str | None) -> str | None:
@@ -94,7 +103,8 @@ def authenticate(session: Session, raw_username: str, password: str, client_ip: 
         row = (
             session.execute(
                 text(
-                    "SELECT user_id::text AS user_id, username, display_name, password_hash, is_active, "
+                    "SELECT user_id::text AS user_id, username, display_name, password_hash, is_active, role, "
+                    "(approved_at IS NULL) AS is_pending, "
                     "COALESCE(locked_until > now(), false) AS is_locked "
                     "FROM auth.app_users WHERE username = :u"
                 ),
@@ -108,9 +118,6 @@ def authenticate(session: Session, raw_username: str, password: str, client_ip: 
     if row is None:
         dummy_verify(password)
         return _record_and_fail(session, user_id=None, attempted=attempted, result="FAIL", ip=client_ip)
-    if not row["is_active"]:
-        dummy_verify(password)
-        return _record_and_fail(session, user_id=row["user_id"], attempted=attempted, result="INACTIVE", ip=client_ip)
     if row["is_locked"]:
         dummy_verify(password)
         return _record_and_fail(session, user_id=row["user_id"], attempted=attempted, result="LOCKED", ip=client_ip)
@@ -137,6 +144,13 @@ def authenticate(session: Session, raw_username: str, password: str, client_ip: 
         )
         return _record_and_fail(session, user_id=row["user_id"], attempted=attempted, result="FAIL", ip=client_ip)
 
+    if not row["is_active"]:
+        # 비밀번호는 맞지만 로그인할 수 없는 계정: 승인 대기 / 사용 중지. 비밀번호를 아는 본인에게만 이유를 알려 준다.
+        state = "pending" if row["is_pending"] else "disabled"
+        _audit(session, user_id=row["user_id"], attempted=attempted, result="PENDING" if state == "pending" else "INACTIVE", ip=client_ip)
+        session.commit()
+        return AuthOutcome(ok=False, state=state)
+
     new_hash = hash_password_unchecked(password) if needs_rehash(row["password_hash"]) else None
     updated = session.execute(
         text(
@@ -154,7 +168,7 @@ def authenticate(session: Session, raw_username: str, password: str, client_ip: 
     session.commit()
     return AuthOutcome(
         ok=True,
-        user=AuthUser(user_id=row["user_id"], username=row["username"], display_name=row["display_name"]),
+        user=AuthUser(user_id=row["user_id"], username=row["username"], display_name=row["display_name"], role=row["role"]),
     )
 
 
@@ -178,7 +192,7 @@ def check_session_user(session: Session, user_id: str, session_id: str) -> AuthU
     row = (
         session.execute(
             text(
-                "SELECT u.user_id::text AS user_id, u.username, u.display_name "
+                "SELECT u.user_id::text AS user_id, u.username, u.display_name, u.role "
                 "FROM auth.user_sessions s JOIN auth.app_users u ON u.user_id = s.user_id "
                 "WHERE s.session_id = CAST(:sid AS uuid) AND s.user_id = CAST(:uid AS uuid) "
                 "AND s.revoked_at IS NULL AND s.expires_at > now() AND u.is_active"
@@ -235,18 +249,43 @@ def revoke_all_sessions(session: Session, user_id: str, session_id: str) -> int 
     return result.rowcount or 0
 
 
-def list_active_members(session: Session, limit: int = 500) -> list[dict[str, str]]:
-    """회원 목록: 활성 회원의 아이디·이름만(비밀번호 해시·접속 시각·상태 등은 읽지도 않는다)."""
-    rows = (
-        session.execute(
-            text(
-                "SELECT username, display_name FROM auth.app_users WHERE is_active "
-                "ORDER BY display_name, username LIMIT :n"
-            ),
-            {"n": limit},
-        )
-        .mappings()
-        .all()
-    )
+class SignupError(Exception):
+    """가입 신청 거절 사유. `code`는 API 오류 코드, `status`는 HTTP 상태."""
+
+    def __init__(self, status: int, code: str, message: str):
+        super().__init__(message)
+        self.status, self.code, self.message = status, code, message
+
+
+def signup(session: Session, raw_username: str, raw_display_name: str, password: str) -> str:
+    """회원가입 신청(DEC-074): **승인 대기** 계정을 만든다. 로그인은 관리자가 승인한 뒤에만 가능하다.
+    권한(role)·활성·승인 여부는 정할 수 없다(DB 열 권한으로도 막혀 있다: 아이디·이름·비밀번호 해시만 INSERT). 아이디를 돌려준다."""
+    try:
+        username = normalize_username(raw_username)
+        display_name = normalize_display_name(raw_display_name)
+        validate_password(password, username=username)
+    except PolicyError as exc:
+        raise SignupError(400, "INVALID_INPUT", " ".join(exc.messages)) from exc
+    pending = session.execute(text("SELECT count(*) FROM auth.app_users WHERE approved_at IS NULL")).scalar_one()
     session.rollback()
-    return [{"username": r["username"], "display_name": r["display_name"]} for r in rows]
+    if pending >= MAX_PENDING_SIGNUPS:
+        raise SignupError(503, "SIGNUP_CLOSED", "지금은 가입 신청을 받을 수 없습니다. 잠시 후 다시 시도해 주세요.")
+    password_hash = hash_password(password, username=username)  # 느린 계산: 트랜잭션 밖에서
+    created = session.execute(
+        text(
+            "INSERT INTO auth.app_users (username, display_name, password_hash) VALUES (:u, :d, :h) "
+            "ON CONFLICT (username) DO NOTHING RETURNING user_id"
+        ),
+        {"u": username, "d": display_name, "h": password_hash},
+    ).first()
+    session.commit()
+    if created is None:
+        raise SignupError(409, "USERNAME_TAKEN", "이미 사용 중인 아이디입니다.")
+    return username
+
+
+def require_admin(session: Session, user_id: str, session_id: str) -> AuthUser | None:
+    """관리자 작업을 요청한 사람이 **지금 이 순간** 유효한 세션을 가진 활성 관리자인지 DB에서 확인한다
+    (웹 서버가 전달한 값이나 쿠키 속 권한을 믿지 않는다). 아니면 None."""
+    user = check_session_user(session, user_id, session_id)
+    return user if user is not None and user.role == ROLE_ADMIN else None

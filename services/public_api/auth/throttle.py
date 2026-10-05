@@ -7,7 +7,7 @@ from __future__ import annotations
 import threading
 import time
 
-from services.public_api.core.config import get_login_rate_limits
+from services.public_api.core.config import get_login_rate_limits, get_signup_rate_limits
 
 WINDOW_SECONDS = 60.0
 _MAX_TRACKED = 10_000
@@ -43,4 +43,40 @@ def allow_login_attempt(client_key: str | None, *, now: float | None = None) -> 
             return False
         _per_key[key] = (start, count + 1)
         _global[1] = int(_global[1]) + 1
+        return True
+
+
+# ── 가입 신청 빈도 제한(DEC-074): 접속 주소당 10분 창 + 서버 전체 1시간 창 ───────────────────────────────
+SIGNUP_KEY_WINDOW_SECONDS = 600.0
+SIGNUP_GLOBAL_WINDOW_SECONDS = 3600.0
+_signup_per_key: dict[str, tuple[float, int]] = {}
+_signup_global: list[float | int] = [0.0, 0]
+
+
+def reset_signup_throttle() -> None:
+    """테스트 전용."""
+    with _lock:
+        _signup_per_key.clear()
+        _signup_global[0], _signup_global[1] = 0.0, 0
+
+
+def allow_signup_attempt(client_key: str | None, *, now: float | None = None) -> bool:
+    per_key_limit, global_limit = get_signup_rate_limits()
+    key = client_key or "unknown"
+    t = time.monotonic() if now is None else now
+    with _lock:
+        if t - float(_signup_global[0]) >= SIGNUP_GLOBAL_WINDOW_SECONDS:
+            _signup_global[0], _signup_global[1] = t, 0
+        if int(_signup_global[1]) + 1 > global_limit:
+            return False
+        if len(_signup_per_key) > _MAX_TRACKED:
+            for k in [k for k, (s, _c) in _signup_per_key.items() if t - s >= SIGNUP_KEY_WINDOW_SECONDS]:
+                del _signup_per_key[k]
+        start, count = _signup_per_key.get(key, (t, 0))
+        if t - start >= SIGNUP_KEY_WINDOW_SECONDS:
+            start, count = t, 0
+        if count + 1 > per_key_limit:
+            return False
+        _signup_per_key[key] = (start, count + 1)
+        _signup_global[1] = int(_signup_global[1]) + 1
         return True
