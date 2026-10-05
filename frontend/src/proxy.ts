@@ -81,6 +81,6 @@ export function proxy(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  // 정적 파일·아이콘·robots는 제외(로그인 화면도 이 파일들을 불러야 한다).
-  matcher: ["/((?!_next/static|_next/image|icon.svg|favicon.ico|robots.txt).*)"],
+  // 정적 파일·아이콘·robots·상태 검사(/healthz)는 제외(로그인 화면도 이 파일들을 불러야 한다).
+  matcher: ["/((?!_next/static|_next/image|icon.svg|favicon.ico|robots.txt|healthz$).*)"],
 };

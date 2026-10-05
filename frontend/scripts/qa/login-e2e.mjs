@@ -89,6 +89,8 @@ if (should("A")) {
   }
   const me = await noauth.get(`${BASE}/auth/me`);
   rec("A /auth/me 비로그인 401", me.status() === 401);
+  const hz = await noauth.get(`${BASE}/healthz`, { maxRedirects: 0 });
+  rec("A /healthz: 로그인 없이 200 'ok' (Render 상태 검사용, 리다이렉트 없음)", hz.status() === 200 && (await hz.text()) === "ok" && /no-store/.test(hz.headers()["cache-control"] ?? ""), `${hz.status()}`);
   const robots = await noauth.get(`${BASE}/robots.txt`);
   const robotsText = await robots.text();
   rec("A robots.txt는 로그인 없이 읽히고 전체 색인을 막는다", robots.status() === 200 && /Disallow:\s*\//.test(robotsText), robotsText.replace(/\s+/g, " ").slice(0, 50));

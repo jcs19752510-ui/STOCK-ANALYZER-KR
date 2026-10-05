@@ -61,3 +61,9 @@
    KIS_APP_KEY/KIS_APP_SECRET은 PC `.env`의 기존 값을 쓴다. 장 마감 후(20시 이후) 하루 한 번.
 4. 확인: 소유자로 로그인 → 종목 상세 → 투자자 탭에 표. 다른 회원으로는 "준비 중". 값은 **증권사 앱 화면과 반드시 대조**(단위·부호 미확인, DEC-054).
 5. 되돌리기: 두 환경변수를 비우면 모두 "준비 중". 데이터는 남아 있어도 노출되지 않는다.
+
+## 8. 배포 실패 사례와 점검 (2026-10-05)
+- 증상: Render `stock-analyzer-web` 배포가 "Timed out after waiting for internal health check … /login"으로 15분 만에 실패. 서버는 정상 기동(`Ready`)했지만 검사 경로 `/login`이 **배포한 커밋(154fe68, 로그인 구현 전)에 없었다**.
+- 원인: Blueprint(`render.yaml`)가 최신 설정(`healthCheckPath: /login`)을 서비스에 동기화했는데, 배포한 코드는 옛 커밋이었다. 설정과 코드 버전이 어긋남.
+- 영향: 배포 실패 시 Render는 **이전에 성공한 버전을 계속 서비스**한다(운영은 중단되지 않음, 화면의 "Deploy failed"는 새 배포만 실패).
+- 조치: 상태 검사를 어떤 화면에도 의존하지 않는 `/healthz`(항상 200)로 바꿨다. **최신 커밋(PROD_SCH 맨 위)으로 Manual Deploy → "Deploy latest commit"** 을 하면 된다. 옛 커밋을 다시 배포하면 `/healthz`가 없어 또 실패한다.

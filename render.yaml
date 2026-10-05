@@ -58,7 +58,7 @@ services:
     dockerfilePath: ./deploy/frontend.Dockerfile
     dockerContext: .
     autoDeployTrigger: "off"
-    healthCheckPath: /login            # 로그인 켜면 / 는 /login 으로 이동하므로 공개 페이지로 검사
+    healthCheckPath: /healthz          # 화면·로그인 설정과 무관하게 항상 200. /login으로 걸면 그 화면이 없는 커밋 배포가 실패한다(2026-10-05)
     envVars:
       - key: AUTH_REQUIRED              # 로그인 도입(DEC-067). true=로그인 필요. 되돌릴 때 false
         sync: false
