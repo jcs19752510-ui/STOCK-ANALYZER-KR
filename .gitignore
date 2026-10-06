@@ -46,3 +46,6 @@ deploy/.deployed_sha
 deploy/.checked_sha
 deploy/.failed_sha
 deploy/.auto-deploy-paused
+
+# 병렬 작업용 임시 git worktree
+.claude/worktrees/

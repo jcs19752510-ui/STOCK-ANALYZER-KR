@@ -117,25 +117,35 @@ def reset_realtime_service() -> None:
     _service = None
 
 
+def _recheck_seconds() -> float:
+    """권한 재확인 간격(초). 환경변수 `KIS_REALTIME_RECHECK_SECONDS`가 있으면 그 값(시험용), 없으면 기본 5분."""
+    raw = os.environ.get("KIS_REALTIME_RECHECK_SECONDS", "").strip()
+    try:
+        return max(0.2, float(raw)) if raw else RECHECK_SECONDS
+    except ValueError:
+        return RECHECK_SECONDS
+
+
 def _sse(event: str, data: Any) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False, separators=(',', ':'))}\n\n"
 
 
 async def _event_stream(service: RealtimeService, sub, snapshot: dict[str, Any], request: Request, auth: tuple[str, str] | None) -> AsyncIterator[str]:
     loop = asyncio.get_running_loop()
-    next_check = loop.time() + RECHECK_SECONDS
+    recheck = _recheck_seconds()
+    next_check = loop.time() + recheck
     try:
         yield "retry: 3000\n\n"  # 끊기면 브라우저가 3초 뒤 자동 재연결
         yield _sse("snapshot", snapshot)
         while True:
             try:
-                await asyncio.wait_for(sub.wake.wait(), timeout=min(HEARTBEAT_SECONDS, RECHECK_SECONDS))
+                await asyncio.wait_for(sub.wake.wait(), timeout=min(HEARTBEAT_SECONDS, recheck))
             except TimeoutError:
                 if await request.is_disconnected():
                     return
                 yield ": hb\n\n"
             if auth is not None and loop.time() >= next_check:
-                next_check = loop.time() + RECHECK_SECONDS
+                next_check = loop.time() + recheck
                 try:
                     valid = await asyncio.to_thread(_owner_valid, *auth)
                 except Exception:  # 회원 DB를 잠깐 못 읽으면 이번에는 유지하고 다음 점검 때 다시 확인한다
