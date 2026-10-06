@@ -11,6 +11,7 @@
 - Render 서비스 **1개** `stock-analyzer-web` (https://stock-analyzer-web-q7cx.onrender.com): 컨테이너 안에서 API(내부 127.0.0.1:8000)와 웹(공개 PORT)을 `scripts/run_unified.py`가 함께 기동·감시 (DEC-078). 이미지 `deploy/unified.Dockerfile`, 블루프린트 `render.yaml`.
 - 이전 2개 서비스 구성: `deploy/render/render.two-services.yaml`(롤백용). 기존 `stock-analyzer-api` Render 서비스는 **Suspended**(삭제 전, 롤백 경로). 며칠 안정 확인 뒤 사용자가 삭제.
 - DB: Neon Postgres(스키마 `auth`), 배치(내 PC 스케줄러/GitHub Actions)는 DB에 직접 쓴다.
+- **요금제: Starter(유료, 월 $7, 0.5 CPU/512MB)로 전환(2026-10-06, 사용자가 Render Compute 화면에서 변경 → `render.yaml`의 `plan: starter`로 동기화).** 15분 유휴 후 잠들지 않아 콜드스타트가 없다. 48시간 평균 메모리 사용률 10~25%. Blueprint 서비스는 대시보드에서만 바꾸면 되돌아갈 수 있어 변경 시 `render.yaml`도 함께 바꾼다.
 - 검증(전환 후): `/auth/status` web ok·api ok, 로그인 401(틀린 비번), 비로그인 차단 확인. 첫 접속(콜드스타트)은 30초대 소요 가능.
 
 ## 결정 이력
@@ -23,7 +24,7 @@
 3. (선택) GitHub Secrets `NEON_OWNER_URL`, `RENDER_DEPLOY_HOOK_WEB` 등록 시 푸시 자동 배포(현재는 Secrets 없어 건너뜀).
 
 ## 열린 항목
-- 15분 이상 유휴 후 콜드스타트 실제 로그인 재시도 동작 확인(DEC-077).
+- (유료 전환으로 콜드스타트 이슈는 사라짐. DEC-077의 재시도는 Neon DB 자동 정지 대비로 유지.)
 - Render 무료 512MB 안의 통합 서비스 메모리 실측(로컬 측정 약 245MB).
 - 방문자 IP 속도제한이 전 사용자 1버킷(기존 한계, `FRONTEND_TRUSTED_PROXY_HOPS=0`).
 
