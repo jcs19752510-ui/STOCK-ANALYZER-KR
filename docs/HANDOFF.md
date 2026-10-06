@@ -20,6 +20,13 @@
 - DEC-074 회원제 로그인(가입→관리자 승인, DB 역할, 투자자 탭 관리자 전용) / DEC-075 로컬 서버에도 로그인 적용(`scripts/setup_local_auth.py`) / DEC-076 "서버를 깨우는 중" 팝업 제거 / DEC-077 로그인 콜드스타트 재시도 / **DEC-078 웹+API 1개 서비스 통합**.
 - 결과서: `docs/qa/2026-10-05-auth-redesign-test-result.md`, `docs/qa/2026-10-06-unified-service-test-result.md`. 절차서: `docs/ops/unified-service-guide.md`.
 
+## 진행 중 개발: 본인 전용 실시간 시세 (DEC-084, 2026-10-06 시작)
+- 목표: 내 PC(로컬 모드)에서 **본인(관리자)만** 증권사 웹소켓으로 현재가·호가·체결·분/틱 차트를 실시간으로 본다. 운영(Render)은 계속 꺼짐. 서버 경유는 증권사 약관 확인 전까지 쓰지 않는다.
+- 완료: 수신 엔진(`services/public_api/realtime/*`), 스트림 API(`api/local_realtime.py`), 웹 서버 대행(`frontend/src/app/api/v1/local/stocks/[code]/stream/route.ts`, `lib/auth/bffGate.ts`), 시험(단위·통합 54, 종단 18, 로그인 회귀 322). 결과서 `docs/qa/2026-10-06-realtime-backend-test-result.md`, 검토서 `docs/stock-detail/06-realtime-review.md`.
+- 진행/예정: 화면(A3), 연결 확인 도구·가이드(A4: `scripts/kis_ws_smoke_test.py`, `docs/ops/local-realtime-guide.md`), 전 종목 준실시간(B: 일괄 시세 조회 30종목/회 순환, `docs/stock-detail/07-market-snapshot-design.md`).
+- 한계: 증권사 웹소켓 구독 한도 40건(종목 20개)이라 틱 단위 실시간은 동시 20종목. 실제 증권사 응답은 개발 환경에서 시험 불가 → 사용자가 장중에 `kis_ws_smoke_test.py`로 확인.
+- 시험 환경: 임시 PG를 다시 띄우는 법 — `mkdir -p /tmp/pgsock && chown postgres /tmp/pgsock; su postgres -c "/usr/lib/postgresql/16/bin/pg_ctl -D /var/tmp/pgd2 -o '-p 5544 -k /tmp/pgsock' -l /var/tmp/pgd2.log start"`, 그다음 `source /tmp/claude-0/pgenv.sh; export PATH=/var/tmp/venv312/bin:/usr/lib/postgresql/16/bin:$PATH`. 시스템 파이썬은 3.11이라 `/var/tmp/venv312/bin/python`(3.12)을 쓴다.
+
 ## 사용자가 아직 해야 하는 것
 1. 며칠 사용해 이상 없으면 Render의 `stock-analyzer-api`(Suspended) 삭제.
 2. 내 PC 로컬 로그인: `git pull` → `py -3.12 scripts\setup_local_auth.py` → `scripts\start_local_api.ps1`, `npx next dev -p 4000` 재기동 (DEC-075, 아직 확인 못 받음).
