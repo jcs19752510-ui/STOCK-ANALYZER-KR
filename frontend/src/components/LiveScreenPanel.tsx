@@ -57,7 +57,7 @@ function ErrorBlock({ error, onRefresh, onRevert }: { error: LiveError; onRefres
   const p = error.progress;
   return (
     <div className="live-error" data-live-error={error.kind}>
-      <h3 className="live-error__title">{title}</h3>
+      <h2 className="live-error__title">{title}</h2>
       <p>{body}</p>
       {error.kind === "base_filling" && p && p.total > 0 && (
         <p className="live-error__progress">
@@ -121,7 +121,7 @@ export function LiveScreenPanel({ view, hasQuery, onPause, onResume, onRefresh, 
     <div className="live-panel" data-live-state={key}>
       {announcer}
       {meta && view.data && (
-        <section className="live-banner" aria-label={copy.liveScreen.bannerRegionLabel}>
+        <section className="live-banner" aria-label={copy.liveScreen.bannerRegionLabel} data-snapshot-id={meta.snapshot_id} data-paused={view.paused ? "1" : "0"}>
           <p className="live-banner__main">
             <strong>{copy.liveScreen.basisHeading}</strong>
             <span className="live-banner__sep"> · </span>
