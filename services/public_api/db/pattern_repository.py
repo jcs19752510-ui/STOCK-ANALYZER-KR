@@ -22,7 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
-from typing import Protocol
+from typing import Any, Protocol
 
 from sqlalchemy import ColumnElement, Select, and_, case, func, not_, or_, select
 from sqlalchemy.orm import Session
@@ -43,12 +43,16 @@ STAGE_ABOVE_SETTLED = "ABOVE_SETTLED"
 STAGE_EXTENDED = "EXTENDED"
 
 
-def _status_gate(expr: ColumnElement) -> ColumnElement:
-    return case((D.pattern_metrics_status == PATTERN_STATUS_OK, expr), else_=None)
+_D = D  # 기본 엔티티(발행 테이블). 장중 재계산은 같은 열을 가진 가상 엔티티를 `d`로 넘긴다.
 
 
-def build_condition_exprs(th: PatternThresholds) -> dict[str, ColumnElement]:
+def _status_gate(expr: ColumnElement, d: Any = _D) -> ColumnElement:
+    return case((d.pattern_metrics_status == PATTERN_STATUS_OK, expr), else_=None)
+
+
+def build_condition_exprs(th: PatternThresholds, d: Any = _D) -> dict[str, ColumnElement]:
     """c1~c5·c9 판정식(경계 포함). 값은 `True`/`False`/`NULL(산정 불가)`로 평가된다."""
+    D = d  # noqa: N806 — 아래 식 전체가 같은 이름으로 열을 가리키도록
     band = th.ma60_approach_band_pct
     gap = D.ma60_gap_pct
 
@@ -85,11 +89,12 @@ def build_condition_exprs(th: PatternThresholds) -> dict[str, ColumnElement]:
     c9 = not_(D.recent_surge_flag)
 
     exprs = {"c1": c1, "c2": c2, "c3": c3, "c4": c4, "c5": c5, "c9": c9}
-    return {cid: _status_gate(expr) for cid, expr in exprs.items()}
+    return {cid: _status_gate(expr, d) for cid, expr in exprs.items()}
 
 
-def ma60_stage_expr(th: PatternThresholds) -> ColumnElement:
+def ma60_stage_expr(th: PatternThresholds, d: Any = _D) -> ColumnElement:
     """c4 화면 문구용 단계(표시 전용, 서버가 c4와 같은 임계값·경계로 산출). 산정 불가면 `NULL`."""
+    D = d  # noqa: N806
     band = th.ma60_approach_band_pct
     gap = D.ma60_gap_pct
     stage = case(
@@ -122,6 +127,7 @@ SORT_COLUMN_MAP = {
     "sideways_range_pct": D.sideways_range_pct,
     "ma_convergence_pct": D.ma_convergence_pct,
 }
+SORT_ATTR_MAP = {key: col.key for key, col in SORT_COLUMN_MAP.items()}
 
 # 응답 `metrics`로 노출하는 11개 지표(설계서 §5-2). 가격·거래량 원값·`*_raw`·시가총액 원값은 없다.
 METRIC_KEYS: tuple[str, ...] = (
@@ -204,8 +210,10 @@ class SqlPatternScreenRepository:
     `api_service`는 SELECT만 가능하다(DEC-006).
     """
 
-    def __init__(self, session: Session):
+    def __init__(self, session: Session, source: Any = None):
+        """`source`: 같은 열을 가진 엔티티(기본: 발행 테이블, 장중 재계산: 가상 테이블)."""
         self._session = session
+        self._d: Any = D if source is None else source
 
     def get_current_published_trade_date(self, market: str) -> date | None:
         row = self._session.get(CurrentPublishedBatch, market)
@@ -218,35 +226,37 @@ class SqlPatternScreenRepository:
 
         `market` 필터와 평가 대상 제외(스팩·우선주) 적용 후 집합 기준이다(설계서 §5-4).
         """
+        d = self._d
         stmt = (
             select(
                 func.count(),
-                func.count().filter(D.pattern_metrics_status == PATTERN_STATUS_OK),
+                func.count().filter(d.pattern_metrics_status == PATTERN_STATUS_OK),
             )
-            .select_from(D)
-            .join(StockMaster, StockMaster.stock_code == D.stock_code)
-            .where(D.trade_date == trade_date)
+            .select_from(d)
+            .join(StockMaster, StockMaster.stock_code == d.stock_code)
+            .where(d.trade_date == trade_date)
         )
         if thresholds.exclude_special_stocks:
             stmt = stmt.where(not_(special_stock_expr()))
         if market != "ALL":
-            stmt = stmt.where(D.market == market)
+            stmt = stmt.where(d.market == market)
         total, ok = self._session.execute(stmt).one()
         return int(total), int(ok)
 
     def _where(self, filters: PatternFilters, th: PatternThresholds) -> list[ColumnElement]:
-        exprs = build_condition_exprs(th)
-        where: list[ColumnElement] = [D.trade_date == filters.trade_date]
+        d = self._d
+        exprs = build_condition_exprs(th, d)
+        where: list[ColumnElement] = [d.trade_date == filters.trade_date]
         if th.exclude_special_stocks:
             where.append(not_(special_stock_expr()))
         if filters.stock_code is not None:
-            where.append(D.stock_code == filters.stock_code)
+            where.append(d.stock_code == filters.stock_code)
         if filters.market != "ALL":
-            where.append(D.market == filters.market)
+            where.append(d.market == filters.market)
         if filters.market_cap_min is not None:
-            where.append(D.market_cap_raw_krw >= filters.market_cap_min)
+            where.append(d.market_cap_raw_krw >= filters.market_cap_min)
         if filters.volume_min is not None:
-            where.append(D.volume_raw >= filters.volume_min)
+            where.append(d.volume_raw >= filters.volume_min)
         # 필수 조건은 `IS TRUE`로 건다(FALSE·NULL 모두 제외).
         # 응답의 met는 같은 식을 SELECT한 값이다.
         where.extend(exprs[cid].is_(True) for cid in filters.required)
@@ -257,33 +267,35 @@ class SqlPatternScreenRepository:
 
         조건식은 `build_condition_exprs` 한 곳에서만 만든다.
         """
-        exprs = build_condition_exprs(th)
-        sort_column = SORT_COLUMN_MAP[filters.sort_by]
+        d = self._d
+        exprs = build_condition_exprs(th, d)
+        sort_column = getattr(d, SORT_ATTR_MAP[filters.sort_by])
         order = sort_column.desc() if filters.sort_dir == "desc" else sort_column.asc()
         return (
             select(
-                D.stock_code,
+                d.stock_code,
                 StockMaster.name,
-                D.market,
-                D.pattern_metrics_status.label("status"),
-                ma60_stage_expr(th).label("stage"),
+                d.market,
+                d.pattern_metrics_status.label("status"),
+                ma60_stage_expr(th, d).label("stage"),
                 *[exprs[cid].label(cid) for cid in CONDITION_IDS],
-                *[getattr(D, key) for key in METRIC_KEYS],
+                *[getattr(d, key) for key in METRIC_KEYS],
             )
-            .join(StockMaster, StockMaster.stock_code == D.stock_code)
+            .join(StockMaster, StockMaster.stock_code == d.stock_code)
             .where(*self._where(filters, th))
             # 산정 불가(NULL) 값은 방향과 무관하게 뒤로,
             # 동률은 stock_code 오름차순(결정론적 페이지네이션)
-            .order_by(order.nulls_last(), D.stock_code.asc())
+            .order_by(order.nulls_last(), d.stock_code.asc())
             .offset((filters.page - 1) * filters.page_size)
             .limit(filters.page_size)
         )
 
     def search(self, filters: PatternFilters, thresholds: PatternThresholds) -> PatternQueryResult:
+        d = self._d
         count_stmt = (
             select(func.count())
-            .select_from(D)
-            .join(StockMaster, StockMaster.stock_code == D.stock_code)
+            .select_from(d)
+            .join(StockMaster, StockMaster.stock_code == d.stock_code)
             .where(*self._where(filters, thresholds))
         )
         total = self._session.execute(count_stmt).scalar_one()
@@ -301,3 +313,14 @@ class SqlPatternScreenRepository:
             for r in rows
         ]
         return PatternQueryResult(items=items, total_count=int(total))
+
+    def matching_codes(self, filters: PatternFilters, thresholds: PatternThresholds) -> list[str]:
+        """필터에 맞는 종목코드 전체(페이지·정렬 무시). 장중 재계산의 편입·이탈 비교용."""
+        d = self._d
+        stmt = (
+            select(d.stock_code)
+            .join(StockMaster, StockMaster.stock_code == d.stock_code)
+            .where(*self._where(filters, thresholds))
+            .order_by(d.stock_code.asc())
+        )
+        return [str(c) for c in self._session.execute(stmt).scalars()]

@@ -449,13 +449,16 @@ def test_s04_threshold_bypass_parameters_do_not_change_results(client):
 
 # ── A35: 기존 /screen 계약 불변(골든 비교) ──────────────────────────────────────────
 # screen.py 해시는 DEC-046(R2)에서 400 메시지의 입력값 반사를 제거하며 1회 갱신했다
-# (에러 코드·상태·성공 응답 계약은 불변).
+# (에러 코드·상태·성공 응답 계약은 불변). screen_repository.py 해시는 DEC-089(장중 재계산)에서
+# 1회 더 갱신했다: 판정 SQL을 복제하지 않고 같은 열을 가진 "가상 테이블" 엔티티를 `source`로
+# 받게 하는 추가형 변경(기본값 = 기존 테이블, `matching_codes` 추가)이며, 아래 골든 응답 비교
+# (test_a35_existing_screen_responses_equal_pre_change_golden)가 불변을 계속 보증한다.
 FROZEN_SHA256 = {
     "services/public_api/api/screen.py": (
         "a905eae0be40791bdaeb20a8a58f8e1513ef2180c6e0565441e516c8e83beac7"
     ),
     "services/public_api/db/screen_repository.py": (
-        "ca04b7bc69e672d107c19c720ed5c7c402e0b8187f73e8195f9d93d06f1e68a4"
+        "82dbcfdf1a8ebb6aa70e378190ae1e0fe6cce665e32d48bcafa1a5735a044415"
     ),
     "services/public_api/schemas/screen.py": (
         "cb0005cc23c328ff04c63be00973af1f494342a5d48fbe37103b1d0fd7e6ee28"

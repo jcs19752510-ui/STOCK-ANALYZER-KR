@@ -9,8 +9,10 @@ from __future__ import annotations
 
 
 class ApiError(Exception):
-    def __init__(self, status_code: int, code: str, message: str):
+    def __init__(self, status_code: int, code: str, message: str, details: dict | None = None):
         super().__init__(message)
         self.status_code = status_code
         self.code = code
         self.message = message
+        # 선택 부가 정보(진행 상황 등, 비밀값 금지). 없으면 응답에 `details` 키를 넣지 않는다.
+        self.details = details

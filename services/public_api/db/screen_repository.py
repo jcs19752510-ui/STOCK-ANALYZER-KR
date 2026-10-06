@@ -15,7 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
-from typing import Protocol
+from typing import Any, Protocol
 
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
@@ -35,6 +35,8 @@ SORT_COLUMN_MAP = {
     "ma5_gap_pct": DerivedMetricsDaily.ma5_gap_pct,
     "ma20_gap_pct": DerivedMetricsDaily.ma20_gap_pct,
 }
+# `sort_by` → 엔티티 속성 이름(같은 열을 가진 다른 엔티티에서도 같은 정렬을 쓰기 위함).
+SORT_ATTR_MAP = {key: col.key for key, col in SORT_COLUMN_MAP.items()}
 
 
 @dataclass(frozen=True)
@@ -89,69 +91,72 @@ class ScreenRepository(Protocol):
     def search(self, filters: ScreenFilters) -> ScreenQueryResult: ...
 
 
-def _apply_filters(stmt: Select, filters: ScreenFilters) -> Select:
+def _apply_filters(stmt: Select, filters: ScreenFilters, D: Any = DerivedMetricsDaily) -> Select:  # noqa: N803
     """`null` 지표를 조건으로 건 경우 자동 제외(§3-2 결측치 처리 원칙) —
     SQL의 `NULL 비교는 항상 알 수 없음(false 취급)` 표준 동작을 그대로
     활용한다(별도 `IS NOT NULL` 분기 불필요)."""
-    stmt = stmt.where(DerivedMetricsDaily.trade_date == filters.trade_date)
+    stmt = stmt.where(D.trade_date == filters.trade_date)
     if filters.market != "ALL":
-        stmt = stmt.where(DerivedMetricsDaily.market == filters.market)
+        stmt = stmt.where(D.market == filters.market)
     if filters.market_cap_min is not None:
-        stmt = stmt.where(DerivedMetricsDaily.market_cap_raw_krw >= filters.market_cap_min)
+        stmt = stmt.where(D.market_cap_raw_krw >= filters.market_cap_min)
     if filters.market_cap_max is not None:
-        stmt = stmt.where(DerivedMetricsDaily.market_cap_raw_krw <= filters.market_cap_max)
+        stmt = stmt.where(D.market_cap_raw_krw <= filters.market_cap_max)
     if filters.volume_min is not None:
-        stmt = stmt.where(DerivedMetricsDaily.volume_raw >= filters.volume_min)
+        stmt = stmt.where(D.volume_raw >= filters.volume_min)
     if filters.return_pct_min is not None:
-        stmt = stmt.where(DerivedMetricsDaily.return_pct >= filters.return_pct_min)
+        stmt = stmt.where(D.return_pct >= filters.return_pct_min)
     if filters.return_pct_max is not None:
-        stmt = stmt.where(DerivedMetricsDaily.return_pct <= filters.return_pct_max)
+        stmt = stmt.where(D.return_pct <= filters.return_pct_max)
     if filters.per_max is not None:
-        stmt = stmt.where(DerivedMetricsDaily.per_raw <= filters.per_max)
+        stmt = stmt.where(D.per_raw <= filters.per_max)
     if filters.pbr_max is not None:
-        stmt = stmt.where(DerivedMetricsDaily.pbr_raw <= filters.pbr_max)
+        stmt = stmt.where(D.pbr_raw <= filters.pbr_max)
     if filters.ma5_gap_pct_min is not None:
-        stmt = stmt.where(DerivedMetricsDaily.ma5_gap_pct >= filters.ma5_gap_pct_min)
+        stmt = stmt.where(D.ma5_gap_pct >= filters.ma5_gap_pct_min)
     if filters.ma5_gap_pct_max is not None:
-        stmt = stmt.where(DerivedMetricsDaily.ma5_gap_pct <= filters.ma5_gap_pct_max)
+        stmt = stmt.where(D.ma5_gap_pct <= filters.ma5_gap_pct_max)
     if filters.ma20_gap_pct_min is not None:
-        stmt = stmt.where(DerivedMetricsDaily.ma20_gap_pct >= filters.ma20_gap_pct_min)
+        stmt = stmt.where(D.ma20_gap_pct >= filters.ma20_gap_pct_min)
     if filters.ma20_gap_pct_max is not None:
-        stmt = stmt.where(DerivedMetricsDaily.ma20_gap_pct <= filters.ma20_gap_pct_max)
+        stmt = stmt.where(D.ma20_gap_pct <= filters.ma20_gap_pct_max)
     if filters.volume_anomaly_score_min is not None:
         stmt = stmt.where(
-            DerivedMetricsDaily.volume_anomaly_score >= filters.volume_anomaly_score_min
+            D.volume_anomaly_score >= filters.volume_anomaly_score_min
         )
     if filters.volume_anomaly_score_max is not None:
         stmt = stmt.where(
-            DerivedMetricsDaily.volume_anomaly_score <= filters.volume_anomaly_score_max
+            D.volume_anomaly_score <= filters.volume_anomaly_score_max
         )
     return stmt
 
 
 class SqlScreenRepository:
-    def __init__(self, session: Session):
+    def __init__(self, session: Session, source: Any = None):
+        """`source`: 같은 열을 가진 엔티티(기본: 발행 테이블, 장중 재계산: 가상 테이블)."""
         self._session = session
+        self._d: Any = DerivedMetricsDaily if source is None else source
 
     def get_current_published_trade_date(self, market: str) -> date | None:
         row = self._session.get(CurrentPublishedBatch, market)
         return row.trade_date if row is not None else None
 
     def search(self, filters: ScreenFilters) -> ScreenQueryResult:
-        filtered = _apply_filters(select(DerivedMetricsDaily), filters)
+        d = self._d
+        filtered = _apply_filters(select(d), filters, d)
 
         count_stmt = select(func.count()).select_from(filtered.subquery())
         total_count = self._session.execute(count_stmt).scalar_one()
 
-        sort_column = SORT_COLUMN_MAP[filters.sort_by]
+        sort_column = getattr(d, SORT_ATTR_MAP[filters.sort_by])
         order = sort_column.desc() if filters.sort_dir == "desc" else sort_column.asc()
 
         # 동률 처리는 stock_code 오름차순을 2차 정렬 키로 고정한다(§4-2 v3 신규
         # 설명 — 페이지네이션 결과가 매번 동일하게 결정론적으로 나오도록).
         page_stmt = (
-            filtered.join(StockMaster, StockMaster.stock_code == DerivedMetricsDaily.stock_code)
+            filtered.join(StockMaster, StockMaster.stock_code == d.stock_code)
             .add_columns(StockMaster.name)
-            .order_by(order, DerivedMetricsDaily.stock_code.asc())
+            .order_by(order, d.stock_code.asc())
             .offset((filters.page - 1) * filters.page_size)
             .limit(filters.page_size)
         )
@@ -173,8 +178,15 @@ class SqlScreenRepository:
         ]
         return ScreenQueryResult(items=items, total_count=total_count)
 
+    def matching_codes(self, filters: ScreenFilters) -> list[str]:
+        """필터에 맞는 종목코드 전체(페이지·정렬 무시). 장중 재계산의 편입·이탈 비교용."""
+        d = self._d
+        stmt = _apply_filters(select(d.stock_code), filters, d).order_by(d.stock_code.asc())
+        return [str(c) for c in self._session.execute(stmt).scalars()]
+
 
 __all__ = [
+    "SORT_ATTR_MAP",
     "SORT_COLUMN_MAP",
     "ScreenFilters",
     "ScreenQueryResult",
