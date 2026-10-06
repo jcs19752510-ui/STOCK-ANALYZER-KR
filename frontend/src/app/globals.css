@@ -11,6 +11,7 @@
   --color-surface-bg: #ffffff;
   --color-surface-subtle: #f3f4f6;
   --color-border-default: #6b7280;
+  --color-border-subtle: #e5e7eb;
   --color-focus-ring: #1d4ed8;
 
   --space-1: 4px;
@@ -99,8 +100,7 @@ input:focus-visible,
 }
 
 .site-header {
-  padding: var(--space-4);
-  border-bottom: 1px solid var(--color-surface-subtle);
+  padding: var(--space-3) var(--space-4);
 }
 
 .site-header__bar {
@@ -122,18 +122,24 @@ input:focus-visible,
   text-decoration: none;
 }
 
-/* 04-ux-design.md §4/§6 GlobalNav — 모바일(< 768px): 머리글 안 상단 탭 줄(제목 아래, 본문 위).
-   예전에는 화면 맨 아래 고정 탭바였으나 눈에 띄지 않아 상단으로 옮겼다(2026-10-06). 헤더 막대가 줄바꿈되어
-   워드마크 / 내비 / 회원 메뉴 순서(DOM 순서와 동일)로 쌓이고, 내비는 한 줄 전체 폭을 쓴다. */
+/* 04-ux-design.md §4/§6 GlobalNav — 머리글(제목·회원 메뉴) 바로 아래의 전체 폭 메뉴 줄.
+   화면을 내려도 면책 배너 바로 아래에 붙어 따라온다(sticky). 배너 높이는 `BannerOffset`이 `--banner-height`로 알려 준다.
+   z-index 90: 면책 배너(1000)·바텀시트(940/950)보다 낮고, 전체 화면 차트(100)보다도 낮아 그 위를 가리지 않는다.
+   (2026-10-06: 예전 모바일 하단 고정 탭바를 상단으로 이동) */
 .global-nav {
-  flex: 0 0 100%;
-  min-width: 0;
+  position: sticky;
+  top: var(--banner-height, 0px);
+  z-index: 90;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface-bg);
+  border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .global-nav__list {
   display: flex;
   gap: var(--space-1);
-  margin: 0;
+  max-width: 1200px;
+  margin: 0 auto;
   padding: 0;
   list-style: none;
 }
@@ -197,25 +203,19 @@ main {
   padding: var(--space-6) var(--space-4);
 }
 
-/* 04-ux-design.md §6 — md(태블릿, ≥768px): 같은 상단 탭을 머리글 한 줄 안에서 왼쪽 정렬 */
+/* 04-ux-design.md §6 — md(태블릿, ≥768px): 메뉴 버튼을 왼쪽 정렬하고 글자·여백을 키운다 */
 @media (min-width: 768px) {
-  .global-nav {
-    flex: 0 1 auto;
-  }
-
-  .global-nav__list {
-    justify-content: flex-start;
-    gap: var(--space-2);
-  }
-
   .global-nav__item {
     flex: none;
   }
 
   .global-nav__link {
     min-width: 44px;
-    min-height: 44px; /* 태블릿 터치 대상 유지(검수 QA-07) */
     padding: var(--space-2) var(--space-4);
+  }
+
+  .global-nav__list {
+    gap: var(--space-2);
   }
 }
 
@@ -1086,15 +1086,15 @@ main {
   border: 1px solid var(--color-border-default);
   border-radius: 4px;
   background: var(--color-surface-bg);
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
   font-weight: 500;
   text-decoration: none;
 }
 
 .screening-mode-nav__link[aria-current="page"] {
   border-color: var(--color-brand-primary);
-  background: var(--color-surface-subtle);
-  color: var(--color-brand-primary);
+  background: var(--color-brand-primary);
+  color: #ffffff;
   font-weight: 700;
 }
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { SlowPageReload } from "@/components/SlowPageReload";
+import { BannerOffset } from "@/components/BannerOffset";
 import { DisclaimerBanner } from "@/components/DisclaimerBanner";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <SkipLink />
         <DisclaimerBanner />
+        <BannerOffset />
         <SlowPageReload />
         <Header />
         <main id="main-content">{children}</main>
