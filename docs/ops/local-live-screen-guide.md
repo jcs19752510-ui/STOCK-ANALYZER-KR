@@ -35,7 +35,9 @@ py -3.12 scripts\kis_daily_price_smoke_test.py --out daily-report.json
 - **`[확인필요]`** 면 어떤 줄이 어긋났는지 그대로 알려 주세요(응답 필드 이름이 다르거나, 수정주가 기준이 다른 경우).
 - 화면에서 "제외" 종목이 많거나 "보충이 끝나지 않음"이 오래가면 알려 주세요(호출 한도·지연 조정이 필요할 수 있습니다).
 
-## 6. 설정값 (선택, `.env`)
+## 6. 설정값 (선택 — 기본값이면 충분합니다)
+`scripts\start_local_api.ps1`은 `.env`의 일부 키만 읽으므로, 바꾸려면 API를 시작하기 전에 같은 PowerShell 창에서 `$env:LIVE_SCREEN_MIN_INTERVAL = "3"` 처럼 지정합니다.
+
 | 이름 | 기본 | 뜻 |
 |---|---|---|
 | `LIVE_SCREEN_MIN_INTERVAL` | 5 | 이 초 안의 요청은 직전 계산 결과를 재사용(여러 탭이 계산을 늘리지 않음) |
