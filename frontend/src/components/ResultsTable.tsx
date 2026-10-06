@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LiveItemMarks } from "@/components/LiveItemMarks";
 import { QuoteText } from "@/components/QuoteText";
 import { formatMatchedMetric } from "@/lib/screenMetricFormat";
 import type { ScreenResultItem, StockQuote } from "@/lib/types";
@@ -14,9 +15,11 @@ interface ResultsTableProps {
   captionText: string;
   /** 로컬 모드에서만 넘긴다: "현재가" 열을 추가한다(조건 판정은 일봉 기준 그대로). */
   quotes?: Record<string, StockQuote>;
+  /** 장중 기준(DEC-089)일 때만 넘긴다: "신규"·"일봉" 표지를 그린다. */
+  live?: { newCodes: ReadonlySet<string> };
 }
 
-export function ResultsTable({ items, metricKeys, captionText, quotes }: ResultsTableProps) {
+export function ResultsTable({ items, metricKeys, captionText, quotes, live }: ResultsTableProps) {
   const columnLabels = metricKeys.map((key) => ({
     key,
     label: formatMatchedMetric(key, null).label,
@@ -44,6 +47,7 @@ export function ResultsTable({ items, metricKeys, captionText, quotes }: Results
               <Link href={`/stocks/${item.stock_code}`} className="results-table__link">
                 {item.name} <span className="results-table__code">({item.stock_code})</span>
               </Link>
+              {live && <LiveItemMarks isNew={live.newCodes.has(item.stock_code)} isDaily={item.basis === "daily"} />}
             </th>
             <td>
               <span className="market-badge">{item.market}</span>

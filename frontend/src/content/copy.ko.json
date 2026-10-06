@@ -624,5 +624,113 @@
     "announceChanged": "{time} 편입 {added}종목, 이탈 {removed}종목. 현재 {count}종목입니다.",
     "announceFailing": "{time} 조회에 실패해 마지막 값을 보여 줍니다.",
     "announceRecovered": "{time} 조회가 다시 정상입니다."
+  },
+  "liveScreen": {
+    "switchLabel": "장중 기준",
+    "switchHint": "켜면 현재가를 반영해 지표를 다시 계산합니다(본인 전용). 끄면 일봉 기준입니다.",
+    "switchOnState": "켜짐",
+    "switchOffState": "꺼짐",
+    "bannerRegionLabel": "장중 기준 계산 안내",
+    "basisHeading": "장중 기준",
+    "computedAt": "계산 {time}({age}초 전)",
+    "quotesReceived": "시세 수신 {covered}/{total}종목",
+    "baseDaily": "기준 일봉 {date}",
+    "volumeWarning": "거래량 계열(거래량·거래량 이상치·거래량비·급등 이력)은 장중 누적 부분값이며 PER·PBR·시가총액 순위는 일봉 기준입니다.",
+    "quotesStaleNotice": "시세 갱신이 지연되고 있습니다. 시세를 반영한 값이 최신이 아닐 수 있습니다.",
+    "lowCoverageNotice": "시세를 받은 종목이 90% 미만이라 등락률 순위는 일봉 기준입니다.",
+    "fillRunning": "직전 거래일 일봉을 증권사에서 보충하는 중입니다({done}/{total}종목). 끝나기 전에는 결과에서 빠진 종목이 있을 수 있습니다.",
+    "fillPending": "{n}종목은 일봉 보충 중",
+    "fillUsed": "발행 일봉이 직전 거래일보다 {gap}거래일 뒤처져 증권사 일봉으로 보충해 계산했습니다(보충 {filled}종목).",
+    "fillFailed": "증권사 일봉 보충에 실패했습니다. 일부 종목이 결과에서 빠져 있을 수 있습니다.",
+    "fillExcluded": "{n}종목은 증권사 일봉 보충이 안 되어 결과에서 제외됨",
+    "fillMismatched": "증권사 일봉과 발행 일봉의 종가가 달라 계산에서 뺀 종목 {n}개(수정주가 불일치 등)",
+    "delayedBadge": "지연",
+    "delayedNotice": "마지막 갱신이 {age}초 전입니다. 최근 갱신이 이어지지 않아 마지막으로 받은 값을 보여 줍니다.",
+    "failingNotice": "최근 갱신에 실패해 마지막 값을 보여 줍니다. {sec}초 뒤 다시 시도합니다.",
+    "failingPausedNotice": "최근 요청에 실패했습니다. 일시정지 중이라 자동으로 다시 시도하지 않습니다. '새로 계산'을 눌러 다시 시도하세요.",
+    "failingDetail": "오류: {detail}",
+    "pausedNotice": "일시정지 중입니다. {time}에 계산한 결과로 고정되어 있고 페이지를 넘겨도 같은 결과입니다. 시세는 계속 바뀌므로 지금 값과 다를 수 있습니다.",
+    "expiredNotice": "고정해 둔 계산 결과가 만료되어 새로 계산했습니다. 일시정지는 유지되며 새 결과({time})에 고정되었습니다.",
+    "pause": "일시정지",
+    "refresh": "새로 계산",
+    "refreshing": "계산 중",
+    "revert": "일봉 기준으로 되돌리기",
+    "retry": "다시 시도",
+    "autoNote": "{sec}초 간격으로 자동 갱신(탭이 보일 때만)",
+    "pausedState": "일시정지 중",
+    "loading": "장중 기준으로 계산하는 중입니다.",
+    "newBadge": "신규",
+    "newBadgeSr": "최근 1분 안에 조건 결과에 들어옴",
+    "dailyMark": "일봉",
+    "dailyMarkTitle": "시세를 받지 못해 일봉 값을 그대로 쓴 종목",
+    "dailyMarkSr": "일봉 기준 값",
+    "changesHeading": "최근 변화",
+    "changesNote": "직전 계산 대비 조건 결과에 들어오고 빠진 종목입니다. 이 화면에서 본 변화만 표시합니다.",
+    "changesNone": "아직 확인된 변화가 없습니다.",
+    "entered": "편입",
+    "left": "이탈",
+    "more": "외 {n}종목",
+    "patternDefinitionBasis": "계산 기준: 직전 거래일까지의 일봉에 오늘 진행 중인 값(현재가·누적 거래량)을 붙여 다시 계산(장중 기준)",
+    "serverMessage": "서버 안내: {message}",
+    "errors": {
+      "base_stale": [
+        "일봉 데이터가 너무 오래되어 장중 기준을 쓸 수 없습니다",
+        "발행된 일봉이 직전 거래일보다 5거래일 넘게 뒤처져 있습니다. 일봉 기준 화면은 그대로 쓸 수 있습니다."
+      ],
+      "base_filling": [
+        "직전 거래일 일봉을 보충하는 중입니다",
+        "증권사에서 빠진 거래일의 일봉을 받아 오는 중입니다. 5초 간격으로 자동으로 다시 시도합니다."
+      ],
+      "quotes_not_ready": [
+        "시세를 모으는 중입니다",
+        "증권사 시세를 한 바퀴 받아 오는 중입니다. 5초 간격으로 자동으로 다시 시도합니다."
+      ],
+      "forbidden": [
+        "이 화면을 쓸 권한이 없습니다",
+        "장중 기준은 내 PC의 개인 로컬 모드에서 관리자 계정으로만 쓸 수 있습니다."
+      ],
+      "not_found": [
+        "장중 기준을 쓸 수 없습니다",
+        "개인 로컬 모드가 꺼져 있거나 이 주소에서는 열리지 않습니다. API 서버의 LOCAL_INTRADAY_ENABLED 설정을 확인하세요."
+      ],
+      "unavailable": [
+        "장중 기준을 쓸 수 없습니다",
+        "증권사 앱키 등 개인 로컬 모드 설정을 확인하세요(API 서버의 KIS_APP_KEY·KIS_APP_SECRET)."
+      ],
+      "invalid": [
+        "조건 값이 올바르지 않습니다",
+        "입력한 조건으로는 계산할 수 없습니다. 조건을 바꿔 다시 적용하세요."
+      ],
+      "rate_limited": [
+        "요청이 잠시 많습니다",
+        "잠시 뒤 자동으로 다시 시도합니다."
+      ],
+      "server": [
+        "장중 기준 계산에 실패했습니다",
+        "서버 응답에 문제가 있습니다. 간격을 늘려 자동으로 다시 시도합니다."
+      ],
+      "network": [
+        "서버에 연결하지 못했습니다",
+        "간격을 늘려 자동으로 다시 시도합니다."
+      ],
+      "bad_response": [
+        "서버 응답을 해석하지 못했습니다",
+        "응답 모양이 예상과 다릅니다. 간격을 늘려 자동으로 다시 시도합니다."
+      ],
+      "snapshot_expired": [
+        "계산 결과가 만료되었습니다",
+        "새로 계산합니다."
+      ]
+    },
+    "announceLoading": "장중 기준으로 계산하는 중입니다.",
+    "announceLoaded": "장중 기준 결과를 불러왔습니다.",
+    "announcePaused": "일시정지했습니다. 현재 계산 결과로 고정됩니다.",
+    "announceResumed": "자동 갱신을 다시 시작했습니다.",
+    "announceDelayed": "갱신이 지연되고 있습니다. 마지막으로 받은 값을 보여 줍니다.",
+    "announceRecovered": "갱신이 다시 정상입니다.",
+    "announceQuotesStale": "시세 갱신이 지연되고 있습니다.",
+    "announceFill": "직전 거래일 일봉을 증권사에서 보충하는 중입니다.",
+    "announceExpired": "고정한 계산 결과가 만료되어 새로 계산했습니다.",
+    "announceError": "{title}"
   }
 }

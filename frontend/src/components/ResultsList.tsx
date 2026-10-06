@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LiveItemMarks } from "@/components/LiveItemMarks";
 import { QuoteText } from "@/components/QuoteText";
 import { formatMatchedMetric } from "@/lib/screenMetricFormat";
 import type { ScreenResultItem, StockQuote } from "@/lib/types";
@@ -14,9 +15,11 @@ interface ResultsListProps {
   metricKeys: string[];
   /** 로컬 모드에서만 넘긴다: 카드에 현재가를 보인다. */
   quotes?: Record<string, StockQuote>;
+  /** 장중 기준(DEC-089)일 때만 넘긴다: "신규"·"일봉" 표지를 그린다. */
+  live?: { newCodes: ReadonlySet<string> };
 }
 
-export function ResultsList({ items, metricKeys, quotes }: ResultsListProps) {
+export function ResultsList({ items, metricKeys, quotes, live }: ResultsListProps) {
   return (
     <ul className="results-list">
       {items.map((item) => (
@@ -26,6 +29,7 @@ export function ResultsList({ items, metricKeys, quotes }: ResultsListProps) {
               <span className="results-list__name">{item.name}</span>
               <span className="results-list__code">({item.stock_code})</span>
               <span className="market-badge">{item.market}</span>
+              {live && <LiveItemMarks isNew={live.newCodes.has(item.stock_code)} isDaily={item.basis === "daily"} />}
             </div>
             {quotes && quotes[item.stock_code] && (
               <div className="results-list__quote">

@@ -1,17 +1,21 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import copy from "@/content/copy.ko.json";
 import { ConditionFilterPanel } from "@/components/ConditionFilterPanel";
 import { DataFreshnessBadge } from "@/components/DataFreshnessBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState, type ErrorStateVariant } from "@/components/ErrorState";
+import { LiveBasisSwitch } from "@/components/LiveBasisSwitch";
+import { LiveChangesList, LiveScreenPanel } from "@/components/LiveScreenPanel";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { Pagination } from "@/components/Pagination";
 import { ResultsList } from "@/components/ResultsList";
 import { ResultsTable } from "@/components/ResultsTable";
 import { mapApiErrorCodeToDisplay } from "@/lib/errorMapping";
-import { fetchScreenResults, type ScreenQuery, type ScreenSortBy, type ScreenSortDir } from "@/lib/screenApi";
+import { buildSearchParams, fetchScreenResults, type ScreenQuery, type ScreenSortBy, type ScreenSortDir } from "@/lib/screenApi";
+import { stripLiveParams } from "@/lib/liveScreen/logic";
+import { useLiveScreen, useLiveScreenAccess, useLiveToggle, useNewCodes } from "@/lib/liveScreen/react";
 import { SCREEN_FIELD_IDS } from "@/lib/screenFieldIds";
 import { orderMatchedMetricKeys } from "@/lib/screenMetricFormat";
 import { useIsDesktopViewport } from "@/lib/useIsDesktopViewport";
@@ -82,7 +86,18 @@ export function ScreenerClient() {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const isDesktopResults = useIsDesktopViewport(768);
   // 개인 로컬 모드(내 PC, 관리자)에서만 결과 옆에 현재가(준실시간)를 보인다. 조건 판정은 일봉 기준 그대로(DEC-084 B).
-  const resultCodes = state.kind === "success" ? state.data.items.map((item) => item.stock_code) : [];
+  // 장중 기준(DEC-089): 로컬 모드 관리자에게만 전환이 보이고, 켜면 결과·배너·자동 갱신이 `/local/screen`으로 바뀐다. 꺼져 있으면 아래 코드는 아무 요청도 하지 않는다.
+  const liveAccess = useLiveScreenAccess();
+  const [liveOn, setLiveOn] = useLiveToggle(liveAccess);
+  const live = useLiveScreen<ScreenData>(liveOn);
+  const newCodes = useNewCodes(live.view);
+  const liveMarks = liveOn ? { newCodes } : undefined;
+  const liveData = liveOn ? live.view.data : null;
+  const resultCodes = liveOn
+    ? (liveData?.items.map((item) => item.stock_code) ?? [])
+    : state.kind === "success"
+      ? state.data.items.map((item) => item.stock_code)
+      : [];
   const { quotes: resultQuotes, enabled: showQuotes } = useLocalQuotes(resultCodes);
 
   function updateField(field: keyof ScreenFormValues, value: string) {
@@ -102,6 +117,23 @@ export function ScreenerClient() {
     setFormValues(defaultScreenFormValuesFor(market));
     setFieldErrors([]);
   }
+
+  // 자동 갱신으로 결과가 줄어 지금 보던 쪽이 비면(총건수는 남아 있음) 마지막 쪽으로 옮긴다.
+  useEffect(() => {
+    if (!liveOn || !liveData || liveData.items.length > 0 || liveData.total_count === 0) return;
+    const last = Math.max(1, Math.ceil(liveData.total_count / PAGE_SIZE));
+    if (last < liveData.page) live.setPage(last);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 응답이 바뀔 때만 확인
+  }, [liveData]);
+
+  // 켜짐이 바뀔 때: 켜면 적용해 둔 조건으로 바로 장중 기준 계산을 시작하고, 끄면 같은 조건을 일봉 기준으로 다시 조회한다.
+  const wasLiveRef = useRef(false);
+  useEffect(() => {
+    if (liveOn && appliedQuery) live.setQuery({ kind: "screen", params: stripLiveParams(buildSearchParams(appliedQuery)) }, appliedQuery.page);
+    if (!liveOn && wasLiveRef.current && appliedQuery) void runQuery(appliedQuery);
+    wasLiveRef.current = liveOn;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 켜짐이 바뀔 때만 실행
+  }, [liveOn]);
 
   async function runQuery(query: ScreenQuery) {
     setAppliedQuery(query);
@@ -138,11 +170,22 @@ export function ScreenerClient() {
     }
     setFieldErrors([]);
     setMobileFilterOpen(false);
+    if (liveOn) {
+      const query = toScreenQuery(formValues, 1);
+      setAppliedQuery(query);
+      live.setQuery({ kind: "screen", params: stripLiveParams(buildSearchParams(query)) }, 1);
+      return;
+    }
     void runQuery(toScreenQuery(formValues, 1));
   }
 
   function handlePageChange(page: number) {
     if (!appliedQuery) return;
+    if (liveOn) {
+      setAppliedQuery({ ...appliedQuery, page });
+      live.setPage(page); // 일시정지 중이면 같은 snapshot_id, 아니면 최신
+      return;
+    }
     void runQuery({ ...appliedQuery, page });
   }
 
@@ -151,17 +194,49 @@ export function ScreenerClient() {
     void runQuery(appliedQuery);
   }
 
+  const handleRevert = useCallback(() => setLiveOn(false), [setLiveOn]);
+
   // DEF-U07-01 원인(b) 이중 방어: `useFocusTrap`이 `onEscape`를 ref로
   // 추적해 불안정한 참조에 더 이상 영향받지 않지만, 이 콜백 자체도
   // 매 렌더마다 새로 만들 이유가 없으므로 안정화한다.
   const handleCloseMobile = useCallback(() => setMobileFilterOpen(false), []);
 
-  const isSubmitting = state.kind === "loading";
+  const isSubmitting = liveOn ? live.view.loading && live.view.data === null : state.kind === "loading";
   const showPercentileScopeNotice = appliedQuery !== null && appliedQuery.market !== "ALL";
+
+  /** 제목·표(또는 카드)·페이지 이동. 일봉 기준과 장중 기준이 같은 모양을 쓴다(장중 기준은 `liveMarks`로 "신규"·"일봉" 표지를 더한다). */
+  function renderResults(data: ScreenData) {
+    const metricKeys = orderMatchedMetricKeys(Object.keys(data.items[0]?.matched_metrics ?? {}));
+    const heading = `${copy.screener.resultsHeadingPrefix} ${data.total_count}${copy.screener.resultsHeadingSuffix}`;
+    return (
+      <>
+        <h2 className="screener-page__results-heading">{heading}</h2>
+        {isDesktopResults ? (
+          <ResultsTable
+            items={data.items}
+            metricKeys={metricKeys}
+            captionText={heading}
+            quotes={showQuotes ? resultQuotes : undefined}
+            live={liveMarks}
+          />
+        ) : (
+          <ResultsList items={data.items} metricKeys={metricKeys} quotes={showQuotes ? resultQuotes : undefined} live={liveMarks} />
+        )}
+        <Pagination
+          page={data.page}
+          pageSize={PAGE_SIZE}
+          totalCount={data.total_count}
+          onPageChange={handlePageChange}
+          announce={!liveOn}
+        />
+      </>
+    );
+  }
 
   return (
     <section className="screener-page">
       <h1>{copy.nav.screener}</h1>
+      {liveAccess && <LiveBasisSwitch on={liveOn} onChange={setLiveOn} />}
 
       <button
         type="button"
@@ -185,29 +260,61 @@ export function ScreenerClient() {
           onCloseMobile={handleCloseMobile}
         />
 
-        <div className="screener-page__results" aria-live="polite">
-          {state.kind === "idle" && <EmptyState variant="no-screen-conditions" />}
+        <div className="screener-page__results" aria-live={liveOn ? "off" : "polite"}>
+          {liveOn && (
+            <LiveScreenPanel
+              view={live.view}
+              hasQuery={appliedQuery !== null}
+              onPause={live.pause}
+              onResume={live.resume}
+              onRefresh={live.refreshNow}
+              onRevert={handleRevert}
+            />
+          )}
 
-          {state.kind === "loading" && (
+          {liveOn && appliedQuery === null && <EmptyState variant="no-screen-conditions" />}
+
+          {liveOn && appliedQuery !== null && liveData === null && live.view.error === null && (
+            <div className="screener-page__loading" aria-busy="true">
+              <LoadingSkeleton variant="card" count={5} />
+            </div>
+          )}
+
+          {liveOn && liveData && liveData.total_count === 0 && <EmptyState variant="no-screen-result" />}
+
+          {liveOn && liveData && liveData.total_count > 0 && (
+            <>
+              {showPercentileScopeNotice && (
+                <p className="inline-notice inline-notice--info">{copy.screener.percentileScopeNotice}</p>
+              )}
+              {renderResults(liveData)}
+            </>
+          )}
+
+          {liveOn && liveData && <LiveChangesList view={live.view} />}
+
+          {!liveOn && state.kind === "idle" && <EmptyState variant="no-screen-conditions" />}
+
+          {!liveOn && state.kind === "loading" && (
             <div className="screener-page__loading">
               <LoadingSkeleton variant="card" count={5} />
             </div>
           )}
 
-          {state.kind === "empty-no-data" && <EmptyState variant="no-data-yet" />}
+          {!liveOn && state.kind === "empty-no-data" && <EmptyState variant="no-data-yet" />}
 
-          {state.kind === "error" && (
+          {!liveOn && state.kind === "error" && (
             <ErrorState variant={state.variant} onRetry={handleRetry} />
           )}
 
-          {state.kind === "empty-result" && (
+          {!liveOn && state.kind === "empty-result" && (
             <>
               <DataFreshnessBadge freshness={state.freshness} />
               <EmptyState variant="no-screen-result" />
             </>
           )}
 
-          {state.kind === "success" && (
+          {!liveOn && state.kind === "success" && (
             <>
               <DataFreshnessBadge freshness={state.freshness} />
               {showPercentileScopeNotice && (
@@ -218,35 +325,7 @@ export function ScreenerClient() {
               {showQuotes && (
                 <p className="inline-notice inline-notice--info">{copy.screener.liveQuoteNotice}</p>
               )}
-              <h2 className="screener-page__results-heading">
-                {copy.screener.resultsHeadingPrefix} {state.data.total_count}
-                {copy.screener.resultsHeadingSuffix}
-              </h2>
-              {(() => {
-                const metricKeys = orderMatchedMetricKeys(
-                  Object.keys(state.data.items[0]?.matched_metrics ?? {})
-                );
-                return isDesktopResults ? (
-                  <ResultsTable
-                    items={state.data.items}
-                    metricKeys={metricKeys}
-                    captionText={`${copy.screener.resultsHeadingPrefix} ${state.data.total_count}${copy.screener.resultsHeadingSuffix}`}
-                    quotes={showQuotes ? resultQuotes : undefined}
-                  />
-                ) : (
-                  <ResultsList
-                    items={state.data.items}
-                    metricKeys={metricKeys}
-                    quotes={showQuotes ? resultQuotes : undefined}
-                  />
-                );
-              })()}
-              <Pagination
-                page={state.data.page}
-                pageSize={PAGE_SIZE}
-                totalCount={state.data.total_count}
-                onPageChange={handlePageChange}
-              />
+              {renderResults(state.data)}
             </>
           )}
         </div>

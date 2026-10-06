@@ -9,9 +9,11 @@ interface PaginationProps {
   pageSize: number;
   totalCount: number;
   onPageChange: (page: number) => void;
+  /** 건수 문구를 낭독 영역으로 알릴지(기본 true). 장중 기준 자동 갱신 화면은 10초마다 바뀌므로 false. */
+  announce?: boolean;
 }
 
-export function Pagination({ page, pageSize, totalCount, onPageChange }: PaginationProps) {
+export function Pagination({ page, pageSize, totalCount, onPageChange, announce = true }: PaginationProps) {
   const from = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, totalCount);
   const hasPrev = page > 1;
@@ -19,7 +21,7 @@ export function Pagination({ page, pageSize, totalCount, onPageChange }: Paginat
 
   return (
     <nav className="pagination" aria-label="페이지 이동">
-      <p className="pagination__summary" aria-live="polite">
+      <p className="pagination__summary" aria-live={announce ? "polite" : "off"}>
         총 {totalCount}건 중 {from}–{to}건
       </p>
       <div className="pagination__controls">

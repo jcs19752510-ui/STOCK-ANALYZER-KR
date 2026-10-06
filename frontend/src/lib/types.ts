@@ -57,6 +57,8 @@ export interface ScreenResultItem {
   name: string;
   market: string;
   matched_metrics: Record<string, number | null>;
+  /** 장중 기준(`/local/screen`) 응답에서만: 시세를 받아 다시 계산했으면 live, 일봉 값 그대로면 daily(DEC-089) */
+  basis?: "live" | "daily";
 }
 
 export interface ScreenData {
@@ -130,6 +132,8 @@ export interface PatternItem {
   metrics: PatternMetrics;
   /** c4 화면 문구용 단계(서버가 c4와 같은 경계로 산출 — 프런트는 재계산하지 않는다) */
   ma60_stage: string | null;
+  /** 장중 기준 응답에서만(DEC-089) */
+  basis?: "live" | "daily";
 }
 
 export interface PatternDefinition {

@@ -53,7 +53,7 @@ export type ScreenApiResult =
   | { kind: "success"; data: ScreenData; freshness: DataFreshness }
   | { kind: "error"; code: string; message: string };
 
-function buildSearchParams(query: ScreenQuery): URLSearchParams {
+export function buildSearchParams(query: ScreenQuery): URLSearchParams {
   const params = new URLSearchParams();
   params.set("market", query.market);
   if (query.marketCapMinEok !== undefined) {
