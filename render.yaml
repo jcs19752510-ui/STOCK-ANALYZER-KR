@@ -7,7 +7,7 @@ services:
   - type: web
     name: stock-analyzer-web
     runtime: docker
-    plan: free
+    plan: starter                      # 유료(2026-10-06 전환). 대시보드에서만 바꾸면 동기화 때 되돌아갈 수 있어 여기도 맞춘다
     region: singapore
     branch: PROD_SCH
     dockerfilePath: ./deploy/unified.Dockerfile
