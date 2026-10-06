@@ -88,7 +88,7 @@ if (MODE === "on") {
     const direct = seen.filter((u) => u.startsWith(apiOrigin));
     const viaWeb = seen.filter((u) => u.startsWith(BASE) && u.includes("/api/v1/local/"));
     rec("브라우저가 API 서버를 직접 부르지 않음(전부 웹 서버 경유)", direct.length === 0, `직접 ${direct.length}건 / 대행 로컬 ${viaWeb.length}건`);
-    rec("로컬 전용 호출이 실제로 대행 경로로 나감", viaWeb.length >= 3, `${viaWeb.length}건`);
+    rec("실시간 스트림이 대행 경로로 열림(연결 1건, 호가·체결 폴링 없음)", viaWeb.filter((u) => u.includes("/stream")).length === 1 && !viaWeb.some((u) => /\/(orderbook|ticks)(\?|$)/.test(u)), `${viaWeb.length}건`);
     const inv = await ctx.request.get(`${BASE}/api/v1/local/stocks/T00001/investor`);
     rec("관리자: 로컬 투자자 수급 조회 가능", inv.status() === 200, String(inv.status()));
     rec("페이지 오류 없음", errs.length === 0, errs.join("|"));
@@ -142,7 +142,7 @@ if (MODE === "on") {
   await page.waitForTimeout(1500);
   rec("체결 탭이 오류 없이 표시됨", (await page.locator(".local-error").count()) === 0, `${await page.$$eval(".daily-table tbody tr", (r) => r.length)}행`);
   const direct = seen.filter((u) => u.startsWith(apiOrigin) && u.includes("/api/v1/local/"));
-  rec("끈 상태에서는 예전처럼 API를 직접 호출", direct.length >= 2, `${direct.length}건`);
+  rec("끈 상태에서는 예전처럼 API를 직접 호출(실시간 스트림 연결 포함)", direct.length >= 1 && direct.some((u) => u.includes("/stream")), `${direct.length}건`);
   const r = await ctx.request.get(`${BASE}/api/v1/screen?market=KOSPI`);
   rec("끈 상태에서는 대행 경로가 없음(404)", r.status() === 404, String(r.status()));
   const api = await fetch(`${API}/api/v1/screen?market=KOSPI&page_size=2`);

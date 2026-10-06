@@ -23,7 +23,8 @@
 ## 진행 중 개발: 본인 전용 실시간 시세 (DEC-084, 2026-10-06 시작)
 - 목표: 내 PC(로컬 모드)에서 **본인(관리자)만** 증권사 웹소켓으로 현재가·호가·체결·분/틱 차트를 실시간으로 본다. 운영(Render)은 계속 꺼짐. 서버 경유는 증권사 약관 확인 전까지 쓰지 않는다.
 - 완료: 수신 엔진(`services/public_api/realtime/*`), 스트림 API(`api/local_realtime.py`), 웹 서버 대행(`frontend/src/app/api/v1/local/stocks/[code]/stream/route.ts`, `lib/auth/bffGate.ts`), 시험(단위·통합 54, 종단 18, 로그인 회귀 322). 결과서 `docs/qa/2026-10-06-realtime-backend-test-result.md`, 검토서 `docs/stock-detail/06-realtime-review.md`.
-- 진행/예정: 화면(A3), 연결 확인 도구·가이드(A4: `scripts/kis_ws_smoke_test.py`, `docs/ops/local-realtime-guide.md`), 전 종목 준실시간(B: 일괄 시세 조회 30종목/회 순환, `docs/stock-detail/07-market-snapshot-design.md`).
+- 추가 완료: 종목 상세 실시간 화면(`frontend/src/lib/liveStream/*`, 결과서 `docs/qa/2026-10-06-realtime-frontend-test-result.md`), 연결 확인 도구·가이드(`scripts/kis_ws_smoke_test.py`, `docs/ops/local-realtime-guide.md`), 전 종목 준실시간 API(`api/local_market.py`: `/api/v1/local/market/quotes|status`, 결과서 `docs/qa/2026-10-06-market-snapshot-api-test-result.md`).
+- 예정: 전 종목 시세를 스크리닝·목록 화면에 연결(범위 확인 필요), 백엔드 개선 3건(거래일 변경 snapshot, 이전 거래일 분봉 혼합, snapshot quote 채움), `basis-wording.mjs` 재실행.
 - 한계: 증권사 웹소켓 구독 한도 40건(종목 20개)이라 틱 단위 실시간은 동시 20종목. 실제 증권사 응답은 개발 환경에서 시험 불가 → 사용자가 장중에 `kis_ws_smoke_test.py`로 확인.
 - 시험 환경: 임시 PG를 다시 띄우는 법 — `mkdir -p /tmp/pgsock && chown postgres /tmp/pgsock; su postgres -c "/usr/lib/postgresql/16/bin/pg_ctl -D /var/tmp/pgd2 -o '-p 5544 -k /tmp/pgsock' -l /var/tmp/pgd2.log start"`, 그다음 `source /tmp/claude-0/pgenv.sh; export PATH=/var/tmp/venv312/bin:/usr/lib/postgresql/16/bin:$PATH`. 시스템 파이썬은 3.11이라 `/var/tmp/venv312/bin/python`(3.12)을 쓴다.
 

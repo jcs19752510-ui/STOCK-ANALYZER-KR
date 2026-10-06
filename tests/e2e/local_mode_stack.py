@@ -39,7 +39,7 @@ from tests.e2e.login_stack import wait_http  # noqa: E402
 from tests.integration.pattern_api_env import prepare_database  # noqa: E402
 from tests.integration.pg_temp_db import TempDb, temp_database  # noqa: E402
 
-API_PORT, WEB_PORT, KIS_PORT = 4331, 4332, 4333
+API_PORT, WEB_PORT, KIS_PORT, WS_PORT = 4331, 4332, 4333, 4334
 GOOD_PW = "Tr0ub4dor&3-horse-staple"
 OTHER_PW = "Correct-Horse-Battery-9!"
 LOG_DIR = Path(os.environ.get("E2E_LOG_DIR", "/tmp/claude-0/e2e-logs"))
@@ -58,7 +58,7 @@ def main() -> int:
     parser.add_argument("--no-build", action="store_true")
     args = parser.parse_args()
     LOG_DIR.mkdir(parents=True, exist_ok=True)
-    for port in (API_PORT, WEB_PORT, KIS_PORT):
+    for port in (API_PORT, WEB_PORT, KIS_PORT, WS_PORT):
         probe = subprocess.run(["bash", "-c", f"exec 3<>/dev/tcp/127.0.0.1/{port}"], capture_output=True)
         if probe.returncode == 0:
             print(f"[local-e2e] 포트 {port}를 이미 다른 프로세스가 쓰고 있습니다.", file=sys.stderr)
@@ -113,6 +113,7 @@ def main() -> int:
                 "PUBLIC_API_PORT": str(API_PORT),
                 "KIS_BASE_URL": f"http://127.0.0.1:{KIS_PORT}",
                 "KIS_ALLOW_CUSTOM_BASE_URL": "true",
+                "KIS_WS_URL": f"ws://127.0.0.1:{WS_PORT}",
                 "KIS_TOKEN_CACHE_PATH": str(fake_root / "kis-token.json"),
                 "PYTHONPATH": str(REPO),
             }
@@ -134,6 +135,8 @@ def main() -> int:
 
             procs.append(subprocess.Popen([sys.executable, "scripts/mock_kis_server.py", "--port", str(KIS_PORT)], cwd=REPO, start_new_session=True,
                                           stdout=(LOG_DIR / "local-kis.log").open("w"), stderr=subprocess.STDOUT))
+            procs.append(subprocess.Popen([sys.executable, "scripts/mock_kis_ws_server.py", "--port", str(WS_PORT)], cwd=REPO, start_new_session=True,
+                                          stdout=(LOG_DIR / "local-ws.log").open("w"), stderr=subprocess.STDOUT))
             procs.append(subprocess.Popen([sys.executable, "scripts/run_public_api.py"], cwd=REPO, env=api_env, start_new_session=True,
                                           stdout=(LOG_DIR / "local-api.log").open("w"), stderr=subprocess.STDOUT))
             procs.append(subprocess.Popen(["npx", "next", "start", "-H", "127.0.0.1", "-p", str(WEB_PORT)], cwd=REPO / "frontend", env=web_env, start_new_session=True,
