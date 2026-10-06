@@ -1348,7 +1348,8 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
         </button>
       </div>
 
-      <p className="stock-chart__readout" aria-live="polite">
+      {/* 실시간 분·틱에서 마우스를 올리지 않은 동안은 마지막 봉이 계속 바뀌므로 스크린리더가 읽지 않게 한다(봉을 고르면 다시 읽어 준다) */}
+      <p className="stock-chart__readout" aria-live={liveActive && hover === null ? "off" : "polite"}>
         <strong>{sel.time ? `${sel.trade_date} ${sel.time}` : sel.trade_date}</strong>{" "}
         {copy.stockDetail.readoutOpen} {fmtPrice(sel.open)} ·{" "}
         {copy.stockDetail.readoutHigh} {fmtPrice(sel.high)} · {copy.stockDetail.readoutLow}{" "}

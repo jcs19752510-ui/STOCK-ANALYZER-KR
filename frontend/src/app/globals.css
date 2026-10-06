@@ -2031,6 +2031,7 @@ main {
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  /* 글자 대비가 변하지 않도록 배경을 칠하지 않고, 숫자 둘레의 고리만 서서히 지운다 */
   .quote-flash {
     border-radius: 4px;
     animation: quote-flash 0.45s ease-out;
@@ -2038,11 +2039,11 @@ main {
 
   @keyframes quote-flash {
     from {
-      background: color-mix(in srgb, currentColor 35%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 80%, transparent);
     }
 
     to {
-      background: transparent;
+      box-shadow: 0 0 0 3px transparent;
     }
   }
 }
