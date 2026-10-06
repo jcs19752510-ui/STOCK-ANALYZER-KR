@@ -120,3 +120,23 @@ test("실제 시간 제한: 응답이 없는 서버는 시도당 제한 시간�
   }
   assert.deepEqual(s.waited, [3000]);
 });
+
+test("내 PC(루프백·사설) 주소는 재시도 없이 한 번만 시도하고 곧바로 실패를 돌려준다(꺼진 API를 69초 기다리지 않음)", async () => {
+  const { isLocalApiUrl } = await import("../src/lib/serverFetch.ts");
+  for (const u of ["http://127.0.0.1:4001/x", "http://localhost:4001/x", "http://[::1]:4001/x", "http://192.168.0.5:4001/x", "http://10.1.2.3/x", "http://172.16.0.1/x"]) assert.equal(isLocalApiUrl(u), true, u);
+  for (const u of ["https://api.example.com/x", "http://172.32.0.1/x", "http://8.8.8.8/x", "not a url"]) assert.equal(isLocalApiUrl(u), false, u);
+  const fail = script([new Error("ECONNREFUSED")]);
+  const waits = sleeps();
+  await assert.rejects(() => fetchWithColdStartRetry("http://127.0.0.1:4001/api/v1/internal/auth/session-check", {}, { fetchImpl: fail.impl, sleep: waits.fn }));
+  assert.equal(fail.calls.length, 1);
+  assert.deepEqual(waits.waited, []);
+  const r503 = script([503]);
+  const out = await fetchWithColdStartRetry("http://localhost:4001/x", {}, { fetchImpl: r503.impl, sleep: waits.fn });
+  assert.equal(out.status, 503);
+  assert.equal(r503.calls.length, 1);
+  // 원격(운영) 주소는 예전처럼 3회
+  const remote = script([503, 503, 200]);
+  const ok = await fetchWithColdStartRetry("https://api.example.com/x", {}, { fetchImpl: remote.impl, sleep: waits.fn });
+  assert.equal(ok.status, 200);
+  assert.equal(remote.calls.length, 3);
+});

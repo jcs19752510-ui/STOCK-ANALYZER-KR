@@ -153,6 +153,7 @@ def main() -> int:
                 "QA_BASE": web_origin,
                 "QA_API": f"http://127.0.0.1:{API_PORT}",
                 "QA_MODE": args.mode,
+                "QA_API_PID": str(procs[2].pid),  # API 프로세스(그룹 리더) — 갱신 화면 시험이 API를 끄는 상황을 만든다
                 "QA_TOKEN": api_env.get("PUBLIC_API_INTERNAL_TOKEN", ""),
                 "QA_PW": GOOD_PW,
                 "QA_PW2": OTHER_PW,

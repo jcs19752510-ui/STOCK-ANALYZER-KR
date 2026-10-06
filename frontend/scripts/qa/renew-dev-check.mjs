@@ -21,8 +21,22 @@ await page.fill("#login-password", PW);
 await Promise.all([page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 60000 }), page.click("button[type=submit]")]);
 console.log("로그인 후 주소:", page.url());
 
+const apiDown = process.env.QA_EXPECT === "api_down";
+if (apiDown) {
+  process.kill(-Number(process.env.QA_API_PID), "SIGTERM"); // 내 PC의 API 서버가 꺼진 상황을 만든다
+  await new Promise((r) => setTimeout(r, 1500));
+  console.log("API 서버를 껐습니다(시험용)");
+}
 const t0 = Date.now();
 await page.goto("/auth/renew?next=%2Fscreener%2Fpattern");
+if (apiDown) {
+  const shown = await page.getByText("API 서버(포트 4001)").waitFor({ timeout: 40000 }).then(() => true, () => false);
+  const sec = ((Date.now() - t0) / 1000).toFixed(1);
+  console.log(`API가 꺼졌을 때 안내 문구 표시: ${shown ? "성공" : "실패"} (${sec}초)`);
+  console.log("본문:", (await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 200));
+  await b.close();
+  process.exit(shown && Number(sec) < 15 ? 0 : 1);
+}
 let ok = false;
 try {
   await page.waitForURL((u) => u.pathname === "/screener/pattern", { timeout: 90000 });

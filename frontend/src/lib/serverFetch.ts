@@ -23,6 +23,21 @@ export interface ColdStartRetryOptions {
   sleep?: (ms: number) => Promise<void>;
 }
 
+/** 내 PC(루프백·사설 주소)의 API는 "깨어나는 중"이 아니라 꺼져 있거나 DB가 안 떠 있는 것이므로, 길게 기다리지 말고 곧바로 실패를 알린다. */
+export const LOCAL_ATTEMPT_TIMEOUT_MS = 8_000;
+export function isLocalApiUrl(url: string): boolean {
+  try {
+    const h = new URL(url).hostname.replace(/^\[|\]$/g, "").toLowerCase();
+    if (h === "localhost" || h === "::1" || h.endsWith(".localhost")) return true;
+    const m = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(h);
+    if (!m) return false;
+    const [a, b] = [Number(m[1]), Number(m[2])];
+    return a === 127 || a === 10 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31);
+  } catch {
+    return false;
+  }
+}
+
 const realSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export async function fetchWithColdStartRetry(
@@ -30,9 +45,10 @@ export async function fetchWithColdStartRetry(
   init: RequestInit = {},
   options: ColdStartRetryOptions = {},
 ): Promise<Response> {
-  const attempts = Math.max(1, options.attempts ?? COLD_START_ATTEMPTS);
+  const local = isLocalApiUrl(input);
+  const attempts = Math.max(1, options.attempts ?? (local ? 1 : COLD_START_ATTEMPTS));
   const delays = options.delaysMs ?? COLD_START_DELAYS_MS;
-  const timeoutMs = options.attemptTimeoutMs ?? COLD_START_ATTEMPT_TIMEOUT_MS;
+  const timeoutMs = options.attemptTimeoutMs ?? (local ? LOCAL_ATTEMPT_TIMEOUT_MS : COLD_START_ATTEMPT_TIMEOUT_MS);
   const doFetch = options.fetchImpl ?? ((url: string, i: RequestInit) => fetch(url, i));
   const sleep = options.sleep ?? realSleep;
 

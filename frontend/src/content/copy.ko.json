@@ -468,6 +468,7 @@
     "renewTitle": "로그인 상태를 확인하는 중입니다",
     "renewBody": "잠시만 기다려 주세요. 확인이 끝나면 보시던 화면으로 돌아갑니다.",
     "renewFailed": "로그인 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    "renewFailedLocalHint": "내 PC의 API 서버(포트 4001)나 데이터베이스(Docker)가 꺼져 있을 수 있습니다. API 서버를 다시 시작한 뒤 [다시 시도]를 눌러 주세요.",
     "renewRetry": "다시 시도",
     "memberSuffix": "님",
     "logout": "로그아웃",
