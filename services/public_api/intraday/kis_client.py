@@ -65,9 +65,10 @@ _RATE_LIMIT_CODES = {"EGW00201"}
 class KisError(Exception):
     """KIS 호출 실패. `message`는 사용자에게 보여도 안전한 문구만 담는다."""
 
-    def __init__(self, code: str, message: str):
+    def __init__(self, code: str, message: str, *, http_status: int | None = None):
         super().__init__(message)
         self.code = code
+        self.http_status = http_status  # 증권사 응답의 HTTP 상태(알 수 있을 때만). 200이면 업무 거절(rt_cd≠0), 그 밖은 서버·인증 장애
         self.message = message
 
 
@@ -247,7 +248,7 @@ class KisClient:
                 raise KisError("RATE_LIMITED", "증권사 호출 한도를 초과했습니다. 잠시 후 다시 시도하세요.")
             if resp.status_code != 200 or str(body.get("rt_cd", "0")) != "0":
                 detail = _safe_provider_message(body.get("msg1"))
-                raise KisError("UPSTREAM_ERROR", f"증권사가 요청을 거절했습니다. {detail}".strip())
+                raise KisError("UPSTREAM_ERROR", f"증권사가 요청을 거절했습니다. {detail}".strip(), http_status=resp.status_code)
             return body
         raise KisError("UPSTREAM_ERROR", "증권사 요청에 실패했습니다.")
 
@@ -331,17 +332,17 @@ class KisClient:
             params[f"FID_INPUT_ISCD_{i}"] = code
         return self._get(PATH_MULTI_PRICE, TR_MULTI_PRICE, params, low_priority=True)  # 상세 화면 호출에 양보
 
-    def psearch_titles(self, user_id: str) -> dict[str, Any]:
+    def psearch_titles(self, user_id: str, *, low_priority: bool = False) -> dict[str, Any]:
         """HTS에 서버저장한 내 조건검색 목록(`output2`: seq·grp_nm·condition_nm)."""
         if not user_id:
             raise ValueError("HTS ID가 비어 있습니다.")
-        return self._get(PATH_PSEARCH_TITLE, TR_PSEARCH_TITLE, {"user_id": user_id})
+        return self._get(PATH_PSEARCH_TITLE, TR_PSEARCH_TITLE, {"user_id": user_id}, low_priority=low_priority)
 
-    def psearch_result(self, user_id: str, seq: str) -> dict[str, Any]:
+    def psearch_result(self, user_id: str, seq: str, *, low_priority: bool = False) -> dict[str, Any]:
         """조건 하나의 현재 결과 종목(`output2`, 최대 100건). `seq`는 `psearch_titles` 결과의 조건 키값."""
         if not user_id or seq == "":
             raise ValueError("HTS ID와 조건 키값이 필요합니다.")
-        return self._get(PATH_PSEARCH_RESULT, TR_PSEARCH_RESULT, {"user_id": user_id, "seq": str(seq)})
+        return self._get(PATH_PSEARCH_RESULT, TR_PSEARCH_RESULT, {"user_id": user_id, "seq": str(seq)}, low_priority=low_priority)
 
 
 def kst_now(clock: Callable[[], float] = time.time) -> datetime:

@@ -87,3 +87,16 @@ def list_active_stock_codes(session: Session) -> list[str]:
         .order_by(StockMaster.stock_code.asc())
     )
     return [str(code) for code in session.execute(stmt).scalars().all()]
+
+
+def lookup_stock_names(session: Session, codes: list[str]) -> dict[str, tuple[str, str]]:
+    """종목코드 → (이름, 상장시장). 마스터에 없는 코드는 결과에 없다.
+
+    읽기 전용 단순 SELECT(`api_service`는 public_serving 읽기 권한).
+    """
+    if not codes:
+        return {}
+    stmt = select(StockMaster.stock_code, StockMaster.name, StockMaster.market).where(
+        StockMaster.stock_code.in_(codes)
+    )
+    return {str(r.stock_code): (str(r.name), str(r.market)) for r in session.execute(stmt).all()}

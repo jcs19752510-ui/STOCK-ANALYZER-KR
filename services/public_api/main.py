@@ -22,6 +22,7 @@ from services.public_api.api import (
     internal_auth,
     local_intraday,
     local_market,
+    local_psearch,
     local_realtime,
     market_summary,
     metrics,
@@ -145,6 +146,8 @@ app.include_router(local_intraday.router, prefix="/api/v1")
 app.include_router(local_realtime.router, prefix="/api/v1")
 # 전 종목 준실시간 시세(DEC-084): 같은 접근 통제.
 app.include_router(local_market.router, prefix="/api/v1")
+# 증권사(HTS) 조건검색 결과(DEC-088): 같은 접근 통제(소유자만), `KIS_HTS_ID`가 있어야 동작.
+app.include_router(local_psearch.router, prefix="/api/v1")
 # 로그인 내부 경로(DEC-067): 웹 서버 전용. 회원 DB 주소가 없으면 404로 꺼져 있고,
 # 스위치와 무관하게 항상 내부 토큰을 요구한다.
 app.include_router(internal_auth.router, prefix="/api/v1")

@@ -133,8 +133,8 @@ def _poll_once(
         body = client.psearch_result(user_id, st.seq)
     except KisError as exc:
         st.latencies.append(clock() - started)
-        if exc.code == "UPSTREAM_ERROR":
-            # 증권사 문서: 결과 0건이면 오류를 돌려준다. 다른 거절(조건 키 오류 등)과 같은 코드라 메시지를 함께 보여 준다.
+        if exc.code == "UPSTREAM_ERROR" and getattr(exc, "http_status", None) in (None, 200):
+            # 증권사 문서: 결과 0건이면 오류를 돌려준다(HTTP 200의 업무 거절). HTTP 4xx/5xx는 0건이 아니라 장애·인증 오류다. 다른 거절(조건 키 오류 등)과 같은 코드라 메시지를 함께 보여 준다.
             st.empty_polls += 1
             st.last_empty_message = _sanitize(exc, secrets)
             if st.last_codes:  # 직전까지 있던 종목이 모두 빠졌다

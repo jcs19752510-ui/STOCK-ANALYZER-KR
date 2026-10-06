@@ -249,3 +249,24 @@ def test_main이_모의_서버로_끝까지_돈다(tmp_path: Path) -> None:
     with Rig() as rig:
         env = {"KIS_APP_KEY": APP_KEY, "KIS_APP_SECRET": APP_SECRET, "KIS_HTS_ID": HTS_ID, "KIS_BASE_URL": rig.base, "KIS_ALLOW_CUSTOM_BASE_URL": "true", "KIS_TOKEN_CACHE_PATH": str(tmp_path / "tok.json")}
         assert tool.main(["--list-only"], env=env) == 0
+
+
+def test_업무_거절과_HTTP_장애를_http_status로_구분할_수_있다(tmp_path: Path) -> None:
+    mode = {"v": "business"}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/oauth2/tokenP":
+            return httpx.Response(200, json={"access_token": "t", "expires_in": 86400})
+        if mode["v"] == "business":
+            return httpx.Response(200, json={"rt_cd": "1", "msg1": "검색 결과가 없습니다."})
+        return httpx.Response(500, json={"rt_cd": "1", "msg1": "서버 오류"})
+
+    settings = IntradaySettings(enabled=True, app_key=APP_KEY, app_secret=APP_SECRET, base_url="https://x.test", allowed_networks=(), token_cache_path=tmp_path / "t.json")
+    client = KisClient(settings, httpx.Client(transport=httpx.MockTransport(handler)), min_interval=0.0)
+    with pytest.raises(KisError) as e1:
+        client.psearch_result("abc", "0")
+    assert e1.value.code == "UPSTREAM_ERROR" and e1.value.http_status == 200
+    mode["v"] = "http"
+    with pytest.raises(KisError) as e2:
+        client.psearch_result("abc", "0")
+    assert e2.value.code == "UPSTREAM_ERROR" and e2.value.http_status == 500

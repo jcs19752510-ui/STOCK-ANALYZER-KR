@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import ipaddress
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -21,6 +21,7 @@ WS_URL_ENV = "KIS_WS_URL"
 ALLOW_CUSTOM_BASE_ENV = "KIS_ALLOW_CUSTOM_BASE_URL"
 ALLOWED_IPS_ENV = "LOCAL_INTRADAY_ALLOWED_IPS"
 TOKEN_CACHE_ENV = "KIS_TOKEN_CACHE_PATH"
+HTS_ID_ENV = "KIS_HTS_ID"
 DEFAULT_ALLOWED_IPS = "127.0.0.1,::1"
 DEFAULT_TOKEN_CACHE = ".local/kis_token.json"
 
@@ -38,6 +39,7 @@ class IntradaySettings:
     allowed_networks: tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...]
     token_cache_path: Path
     ws_url: str = KIS_REAL_WS_URL
+    hts_id: str | None = field(default=None, repr=False)  # 내 HTS 로그인 ID(조건검색용). repr·로그·오류에 나오지 않게 가린다
 
     @property
     def configured(self) -> bool:
@@ -92,6 +94,7 @@ def get_settings(env: dict[str, str] | None = None) -> IntradaySettings:
         allowed_networks=_parse_networks(source.get(ALLOWED_IPS_ENV, DEFAULT_ALLOWED_IPS)),
         token_cache_path=Path(source.get(TOKEN_CACHE_ENV, DEFAULT_TOKEN_CACHE)),
         ws_url=_resolve_ws_url(source) if enabled else KIS_REAL_WS_URL,
+        hts_id=(source.get(HTS_ID_ENV) or "").strip() or None,
     )
 
 
