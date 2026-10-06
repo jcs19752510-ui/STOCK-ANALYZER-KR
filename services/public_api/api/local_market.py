@@ -77,12 +77,17 @@ def _env_number(name: str, default: float, *, minimum: float) -> float:
         return default
 
 
+DEFAULT_ENV_MIN_INTERVAL = 0.125
+
+
 def poller_config_from_env() -> PollerConfig:
-    """우선 순환 설정만 환경변수로 바꿀 수 있다(`KIS_MARKET_PRIORITY_MAX` 기본 200, `KIS_MARKET_PRIORITY_SECONDS` 기본 3초)."""
+    """환경변수로 바꿀 수 있는 설정: `KIS_MARKET_PRIORITY_MAX`(200), `KIS_MARKET_PRIORITY_SECONDS`(3초), `KIS_MARKET_MIN_INTERVAL`(호출 시작 간격 0.125초, 하한 0.06)."""
     base = PollerConfig()
     return PollerConfig(
         priority_max=int(_env_number("KIS_MARKET_PRIORITY_MAX", base.priority_max, minimum=1)),
         priority_interval=_env_number("KIS_MARKET_PRIORITY_SECONDS", base.priority_interval, minimum=0.5),
+        # 실전 계좌 기본 한도(초당 20건, 검색 자료 기준·공식 문서 미확인)의 40%인 초당 약 8건. 전 종목 한 바퀴 ≈ 12초. 모의 계좌는 한도가 훨씬 낮으니 키우세요(DEC-097).
+        min_interval=_env_number("KIS_MARKET_MIN_INTERVAL", DEFAULT_ENV_MIN_INTERVAL, minimum=0.06),
     )
 
 
