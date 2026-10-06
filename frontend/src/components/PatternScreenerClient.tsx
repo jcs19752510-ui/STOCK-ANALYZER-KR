@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuotes } from "@/lib/useQuotes";
 import copy from "@/content/copy.ko.json";
 import { DataFreshnessBadge } from "@/components/DataFreshnessBadge";
+import { LiveBasisSwitch } from "@/components/LiveBasisSwitch";
+import { LiveChangesList, LiveScreenPanel } from "@/components/LiveScreenPanel";
 import { EmptyState, type EmptyStateVariant } from "@/components/EmptyState";
 import { ErrorState, type ErrorStateVariant } from "@/components/ErrorState";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
@@ -19,10 +21,13 @@ import { mapApiErrorCodeToDisplay } from "@/lib/errorMapping";
 import { DEFAULT_PATTERN_FORM_VALUES } from "@/lib/patternDefaults";
 import {
   PATTERN_PAGE_SIZE,
+  buildPatternSearchParams,
   fetchPatternResults,
   type PatternApiResult,
   type PatternQuery,
 } from "@/lib/patternApi";
+import { stripLiveParams } from "@/lib/liveScreen/logic";
+import { useLiveScreen, useLiveScreenAccess, useLiveToggle, useNewCodes } from "@/lib/liveScreen/react";
 import { fillTemplate } from "@/lib/patternFormat";
 import {
   PATTERN_FIELD_IDS,
@@ -100,8 +105,19 @@ export function PatternScreenerClient() {
   const [applied, setApplied] = useState<PatternQuery>(initialQuery);
   const [state, setState] = useState<PatternState>({ kind: "loading" });
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  // 장중 기준(DEC-089): 로컬 모드 관리자에게만 전환이 보인다. 켜면 결과·배너·자동 갱신이 `/local/screen/pattern`으로 바뀐다. 꺼져 있으면 요청도 없다.
+  const liveAccess = useLiveScreenAccess();
+  const [liveOn, setLiveOn] = useLiveToggle(liveAccess);
+  const live = useLiveScreen<PatternScreenData>(liveOn);
+  const newCodes = useNewCodes(live.view);
+  const liveMarks = liveOn ? { newCodes } : undefined;
+  const liveData = liveOn ? live.view.data : null;
   const quotes = useQuotes(
-    state.kind === "success" ? state.data.items.map((i) => i.stock_code) : [],
+    liveOn
+      ? (liveData?.items.map((i) => i.stock_code) ?? [])
+      : state.kind === "success"
+        ? state.data.items.map((i) => i.stock_code)
+        : [],
   );
   const isDesktopResults = useIsDesktopViewport(1024);
   const startedRef = useRef(false);
@@ -113,6 +129,23 @@ export function PatternScreenerClient() {
     void fetchPatternResults(initialQuery).then((result) => setState(resultToState(result)));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 마운트 시 1회만 실행
   }, []);
+
+  // 자동 갱신으로 결과가 줄어 지금 보던 쪽이 비면(총건수는 남아 있음) 마지막 쪽으로 옮긴다.
+  useEffect(() => {
+    if (!liveOn || !liveData || liveData.items.length > 0 || liveData.total_count === 0) return;
+    const last = Math.max(1, Math.ceil(liveData.total_count / PATTERN_PAGE_SIZE));
+    if (last < liveData.page) live.setPage(last);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 응답이 바뀔 때만 확인
+  }, [liveData]);
+
+  // 켜짐이 바뀔 때: 켜면 적용해 둔 조건으로 바로 장중 기준 계산을 시작하고, 끄면 같은 조건을 일봉 기준으로 다시 조회한다.
+  const wasLiveRef = useRef(false);
+  useEffect(() => {
+    if (liveOn) live.setQuery({ kind: "pattern", params: stripLiveParams(buildPatternSearchParams(applied)) }, applied.page);
+    if (!liveOn && wasLiveRef.current) void runQuery(applied);
+    wasLiveRef.current = liveOn;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 켜짐이 바뀔 때만 실행
+  }, [liveOn]);
 
   async function runQuery(query: PatternQuery) {
     setApplied(query);
@@ -132,6 +165,12 @@ export function PatternScreenerClient() {
     }
     setErrors([]);
     setMobileFilterOpen(false);
+    if (liveOn) {
+      const query = toQuery(values, 1);
+      setApplied(query);
+      live.setQuery({ kind: "pattern", params: stripLiveParams(buildPatternSearchParams(query)) }, 1);
+      return;
+    }
     void runQuery(toQuery(values, 1));
   }
 
@@ -141,13 +180,15 @@ export function PatternScreenerClient() {
   }
 
   const handleCloseMobile = useCallback(() => setMobileFilterOpen(false), []);
-  const isLoading = state.kind === "loading";
+  const isLoading = liveOn ? live.view.loading && live.view.data === null : state.kind === "loading";
+  const handleRevert = useCallback(() => setLiveOn(false), [setLiveOn]);
 
   return (
     <section className="screener-page pattern-page">
       <ScreeningModeNav current="pattern" />
       <h1>{copy.pattern.label}</h1>
       <PatternNotice />
+      {liveAccess && <LiveBasisSwitch on={liveOn} onChange={setLiveOn} />}
 
       <button
         type="button"
@@ -173,20 +214,69 @@ export function PatternScreenerClient() {
           onCloseMobile={handleCloseMobile}
         />
 
-        <div className="screener-page__results" aria-live="polite" aria-busy={isLoading}>
-          {state.kind === "loading" && (
+        <div className="screener-page__results" aria-live={liveOn ? "off" : "polite"} aria-busy={isLoading}>
+          {liveOn && (
+            <LiveScreenPanel
+              view={live.view}
+              hasQuery
+              onPause={live.pause}
+              onResume={live.resume}
+              onRefresh={live.refreshNow}
+              onRevert={handleRevert}
+            />
+          )}
+
+          {liveOn && liveData === null && live.view.error === null && (
             <div className="screener-page__loading">
               <LoadingSkeleton variant="card" count={5} />
             </div>
           )}
 
-          {state.kind === "empty" && <EmptyState variant={state.variant} />}
+          {liveOn && liveData && liveData.total_count === 0 && (
+            <>
+              <ReadinessNote readiness={liveData.readiness} />
+              <EmptyState variant="pattern-no-result" />
+              <PatternDefinitionPanel definition={liveData.definition} basisNote={copy.liveScreen.patternDefinitionBasis} />
+            </>
+          )}
 
-          {state.kind === "error" && (
+          {liveOn && liveData && liveData.total_count > 0 && (
+            <>
+              <h2 className="screener-page__results-heading">
+                {fillTemplate(copy.pattern.resultsHeading, { total_count: liveData.total_count })}
+              </h2>
+              <ReadinessNote readiness={liveData.readiness} />
+              {isDesktopResults ? (
+                <PatternResultsTable items={liveData.items} definition={liveData.definition} quotes={quotes} live={liveMarks} />
+              ) : (
+                <PatternResultsList items={liveData.items} definition={liveData.definition} quotes={quotes} live={liveMarks} />
+              )}
+              <Pagination
+                page={liveData.page}
+                pageSize={PATTERN_PAGE_SIZE}
+                totalCount={liveData.total_count}
+                onPageChange={(page) => live.setPage(page)}
+                announce={false}
+              />
+              <PatternDefinitionPanel definition={liveData.definition} basisNote={copy.liveScreen.patternDefinitionBasis} />
+            </>
+          )}
+
+          {liveOn && liveData && <LiveChangesList view={live.view} />}
+
+          {!liveOn && state.kind === "loading" && (
+            <div className="screener-page__loading">
+              <LoadingSkeleton variant="card" count={5} />
+            </div>
+          )}
+
+          {!liveOn && state.kind === "empty" && <EmptyState variant={state.variant} />}
+
+          {!liveOn && state.kind === "error" && (
             <ErrorState variant={state.variant} onRetry={() => void runQuery(applied)} />
           )}
 
-          {state.kind === "empty-result" && (
+          {!liveOn && state.kind === "empty-result" && (
             <>
               <DataFreshnessBadge freshness={state.freshness} />
               <ReadinessNote readiness={state.readiness} />
@@ -195,7 +285,7 @@ export function PatternScreenerClient() {
             </>
           )}
 
-          {state.kind === "success" && (
+          {!liveOn && state.kind === "success" && (
             <>
               <DataFreshnessBadge freshness={state.freshness} />
               <h2 className="screener-page__results-heading">

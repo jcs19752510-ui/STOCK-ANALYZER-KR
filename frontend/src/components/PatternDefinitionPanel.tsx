@@ -8,7 +8,14 @@ import type { PatternDefinition } from "@/lib/types";
  * 스크린리더 지원이 기본으로 된다. 내용은 **API `definition`을 그대로 렌더**한다 — 하드코딩하지 않으므로
  * 서버 설정이 바뀌면 화면 문구가 자동으로 정확해진다. 하단에 대리 지표·미반영 범위 고지 2줄을 고정 표시한다.
  */
-export function PatternDefinitionPanel({ definition }: { definition: PatternDefinition }) {
+export function PatternDefinitionPanel({
+  definition,
+  basisNote = copy.pattern.definitionBasis,
+}: {
+  definition: PatternDefinition;
+  /** 계산 기준 문구. 장중 기준이 켜진 동안은 그 기준을 알리는 문구로 바꾼다(DEC-089). */
+  basisNote?: string;
+}) {
   return (
     <details className="pattern-definition">
       <summary className="pattern-definition__summary">{copy.pattern.definitionHeading}</summary>
@@ -21,7 +28,7 @@ export function PatternDefinitionPanel({ definition }: { definition: PatternDefi
             </div>
           ))}
         </dl>
-        <p className="pattern-definition__note">{copy.pattern.definitionBasis}</p>
+        <p className="pattern-definition__note">{basisNote}</p>
         <p className="pattern-definition__note">{copy.pattern.proxyFootnote}</p>
         <p className="pattern-definition__note">{copy.pattern.scopeFootnote}</p>
         {definition.universe.excluded_types.length > 0 && (

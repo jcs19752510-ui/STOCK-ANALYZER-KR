@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ConditionStatusBadge } from "@/components/ConditionStatusBadge";
+import { LiveItemMarks } from "@/components/LiveItemMarks";
 import { QuoteText } from "@/components/QuoteText";
 import { PATTERN_CONDITION_IDS } from "@/lib/patternApi";
 import { conditionTitle, evidenceText } from "@/lib/patternFormat";
@@ -13,12 +14,15 @@ interface PatternResultsListProps {
   items: PatternItem[];
   definition: PatternDefinition;
   quotes?: Record<string, StockQuote>;
+  /** 장중 기준(DEC-089)일 때만 넘긴다: "신규"·"일봉" 표지를 그린다. */
+  live?: { newCodes: ReadonlySet<string> };
 }
 
 export function PatternResultsList({
   items,
   definition,
   quotes = {},
+  live,
 }: PatternResultsListProps) {
   return (
     <ul className="results-list pattern-list">
@@ -31,6 +35,7 @@ export function PatternResultsList({
                 <span className="results-list__code">({item.stock_code})</span>
               </Link>
               <span className="market-badge">{item.market}</span>
+              {live && <LiveItemMarks isNew={live.newCodes.has(item.stock_code)} isDaily={item.basis === "daily"} />}
             </div>
             <QuoteText quote={quotes[item.stock_code]} />
             <dl className="pattern-list__conditions">

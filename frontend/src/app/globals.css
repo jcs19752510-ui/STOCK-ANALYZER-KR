@@ -3166,3 +3166,289 @@ main {
     transition: none;
   }
 }
+
+/* ───────── 장중 기준(DEC-089, 로컬 모드 관리자 전용) ─────────
+   새 색·토큰을 만들지 않고 기존 토큰만 쓴다(테마가 토큰을 바꾸면 그대로 따라간다). 상태는 색뿐 아니라 글자("지연"·"신규"·"일봉"·"일시정지 중")로도 구분한다. */
+.live-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin: var(--space-3) 0;
+}
+
+.live-switch__control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border-default);
+  border-radius: 999px;
+  background: var(--color-surface-bg);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.live-switch__control:focus-visible,
+.live-button:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.live-switch__track {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 999px;
+  background: var(--color-surface-subtle);
+}
+
+.live-switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-text-secondary);
+}
+
+.live-switch__control[aria-checked="true"] .live-switch__track {
+  border-color: var(--color-brand-primary);
+  background: var(--color-brand-primary);
+}
+
+.live-switch__control[aria-checked="true"] .live-switch__thumb {
+  left: 18px;
+  background: var(--color-surface-bg);
+}
+
+.live-switch__state {
+  min-width: 2.5em;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.live-switch__hint {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.live-panel {
+  margin: 0 0 var(--space-3);
+}
+
+.live-banner {
+  padding: var(--space-3);
+  border: 1px solid var(--color-brand-primary);
+  border-radius: 8px;
+  background: var(--color-surface-bg);
+  font-size: 14px;
+}
+
+.live-banner p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.live-banner p + p {
+  margin-top: var(--space-2);
+}
+
+.live-banner__main {
+  font-variant-numeric: tabular-nums;
+}
+
+.live-banner__warn {
+  color: var(--color-text-primary);
+  font-weight: 700;
+}
+
+.live-banner__notice {
+  color: var(--color-text-secondary);
+}
+
+.live-banner__notice--warn {
+  padding: var(--space-2);
+  border: 1px solid var(--color-semantic-warning);
+  border-radius: 4px;
+  color: var(--color-text-primary);
+}
+
+.live-banner progress,
+.live-error progress {
+  width: 160px;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.live-badge {
+  display: inline-block;
+  margin-left: var(--space-2);
+  padding: 1px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.live-badge--delayed {
+  color: var(--color-semantic-warning);
+}
+
+.live-badge--paused {
+  color: var(--color-brand-primary);
+}
+
+.live-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.live-controls__auto,
+.live-controls__busy {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.live-button {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-border-default);
+  border-radius: 4px;
+  background: var(--color-surface-bg);
+  color: var(--color-text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.live-button[aria-pressed="true"] {
+  border-color: var(--color-brand-primary);
+  background: var(--color-surface-subtle);
+  color: var(--color-brand-primary);
+  font-weight: 700;
+}
+
+.live-button--primary {
+  border-color: var(--color-brand-primary);
+  color: var(--color-brand-primary);
+}
+
+.live-error {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+}
+
+.live-error__title {
+  margin: 0 0 var(--space-2);
+  font-size: 18px;
+}
+
+.live-error p {
+  margin: 0 0 var(--space-2);
+  overflow-wrap: anywhere;
+}
+
+.live-error__server {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.live-marks {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-left: var(--space-2);
+  vertical-align: middle;
+}
+
+.live-mark {
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.live-mark--new {
+  color: var(--color-brand-primary);
+}
+
+.live-mark--daily {
+  color: var(--color-text-secondary);
+}
+
+.live-changes {
+  margin-top: var(--space-6);
+}
+
+.live-changes__heading {
+  margin: 0 0 var(--space-2);
+  font-size: 18px;
+}
+
+.live-changes__note {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.live-changes__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.live-changes__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-surface-subtle);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.live-changes__time {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (forced-colors: active) {
+  .live-banner,
+  .live-error,
+  .live-badge,
+  .live-mark,
+  .live-banner__notice--warn,
+  .live-switch__control {
+    border: 2px solid CanvasText;
+  }
+  .live-switch__control[aria-checked="true"] .live-switch__track {
+    background: Highlight;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-switch__control,
+  .live-button,
+  .live-switch__thumb {
+    transition: none;
+  }
+}
