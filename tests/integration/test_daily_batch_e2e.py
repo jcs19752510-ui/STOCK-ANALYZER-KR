@@ -146,9 +146,11 @@ def test_unpublished_latest_exits_2_then_recovers_next_run(env):
     assert _run("check_data_freshness.py", env, "--max-lag", "0").returncode == 0
 
 
-def test_past_date_that_keeps_failing_stops_after_attempt_cap(env):
+def test_past_date_not_published_is_retried_every_run_and_never_given_up(env):
+    """DEC-092: "공개 전(0건)" 과거 거래일은 몇 번을 실패해도 포기하지 않고 다음 실행에서 다시 시도한다(공공데이터 +1영업일·휴일 지연).
+    (진짜 오류·PARTIAL의 3회 상한은 `test_catchup_attempt_cap_db.py`가 확인한다.)"""
     target, window = _target_and_window(env["mig"])
-    bad = window[1]  # 과거(대상 아님) 거래일 하나가 영구 0건
+    bad = window[1]  # 과거(대상 아님) 거래일 하나가 계속 0건(공개 전)
     _seed_master(env, window[0])
     env["unpub"].add(bad.strftime("%Y%m%d"))
     for _ in range(3):
@@ -156,8 +158,15 @@ def test_past_date_that_keeps_failing_stops_after_attempt_cap(env):
     calls_before = env["stats"][bad.strftime("%Y%m%d")]
     assert calls_before > 0
     r = _run("run_daily_batch.py", env)
-    assert env["stats"][bad.strftime("%Y%m%d")] == calls_before  # 상한(3회) 후에는 더 호출하지 않는다
-    assert "더 이상 재시도하지 않는 거래일" in r.stderr and bad.isoformat() in r.stderr
+    assert env["stats"][bad.strftime("%Y%m%d")] > calls_before  # 4번째 실행에서도 다시 호출한다(예전엔 상한 3회로 영구 포기)
+    warned = [ln for ln in r.stderr.splitlines() if "더 이상 재시도하지 않는 거래일" in ln]
+    assert not any(bad.isoformat() in ln for ln in warned)  # 공개 전 날짜는 포기 경고 대상이 아니다
+    # 공개되면 바로 채워진다
+    env["unpub"].discard(bad.strftime("%Y%m%d"))
+    _run("run_daily_batch.py", env)
+    with env["mig"].begin() as c:
+        got = c.execute(text("SELECT count(*) FROM raw_internal.raw_ohlcv WHERE trade_date=:d"), {"d": bad}).scalar_one()
+    assert got > 0
 
 
 class _Capture(BaseHTTPRequestHandler):

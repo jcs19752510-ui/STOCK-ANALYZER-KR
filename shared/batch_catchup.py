@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from datetime import date, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from shared.db_models.public_serving import BatchRun
@@ -24,6 +24,14 @@ DEFAULT_CATCHUP_TRADING_DAYS = 10
 # 반복하는 것을 막는다. 대상(최신) 거래일에는 적용하지 않는다(공개 지연으로
 # 정상적으로 반복될 수 있음).
 MAX_ATTEMPTS_PER_PAST_DATE = 3
+# "공공데이터가 아직 공개 전(0건)"으로 끝난 시도는 시도 횟수에 세지 않는다(DEC-092).
+# 공공데이터는 +1영업일(휴일이 끼면 그 이상) 뒤에 공개되므로 그날 14:30·18:30과
+# 주말·휴일 실행이 모두 "공개 전" 실패로 쌓이는 것이 정상이다. 이를 세면 정작 공개된 날에는
+# 이미 상한(3회)을 넘어 영구히 건너뛰게 된다(2026-10-02 사례).
+# 값은 `services/ingestion_batch/batch_run_repository.py`와 같아야 하며 같은지 시험이 확인한다
+# (shared는 services를 가져올 수 없어 복사해 둔다).
+NOT_PUBLISHED_PREFIX = "NOT_PUBLISHED"
+LEGACY_NOT_PUBLISHED_TEXT = "대상 거래일 데이터가 0건 반환되었습니다"
 
 
 def plan_catchup(
@@ -73,13 +81,23 @@ def fetch_derived_dates(session: Session, *, since: date) -> list[date]:
 def fetch_exhausted_dates(
     session: Session, *, since: date, before: date, max_attempts: int = MAX_ATTEMPTS_PER_PAST_DATE
 ) -> list[date]:
-    """`since` 이상 `before` 미만 거래일 중 실패·부분 성공이 `max_attempts`회 이상 쌓인 날짜."""
+    """`since` 이상 `before` 미만 거래일 중 실패·부분 성공이 `max_attempts`회 이상 쌓인 날짜.
+
+    "데이터 공개 전(0건)" 실패는 세지 않는다(DEC-092). 진짜 오류와 PARTIAL만 센다.
+    """
+    summary = BatchRun.error_summary
+    not_waiting = or_(
+        summary.is_(None),
+        summary.not_like(f"{NOT_PUBLISHED_PREFIX}%")
+        & summary.not_like(f"{LEGACY_NOT_PUBLISHED_TEXT}%"),
+    )
     rows = session.execute(
         select(BatchRun.trade_date_covered)
         .where(
             BatchRun.trade_date_covered >= since,
             BatchRun.trade_date_covered < before,
             BatchRun.status.in_(("FAILED", "PARTIAL")),
+            not_waiting,
         )
         .group_by(BatchRun.trade_date_covered)
         .having(func.count() >= max_attempts)

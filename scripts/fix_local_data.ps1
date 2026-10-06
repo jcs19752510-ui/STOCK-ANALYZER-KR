@@ -29,13 +29,17 @@ Get-Content $envFile -Encoding utf8 | ForEach-Object {
     }
 }
 
+# Runs a command, shows every line, appends it to the log, and returns ONLY the exit code.
 function Step([string]$title, [string]$cmd) {
     Write-Host ""
     Write-Host "=== $title ===" -ForegroundColor Cyan
     $stamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     [System.IO.File]::AppendAllText($logFile, "===== $stamp $title =====`r`n")
-    cmd /c "chcp 65001 >nul & $cmd 2>&1" | Tee-Object -FilePath $logFile -Append
-    return $LASTEXITCODE
+    cmd /c "chcp 65001 >nul & $cmd 2>&1" | ForEach-Object {
+        Write-Host $_
+        [System.IO.File]::AppendAllText($logFile, "$_`r`n")
+    }
+    return [int]$LASTEXITCODE
 }
 
 Write-Host "=== [1/5] DB container ===" -ForegroundColor Cyan
@@ -43,7 +47,7 @@ docker start stock-screener-pg | Out-Null
 docker exec stock-screener-pg pg_isready
 if ($LASTEXITCODE -ne 0) { Write-Host "[ERROR] DB is not ready. Start Docker Desktop and run this script again." -ForegroundColor Red; exit 1 }
 
-$null = Step "[2/5] diagnosis BEFORE" "py -3.12 scripts\diagnose_local_data.py"
+$beforeExit = Step "[2/5] diagnosis BEFORE" "py -3.12 scripts\diagnose_local_data.py"
 $batchExit = Step "[3/5] catch-up batch (this can take several minutes)" "py -3.12 scripts\run_daily_batch.py"
 Write-Host "batch exit code: $batchExit  (0 = ok / nothing to do, 2 = source has not published the day yet, other = failure: read the lines above)"
 $afterExit = Step "[4/5] diagnosis AFTER" "py -3.12 scripts\diagnose_local_data.py"
