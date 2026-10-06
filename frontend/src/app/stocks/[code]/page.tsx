@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { DataFreshnessBadge } from "@/components/DataFreshnessBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
+import { LiveStatusBadge } from "@/components/LiveStatusBadge";
 import { MetricCard } from "@/components/MetricCard";
 import { PriceBasisNote } from "@/components/PriceBasisNote";
 import { StockDetailTabs } from "@/components/StockDetailTabs";
@@ -13,6 +14,7 @@ import { mapApiErrorCodeToDisplay } from "@/lib/errorMapping";
 import { formatSignedPercent, percentDirectionLabel, percentValueClassName } from "@/lib/formatPercent";
 import { PRICE_EXPOSURE_ENABLED } from "@/lib/priceExposure";
 import { fetchStockMetrics } from "@/lib/stockMetrics";
+import { LiveStreamProvider } from "@/lib/liveStream/react";
 import { fetchStockPrices } from "@/lib/stockDetailApi";
 
 interface StockDetailPageProps {
@@ -57,6 +59,7 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
   const prices = pricesResult?.kind === "success" ? pricesResult.data.prices : [];
   const latest = prices.length > 0 ? prices[prices.length - 1] : null;
   return (
+    <LiveStreamProvider stockCode={data.stock_code}>
     <section className="stock-detail-page">
       {latest ? (
         <StockQuoteHeader
@@ -79,10 +82,10 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
       {latest && (
         <p className="stock-quote__basis">
           <span className="market-badge">{data.market}</span> {data.stock_code} ·{" "}
-          {copy.stockDetail.priceBasis.replace("{date}", latest.trade_date)} ·{" "}
-          <PriceBasisNote />
+          <PriceBasisNote tradeDate={latest.trade_date} />
         </p>
       )}
+      <LiveStatusBadge />
 
       <DataFreshnessBadge freshness={freshness} />
 
@@ -142,5 +145,6 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
         />
       </div>
     </section>
+    </LiveStreamProvider>
   );
 }

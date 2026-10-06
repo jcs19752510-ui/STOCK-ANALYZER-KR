@@ -27,6 +27,8 @@ import {
   type DrawPoint,
 } from "@/lib/chartDrawings";
 import { useChartDrawings } from "@/lib/useChartDrawings";
+import { aggregateMinutes, ticksToBars } from "@/lib/liveStream/aggregate";
+import { useLiveBars, useLiveBusinessDate, useLiveMode, useLiveTicks, useThrottled } from "@/lib/liveStream/react";
 import { useIntradayPoll } from "@/lib/useIntradayPoll";
 import { setIntradayFlag } from "@/lib/viewBasis";
 import type { IntradayMinutesData, IntradayTicksData } from "@/lib/types";
@@ -115,27 +117,24 @@ type PanelId = "volume" | "macd";
 const MINUTE_OPTIONS = [1, 3, 5, 10, 15, 30, 60];
 const TICK_OPTIONS = [1, 3, 5, 10, 30];
 
-/** 최근 체결(최근이 앞)을 n틱씩 묶은 봉으로 바꾼다(오름차순). */
+/** 최근 체결(최근이 앞)을 n틱씩 묶은 봉으로 바꾼다(오름차순). 묶는 규칙은 실시간 쪽(`liveStream/aggregate.ts`)과 같다. */
 function ticksToCandles(
   data: IntradayTicksData,
   n: number,
   date: string,
 ): Candle[] {
-  const asc = [...data.ticks].reverse();
-  const out: Candle[] = [];
-  for (let i = 0; i < asc.length; i += n) {
-    const g = asc.slice(i, i + n);
-    out.push({
-      trade_date: date,
-      time: g[0].time,
-      open: g[0].price,
-      high: Math.max(...g.map((t) => t.price)),
-      low: Math.min(...g.map((t) => t.price)),
-      close: g[g.length - 1].price,
-      volume: g.reduce((a, t) => a + t.volume, 0),
-    });
+  return ticksToBars(data.ticks, n).map((b) => ({ trade_date: date, ...b }));
+}
+
+/** 실시간 차트는 무거우므로 화면 반영을 이 간격(ms)으로 합친다. */
+const LIVE_CHART_MS = 250;
+
+/** "YYYYMMDD" → "YYYY-MM-DD". 없으면 오늘(한국 시각). */
+function liveTradeDate(businessDate: string | null): string {
+  if (businessDate && /^\d{8}$/.test(businessDate)) {
+    return `${businessDate.slice(0, 4)}-${businessDate.slice(4, 6)}-${businessDate.slice(6, 8)}`;
   }
-  return out;
+  return new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
 }
 
 interface Layers {
@@ -180,8 +179,14 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
         ? `/api/v1/local/stocks/${encodeURIComponent(stockCode)}/minutes?interval=${intra.n}`
         : `/api/v1/local/stocks/${encodeURIComponent(stockCode)}/ticks?limit=300`
       : null;
+  // 실시간 스트림이 열려 있으면(또는 첫 데이터를 기다리는 중이면) 분·틱은 그 데이터로 그리고 폴링하지 않는다. 열리지 않으면 기존 폴링.
+  const liveMode = useLiveMode();
+  const liveActive = localMode && intra !== null && liveMode !== "fallback";
+  const liveBars = useThrottled(useLiveBars(liveActive && intra?.mode === "minute"), LIVE_CHART_MS);
+  const liveTicks = useThrottled(useLiveTicks(liveActive && intra?.mode === "tick"), LIVE_CHART_MS);
+  const liveDate = useLiveBusinessDate();
   const poll = useIntradayPoll<IntradayMinutesData | IntradayTicksData>(
-    intraPath,
+    liveMode === "fallback" ? intraPath : null,
     intra?.mode === "tick" ? 5000 : 10000,
   );
   const intradayOn = localMode && intra !== null;
@@ -190,7 +195,15 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
     return () => setIntradayFlag("chart", false);
   }, [intradayOn]);
   const intraCandles = useMemo<Candle[] | null>(() => {
-    if (!intra || !poll.data) return null;
+    if (!intra) return null;
+    if (liveActive) {
+      if (liveMode === "pending") return null;
+      const date = liveTradeDate(liveDate);
+      return intra.mode === "minute"
+        ? aggregateMinutes(liveBars, intra.n).map((b) => ({ ...b, trade_date: date }))
+        : ticksToBars(liveTicks, intra.n).map((b) => ({ ...b, trade_date: date }));
+    }
+    if (!poll.data) return null;
     if (intra.mode === "minute") {
       const d = poll.data as IntradayMinutesData;
       return d.bars.map((b) => ({ ...b, trade_date: d.date }));
@@ -198,7 +211,7 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
     const today = new Date().toISOString().slice(0, 10);
     const t = poll.data as IntradayTicksData;
     return t.ticks.length > 0 ? ticksToCandles(t, intra.n, today) : [];
-  }, [intra, poll.data]);
+  }, [intra, poll.data, liveActive, liveMode, liveBars, liveTicks, liveDate]);
 
   useEffect(() => {
     if (!expanded) return;
@@ -683,7 +696,13 @@ export function StockChart({ candles, stockName, stockCode, localMode = false }:
       <div className="stock-chart">
         {header}
         <p className="stock-chart__status" role="status">
-          {poll.error ? poll.error.message : copy.stockDetail.intradayLoading}
+          {liveActive
+            ? liveMode === "pending"
+              ? copy.stockDetail.intradayLoading
+              : copy.stockDetail.liveChartWaiting
+            : poll.error
+              ? poll.error.message
+              : copy.stockDetail.intradayLoading}
         </p>
       </div>
     );

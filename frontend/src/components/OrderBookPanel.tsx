@@ -2,12 +2,13 @@
 
 import { LocalModeNotice } from "@/components/LocalModeNotice";
 import copy from "@/content/copy.ko.json";
+import { useLiveBook, useLiveMode } from "@/lib/liveStream/react";
 import { useIntradayPoll } from "@/lib/useIntradayPoll";
 import type { IntradayBookLevel, IntradayOrderBookData } from "@/lib/types";
 
 /**
  * 호가 탭(개인 로컬 모드, DEC-052): 10단계 매도(파랑)·매수(빨강) 호가와 잔량 막대, 총잔량, 예상체결가.
- * 2초마다 갱신한다. 색에만 의존하지 않도록 열 제목·"매도/매수" 라벨과 숫자를 항상 함께 보여준다.
+ * 실시간 스트림이 열려 있으면(DEC-084) 그 데이터로 바뀔 때마다 갱신하고 폴링하지 않는다. 스트림을 쓸 수 없으면 2초마다 다시 불러온다. 색에만 의존하지 않도록 열 제목·"매도/매수" 라벨과 숫자를 항상 함께 보여준다.
  */
 const nf = new Intl.NumberFormat("ko-KR");
 
@@ -19,6 +20,25 @@ function Bar({ qty, max, side }: { qty: number; max: number; side: "ask" | "bid"
 }
 
 export function OrderBookPanel({ stockCode }: { stockCode: string }) {
+  const mode = useLiveMode();
+  if (mode === "fallback") return <PolledOrderBook stockCode={stockCode} />;
+  return <LiveOrderBook pending={mode === "pending"} />;
+}
+
+function LiveOrderBook({ pending }: { pending: boolean }) {
+  const book = useLiveBook();
+  if (!book) {
+    return (
+      <div>
+        <LocalModeNotice />
+        <p className="stock-tabs__pending">{pending ? copy.stockDetail.tabLoading : copy.stockDetail.liveBookWaiting}</p>
+      </div>
+    );
+  }
+  return <BookView book={book} error={null} note={copy.stockDetail.liveBookNote} />;
+}
+
+function PolledOrderBook({ stockCode }: { stockCode: string }) {
   const state = useIntradayPoll<IntradayOrderBookData>(
     `/api/v1/local/stocks/${encodeURIComponent(stockCode)}/orderbook`,
     2000,
@@ -35,7 +55,18 @@ export function OrderBookPanel({ stockCode }: { stockCode: string }) {
       </div>
     );
   }
+  return <BookView book={book} error={state.error} note={copy.stockDetail.bookNote} />;
+}
 
+function BookView({
+  book,
+  error,
+  note,
+}: {
+  book: IntradayOrderBookData;
+  error: { message: string } | null;
+  note: string;
+}) {
   const asks: IntradayBookLevel[] = [...book.asks].reverse(); // 위쪽이 높은 가격
   const max = Math.max(1, ...book.asks.map((l) => l.quantity), ...book.bids.map((l) => l.quantity));
   const totalAll = book.total_ask_quantity + book.total_bid_quantity;
@@ -44,7 +75,7 @@ export function OrderBookPanel({ stockCode }: { stockCode: string }) {
   return (
     <div className="orderbook">
       <LocalModeNotice />
-      {state.error && <p className="local-error">{state.error.message}</p>}
+      {error && <p className="local-error">{error.message}</p>}
       <table className="orderbook__table">
         <caption className="sr-only">{copy.stockDetail.bookCaption}</caption>
         <thead>
@@ -100,7 +131,7 @@ export function OrderBookPanel({ stockCode }: { stockCode: string }) {
       )}
       <p className="stock-tabs__note">
         {book.time ? `${copy.stockDetail.bookTime} ${book.time} · ` : ""}
-        {copy.stockDetail.bookNote}
+        {note}
       </p>
     </div>
   );
