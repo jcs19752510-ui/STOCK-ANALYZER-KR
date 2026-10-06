@@ -15,13 +15,18 @@ const ALLOWED: readonly RegExp[] = [
   /^\/api\/v1\/internal\/admin\/stocks\/[0-9A-Za-z]{6}\/investor$/,
 ];
 
+// 실시간 스트림(`/api/v1/local/stocks/{code}/stream`)은 이 목록이 아니라 전용 경로(`local/stocks/[code]/stream/route.ts`)가 맡는다(SSE는 JSON 대행과 처리 방식이 달라서).
 const LOCAL_ALLOWED: readonly RegExp[] = [
   /^\/api\/v1\/local\/status$/,
+  /^\/api\/v1\/local\/realtime\/status$/, // 실시간 연결 상태(관리자 전용, DEC-084)
   /^\/api\/v1\/local\/stocks\/[0-9A-Za-z]{6}\/(minutes|ticks|orderbook|investor)$/,
 ];
 
 /** 투자자 수급은 관리자만(DEC-074) — 로컬 모드의 투자자 경로도 같은 규칙을 따른다. */
-const LOCAL_ADMIN_ONLY: readonly RegExp[] = [/^\/api\/v1\/local\/stocks\/[0-9A-Za-z]{6}\/investor$/];
+const LOCAL_ADMIN_ONLY: readonly RegExp[] = [
+  /^\/api\/v1\/local\/stocks\/[0-9A-Za-z]{6}\/investor$/,
+  /^\/api\/v1\/local\/realtime\/status$/,
+];
 
 type Env = Record<string, string | undefined>;
 

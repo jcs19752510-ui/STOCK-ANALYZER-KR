@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+from contextlib import asynccontextmanager
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -20,6 +21,7 @@ from services.public_api.api import (
     internal_admin,
     internal_auth,
     local_intraday,
+    local_realtime,
     market_summary,
     metrics,
     owner_investor,
@@ -54,7 +56,15 @@ logger = logging.getLogger(__name__)
 validate_auth_config()
 _AUTH_ENFORCED = internal_token_enforced()
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    yield
+    await local_realtime.shutdown_realtime()  # 실시간 증권사 연결 정리(DEC-084)
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="Stock Screener Public API",
     version="0.1.0",
     docs_url=None if _AUTH_ENFORCED else "/docs",
@@ -129,6 +139,8 @@ app.include_router(earnings.router, prefix="/api/v1")  # DEC-041 종목 상세 �
 app.include_router(market_summary.router, prefix="/api/v1")
 # 개인 로컬 모드 장중 시세(DEC-052): 기본 꺼짐, 허용 IP(기본 loopback)에서만 응답.
 app.include_router(local_intraday.router, prefix="/api/v1")
+# 본인 전용 실시간 시세 스트림(DEC-084): 같은 4중 통제 + 소유자(관리자) 확인, 기본 꺼짐.
+app.include_router(local_realtime.router, prefix="/api/v1")
 # 로그인 내부 경로(DEC-067): 웹 서버 전용. 회원 DB 주소가 없으면 404로 꺼져 있고,
 # 스위치와 무관하게 항상 내부 토큰을 요구한다.
 app.include_router(internal_auth.router, prefix="/api/v1")

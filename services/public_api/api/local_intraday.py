@@ -68,10 +68,8 @@ def require_local_mode(request: Request, response: Response) -> cfg.IntradaySett
     return settings
 
 
-def get_intraday_service(
-    settings: cfg.IntradaySettings = Depends(require_local_mode),
-) -> IntradayService:
-    """프로세스당 하나(토큰·호출 간격·캐시를 공유). 앱키가 바뀌면 새로 만든다."""
+def shared_intraday_service(settings: cfg.IntradaySettings) -> IntradayService:
+    """프로세스당 하나(토큰·호출 간격·캐시를 공유). 앱키가 바뀌면 새로 만든다. 실시간 모듈(DEC-084)도 같은 인스턴스를 쓴다."""
     global _service
     if not settings.configured:
         raise ApiError(
@@ -84,6 +82,12 @@ def get_intraday_service(
         if _service is None or _service[0] != fingerprint:
             _service = (fingerprint, IntradayService(KisClient(settings)))
         return _service[1]
+
+
+def get_intraday_service(
+    settings: cfg.IntradaySettings = Depends(require_local_mode),
+) -> IntradayService:
+    return shared_intraday_service(settings)
 
 
 def reset_intraday_service() -> None:

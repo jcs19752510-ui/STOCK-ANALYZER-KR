@@ -162,6 +162,9 @@ class Handler(BaseHTTPRequestHandler):
         body = json.loads(self.rfile.read(length) or b"{}")
         if urlparse(self.path).path == "/oauth2/tokenP" and body.get("grant_type") == "client_credentials":
             self._send(200, {"access_token": "mock-token", "token_type": "Bearer", "expires_in": 86400})
+        elif urlparse(self.path).path == "/oauth2/Approval" and body.get("grant_type") == "client_credentials":
+            # 실시간(웹소켓) 접속키 — scripts/mock_kis_ws_server.py의 기본 키와 같다(DEC-084)
+            self._send(200, {"approval_key": "mock-approval"})
         else:
             self._send(404, {"rt_cd": "1", "msg_cd": "MOCK404", "msg1": "not found"})
 

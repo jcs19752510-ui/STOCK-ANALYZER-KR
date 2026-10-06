@@ -11,11 +11,13 @@ from urllib.parse import urlparse
 
 KIS_REAL_BASE_URL = "https://openapi.koreainvestment.com:9443"
 _KIS_REAL_HOST = "openapi.koreainvestment.com"
+KIS_REAL_WS_URL = "ws://ops.koreainvestment.com:21000"  # 실시간(웹소켓) 실전 서버(공식 샘플 kis_devlp.yaml)
 
 ENABLED_ENV = "LOCAL_INTRADAY_ENABLED"
 APP_KEY_ENV = "KIS_APP_KEY"
 APP_SECRET_ENV = "KIS_APP_SECRET"
 BASE_URL_ENV = "KIS_BASE_URL"
+WS_URL_ENV = "KIS_WS_URL"
 ALLOW_CUSTOM_BASE_ENV = "KIS_ALLOW_CUSTOM_BASE_URL"
 ALLOWED_IPS_ENV = "LOCAL_INTRADAY_ALLOWED_IPS"
 TOKEN_CACHE_ENV = "KIS_TOKEN_CACHE_PATH"
@@ -35,6 +37,7 @@ class IntradaySettings:
     base_url: str
     allowed_networks: tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...]
     token_cache_path: Path
+    ws_url: str = KIS_REAL_WS_URL
 
     @property
     def configured(self) -> bool:
@@ -67,6 +70,17 @@ def _resolve_base_url(env: dict[str, str]) -> str:
     return raw.rstrip("/")
 
 
+def _resolve_ws_url(env: dict[str, str]) -> str:
+    raw = env.get(WS_URL_ENV, "").strip() or KIS_REAL_WS_URL
+    allow_custom = env.get(ALLOW_CUSTOM_BASE_ENV, "").strip().lower() == "true"
+    # 접속키가 엉뚱한 서버로 나가지 않도록 기본은 증권사 실전 주소만 허용한다(모의 서버를 쓸 때만 명시적으로 허용).
+    if not allow_custom and raw != KIS_REAL_WS_URL:
+        raise IntradayConfigError(f"{WS_URL_ENV}는 한국투자증권 실전 주소({KIS_REAL_WS_URL})만 허용됩니다.")
+    if urlparse(raw).scheme not in ("ws", "wss"):
+        raise IntradayConfigError(f"{WS_URL_ENV}는 ws:// 또는 wss:// 주소여야 합니다.")
+    return raw
+
+
 def get_settings(env: dict[str, str] | None = None) -> IntradaySettings:
     source = dict(os.environ) if env is None else env
     enabled = source.get(ENABLED_ENV, "").strip().lower() == "true"
@@ -77,6 +91,7 @@ def get_settings(env: dict[str, str] | None = None) -> IntradaySettings:
         base_url=_resolve_base_url(source) if enabled else KIS_REAL_BASE_URL,
         allowed_networks=_parse_networks(source.get(ALLOWED_IPS_ENV, DEFAULT_ALLOWED_IPS)),
         token_cache_path=Path(source.get(TOKEN_CACHE_ENV, DEFAULT_TOKEN_CACHE)),
+        ws_url=_resolve_ws_url(source) if enabled else KIS_REAL_WS_URL,
     )
 
 
