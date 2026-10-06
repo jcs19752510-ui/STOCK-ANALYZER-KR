@@ -63,12 +63,13 @@ function asString(value: unknown): string | null {
 
 export async function apiLogin(username: string, password: string, ip: string | null, remember = false): Promise<LoginResult> {
   try {
-    const response = await fetch(`${apiBase()}/api/v1/internal/auth/login`, {
+    // 무료 호스팅의 잠든 API/DB가 깨어나는 동안의 일시적 실패(연결 오류·502/503/504)는 몇 번 더 시도한다(DEC-077).
+    // 이런 실패는 API가 비밀번호 확인까지 가지 못한 경우라 실패 횟수가 늘지 않고, 아이디·비밀번호 오류(401)·잠금(429)은 재시도하지 않는다.
+    const response = await fetchWithColdStartRetry(`${apiBase()}/api/v1/internal/auth/login`, {
       method: "POST",
       headers: internalHeaders(ip ? { "X-End-User-IP": ip } : {}),
       body: JSON.stringify({ username, password, remember }),
       cache: "no-store",
-      signal: AbortSignal.timeout(LOGIN_TIMEOUT_MS),
     });
     if (response.status !== 200) {
       const code = ((await readJson(response))?.error as { code?: unknown } | null)?.code;
