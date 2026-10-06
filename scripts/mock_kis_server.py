@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import random
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -188,12 +189,17 @@ def psearch_result(q: dict, ok: dict) -> dict:
     n = PSEARCH_CALLS[seq] = PSEARCH_CALLS.get(seq, 0) + 1
     if seq == "1":
         return {"rt_cd": "1", "msg_cd": "MOCK_EMPTY", "msg1": "검색 결과가 없습니다."}
+    prefix = os.environ.get("MOCK_PSEARCH_CODE_PREFIX", "")  # 예: "T" → T00001…(종단 시험의 DB 시험 데이터 종목과 맞춘다). 기본은 숫자 6자리
+
+    def fmt(i: int) -> str:
+        return f"{prefix}{i:0{6 - len(prefix)}d}"
+
     if seq == "2":
-        codes = [f"{i:06d}" for i in range(1, 101)]
+        codes = [fmt(i) for i in range(1, 101)]
     else:
         step = (n - 1) // PSEARCH_CHANGE_EVERY  # 3번 호출마다 한 종목이 들어오고(편입) 한 종목이 빠진다(이탈)
-        codes = [f"{i:06d}" for i in range(1 + step, 6 + step)]
-    rows = [{"code": c, "name": f"모의{c}", "price": str(10000 + int(c)), "chgrate": "1.25", "acml_vol": "123456"} for c in codes]
+        codes = [fmt(i) for i in range(1 + step, 6 + step)]
+    rows = [{"code": c, "name": f"모의{c}", "price": str(10000 + sum(map(ord, c))), "chgrate": "1.25", "acml_vol": "123456"} for c in codes]
     return {**ok, "output2": rows}
 
 

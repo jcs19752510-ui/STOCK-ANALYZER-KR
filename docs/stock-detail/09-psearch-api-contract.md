@@ -64,7 +64,7 @@ interface PsearchResults {
 6. 가격은 이 API에 넣지 않는다(화면이 기존 `useQuotes(codes)`로 준실시간 값을 채운다).
 
 ## 5. 화면(프런트) 규칙
-- 새 화면 `/screener/broker`("증권사 조건검색"). 스크리닝 방식 전환(`ScreeningModeNav`)에 세 번째 항목을 **로컬 모드 관리자에게만** 보인다: 서버 렌더에서는 보이지 않고, 브라우저에서 `localIntradayAvailable()`이 참이고 `/api/v1/local/psearch/conditions`가 200일 때만 나타난다(403·404·503이면 항목도 화면 내용도 없음).
+- 새 화면 `/screener/broker`("증권사 조건검색"). 스크리닝 방식 전환(`ScreeningModeNav`)에 세 번째 항목을 **로컬 모드 관리자에게만** 보인다: 서버 렌더에서는 보이지 않고, 브라우저에서 `localIntradayAvailable()`이 참이고 `/api/v1/local/psearch/conditions`가 200일 때만 나타난다(403·404·503이면 항목도 화면 내용도 없음. **예외: 503 `PSEARCH_NOT_CONFIGURED`**는 이미 로컬 모드·관리자 확인을 통과한 응답이므로 항목을 보여 `KIS_HTS_ID` 설정 안내 화면으로 이어지게 한다 — 2026-10-06 화면 담당 요청 1 반영).
 - 조건 선택(목록의 `group · name`), 결과 표(종목명(코드), 시장, **현재가=`useQuotes`의 준실시간 값(`QuoteText` 재사용)**, 편입 시각), 새로 들어온 종목 강조(색에만 의존하지 않음: "신규" 글자), 이탈 종목 변화 목록(`changes`).
 - 자동 갱신: `max(5초, cache_ttl_seconds)` 간격, 탭이 가려지면 중지, 403·404·503은 다시 묻지 않음, 실패 시 간격 증가(상한 30초). 화면에 **"마지막 조회 시각"**과 `stale`·`capped`·`empty` 안내를 보여 준다. "실시간 보장" 문구는 쓰지 않는다.
 - 안내문(한 줄): "증권사 HTS 조건검색 결과입니다(본인 전용). 조건 판정은 증권사가 하며 이 사이트는 결과를 표시만 합니다. 투자 권유가 아닙니다." — `npm run lint:copy`(금지표현 검사)를 통과해야 한다.

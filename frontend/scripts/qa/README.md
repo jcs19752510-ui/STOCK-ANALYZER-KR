@@ -20,6 +20,7 @@ npm i playwright-core axe-core --no-audit --no-fund
 - live-stream.mjs : 실시간 스트림 화면(DEC-084). 모의 KIS REST(4413)·모의 KIS 웹소켓(4414, 스크립트가 직접 띄우고 끊었다 켬)·API(4411)·프런트(4412)로
   `dev`(갱신·폴링 0건·연결 1개·재연결·구독 해지·한도·폭·axe) / `prod`(운영 빌드에는 라이브 UI·스트림 요청 없음) 두 단계. DB 없이 열리도록
   `live-stream-harness.page.tsx`를 `src/app/qa-live/page.tsx`로 복사해 쓰고 끝나면 지운다(자세한 실행 방법은 스크립트 맨 위 주석).
+- psearch-screen.mjs : 증권사 조건검색 화면(DEC-088). 계약서 모양의 **가짜 JSON 서버를 스크립트가 직접 띄우고**(4511), `next dev`(`dev` 단계, 로컬 플래그 켬)·`npm run build`+`next start`(`prod` 단계, 플래그 없음)도 직접 띄웠다 PID로 끝낸다(4512). 표·자동 갱신·신규 표지·간격·탭 가림·상태 안내·폭·axe·접근 불가 숨김(dev) / 전환 항목·화면 내용·`/psearch` 요청 0건(prod). 임시 파일은 `/tmp/claude-0/qa-psearch`에만 남긴다.
 
 ## 주의: API 요청 한도(429)
 공개 API는 IP당 분당 60회로 제한된다(`PUBLIC_API_RATE_LIMIT_PER_MINUTE`). QA 스크립트를 연달아 돌리면 한도를 넘어 429가 나고, 화면이 오류 상태가 되어 `관심종목에 추가` 버튼을 못 찾는 등 **간헐적 실패**가 생긴다(2026-10-03 확인: 실패 시 로그에 429). QA용 API는 `PUBLIC_API_RATE_LIMIT_PER_MINUTE=100000`으로 기동한다(운영에는 적용하지 않는다).

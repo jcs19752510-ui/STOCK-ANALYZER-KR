@@ -1,15 +1,16 @@
 import Link from "next/link";
+import { BrokerModeNavItem } from "@/components/BrokerModeNavItem";
 import copy from "@/content/copy.ko.json";
 import { PATTERN_SCREEN_ENABLED } from "@/lib/patternFeature";
 
 /**
- * 스크리닝 방식 전환 링크 2개(03-ux-design.md §1). ARIA `tablist`가 아니라 **페이지 이동 링크**다 —
+ * 스크리닝 방식 전환 링크 2개(03-ux-design.md §1) + 로컬 모드 관리자에게만 나타나는 세 번째 "증권사 조건검색"(`BrokerModeNavItem`, DEC-088). ARIA `tablist`가 아니라 **페이지 이동 링크**다 —
  * 실제로 라우트가 바뀌므로 `<nav aria-label>` + 현재 항목 `aria-current="page"`를 쓴다.
  * 기능 스위치가 꺼져 있으면(`NEXT_PUBLIC_PATTERN_SCREEN_ENABLED="false"`) 아무것도 렌더하지 않는다.
  * 패턴 화면의 이름은 `copy.pattern.label` 한 곳에서만 가져온다(명칭 단일 출처).
  */
 interface ScreeningModeNavProps {
-  current: "manual" | "pattern";
+  current: "manual" | "pattern" | "broker";
 }
 
 export function ScreeningModeNav({ current }: ScreeningModeNavProps) {
@@ -34,6 +35,7 @@ export function ScreeningModeNav({ current }: ScreeningModeNavProps) {
             </Link>
           </li>
         ))}
+        <BrokerModeNavItem current={current === "broker"} />
       </ul>
     </nav>
   );

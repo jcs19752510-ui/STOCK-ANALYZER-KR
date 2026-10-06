@@ -2967,3 +2967,202 @@ main {
   display: flex;
   gap: var(--space-2);
 }
+
+/* ───────── 증권사 조건검색(DEC-088, 로컬 모드 관리자 전용) ─────────
+   새 색·토큰을 만들지 않고 기존 토큰만 쓴다. 상태는 색뿐 아니라 글자("신규"·"조회 지연")로도 구분한다. */
+.broker-page h1 {
+  margin: 0 0 var(--space-3);
+}
+
+.broker-page p {
+  overflow-wrap: anywhere;
+}
+
+.broker-note {
+  margin: var(--space-2) 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.broker-select {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+  max-width: 480px;
+}
+
+.broker-select__label {
+  font-weight: 700;
+}
+
+.broker-select__control {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-default);
+  border-radius: 4px;
+  background: var(--color-surface-bg);
+  color: var(--color-text-primary);
+  font: inherit;
+}
+
+.broker-select__control:focus-visible,
+.broker-button:focus-visible,
+.broker-table-wrap:focus-visible,
+.broker-list__link:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.broker-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-3) 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.broker-notice {
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.broker-notice p {
+  margin: 0;
+}
+
+.broker-notice p + p {
+  margin-top: var(--space-1);
+}
+
+.broker-notice--warn {
+  border: 1px solid var(--color-semantic-warning);
+  background: var(--color-surface-bg);
+  color: var(--color-text-primary);
+}
+
+.broker-panel {
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+}
+
+.broker-panel__title {
+  margin: 0 0 var(--space-2);
+  font-size: 18px;
+}
+
+.broker-panel p {
+  margin: 0 0 var(--space-3);
+}
+
+.broker-button {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-border-default);
+  border-radius: 4px;
+  background: var(--color-surface-bg);
+  color: var(--color-text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.broker-section-heading {
+  margin: var(--space-6) 0 var(--space-3);
+  font-size: 18px;
+}
+
+.broker-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.broker-table .results-table__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.broker-table .market-badge {
+  white-space: nowrap;
+}
+
+.broker-time {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.broker-noprice {
+  color: var(--color-text-secondary);
+}
+
+/* "신규" 글자 표지: 색이 달라져도 글자로 구분된다(고대비 모드에서는 테두리 유지) */
+.broker-new {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid var(--color-brand-primary);
+  border-radius: 999px;
+  color: var(--color-brand-primary);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.broker-list__item {
+  padding: var(--space-4);
+}
+
+.broker-list__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: inherit;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.broker-list .results-list__header {
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
+}
+
+.broker-changes__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.broker-change {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-surface-subtle);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+@media (forced-colors: active) {
+  .broker-new,
+  .broker-notice--warn,
+  .broker-panel {
+    border: 2px solid CanvasText;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .broker-select__control,
+  .broker-button {
+    transition: none;
+  }
+}

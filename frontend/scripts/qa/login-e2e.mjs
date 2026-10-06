@@ -233,6 +233,16 @@ if (should("C")) {
     rec("C 운영 빌드: 스크리닝 결과에 '현재가' 열·실시간 표지 없음", !heads.includes("현재가") && (await p.locator(".quote-text--live").count()) === 0, heads.join("|"));
     rec("C 운영 빌드: 준실시간 시세 조회(/local/market) 요청 0건", resources.filter((u) => u.includes("/local/market")).length === 0);
   }
+  // 운영 빌드: 스크리닝 전환에 '증권사 조건검색'이 없고 /psearch 요청도 없어야 한다(DEC-088)
+  {
+    await p.goto("/screener/pattern");
+    await p.waitForSelector("nav.screening-mode-nav", { timeout: 15000 }).catch(() => {});
+    await p.waitForTimeout(1500);
+    const links = await p.$$eval("nav.screening-mode-nav a", (as) => as.map((x) => x.textContent)).catch(() => []);
+    const res2 = await p.evaluate(() => performance.getEntriesByType("resource").map((e) => e.name));
+    rec("C 운영 빌드: 스크리닝 전환에 '증권사 조건검색' 없음(기존 2개)", links.length === 2 && !links.includes("증권사 조건검색"), links.join("|"));
+    rec("C 운영 빌드: /local/psearch 요청 0건", res2.filter((u) => u.includes("/psearch")).length === 0);
+  }
   rec("C 브라우저는 API 서버(4321)를 직접 부르지 않는다(웹 서버 경로만)", ![...apiHosts].some((o) => o === new URL(API).origin), [...apiHosts].join(","));
   // 대행 경로
   const rq = ctx.request;

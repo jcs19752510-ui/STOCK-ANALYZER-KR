@@ -114,6 +114,8 @@ def main() -> int:
                 "KIS_BASE_URL": f"http://127.0.0.1:{KIS_PORT}",
                 "KIS_ALLOW_CUSTOM_BASE_URL": "true",
                 "KIS_WS_URL": f"ws://127.0.0.1:{WS_PORT}",
+                "KIS_HTS_ID": "e2e-hts-id-xyz",  # 증권사 조건검색(DEC-088) — 응답·로그에 나오면 안 되는 값(종단 시험이 확인)
+                "KIS_PSEARCH_CACHE_SECONDS": "2",
                 "KIS_TOKEN_CACHE_PATH": str(fake_root / "kis-token.json"),
                 "PYTHONPATH": str(REPO),
             }
@@ -133,7 +135,7 @@ def main() -> int:
                 subprocess.run(["npm", "run", "build"], cwd=REPO / "frontend", env=web_env, check=True,
                                stdout=(LOG_DIR / "local-web-build.log").open("w"), stderr=subprocess.STDOUT)
 
-            procs.append(subprocess.Popen([sys.executable, "scripts/mock_kis_server.py", "--port", str(KIS_PORT)], cwd=REPO, start_new_session=True,
+            procs.append(subprocess.Popen([sys.executable, "scripts/mock_kis_server.py", "--port", str(KIS_PORT)], cwd=REPO, start_new_session=True, env={**os.environ, "MOCK_PSEARCH_CODE_PREFIX": "T"},
                                           stdout=(LOG_DIR / "local-kis.log").open("w"), stderr=subprocess.STDOUT))
             procs.append(subprocess.Popen([sys.executable, "scripts/mock_kis_ws_server.py", "--port", str(WS_PORT)], cwd=REPO, start_new_session=True,
                                           stdout=(LOG_DIR / "local-ws.log").open("w"), stderr=subprocess.STDOUT))

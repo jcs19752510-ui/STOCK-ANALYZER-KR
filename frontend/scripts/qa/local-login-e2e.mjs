@@ -144,6 +144,73 @@ if (MODE === "on") {
     rec("페이지 오류 없음", errs.length === 0, errs.join("|"));
     await ctx.close();
   }
+  // ---- 3c. 증권사 조건검색 화면(DEC-088): 로그인 + 웹 서버 대행 + API + 모의 증권사 실제 연결
+  {
+    const { ctx, page, seen, errs } = await ctxPage();
+    await login(page, "kim", PW);
+    await page.goto("/screener/pattern");
+    await page.waitForSelector("nav.screening-mode-nav", { timeout: 30000 });
+    await page.waitForSelector("nav.screening-mode-nav a:has-text('증권사 조건검색')", { timeout: 30000 });
+    const navLinks = await page.$$eval("nav.screening-mode-nav a", (as) => as.map((a) => a.textContent));
+    rec("관리자(로컬): 스크리닝 전환에 '증권사 조건검색' 항목이 보임", navLinks.length === 3 && navLinks.includes("증권사 조건검색"), navLinks.join("|"));
+    await page.click("nav.screening-mode-nav a:has-text('증권사 조건검색')");
+    await page.waitForURL((u) => u.pathname === "/screener/broker", { timeout: 20000 });
+    await page.waitForSelector(".broker-table tbody tr", { timeout: 45000 });
+    const rows0 = await page.$$eval(".broker-table tbody tr", (r) => r.length);
+    rec("조건 결과 표가 채워짐(모의 조건 첫 조회)", rows0 >= 3, `${rows0}행`);
+    const text = await page.locator("main").innerText();
+    rec("안내문(증권사 판정·투자 권유 아님) 표시", text.includes("투자 권유가 아닙니다"));
+    rec("종목명 표시(증권사 응답의 이름)", /모의T0000\d/.test(text), text.slice(0, 0));
+    await page.waitForSelector(".broker-table .quote-text--live", { timeout: 60000 });
+    const liveCells = await page.$$eval(".broker-table .quote-text--live", (e) => e.length);
+    rec("현재가가 준실시간 값으로 채워짐(실시간 표지 포함)", liveCells >= 1, `${liveCells}/${rows0}행`);
+    // 장중 변화: 모의 증권사가 호출 3번마다 한 종목을 편입·이탈시킨다(서버 캐시 2초, 화면 조회 5초 간격 → 약 15초마다 변화)
+    await page.waitForSelector(".broker-change", { timeout: 60000 });
+    const changes = await page.$$eval(".broker-change", (e) => e.map((x) => x.textContent?.replace(/\s+/g, " ").trim()));
+    rec("새로고침 없이 편입·이탈이 '최근 변화'에 기록됨", changes.length >= 1 && /편입/.test(changes[0] ?? "") && /이탈/.test(changes[0] ?? ""), changes[0] ?? "");
+    const newBadges = await page.locator(".broker-new").count();
+    rec("새로 편입된 종목에 '신규' 글자 표지(색에만 의존하지 않음)", newBadges >= 1, String(newBadges));
+    const psearchReqs = seen.filter((u) => u.includes("/api/v1/local/psearch/"));
+    rec("조건검색 요청은 웹 서버 대행 경로로만 나감(API 직접 호출 0)", psearchReqs.length >= 3 && psearchReqs.every((u) => u.startsWith(BASE)) && seen.filter((u) => u.startsWith(apiOrigin)).length === 0, `${psearchReqs.length}건`);
+    const t1 = psearchReqs.filter((u) => u.includes("/results")).length;
+    await page.waitForTimeout(12000);
+    const t2 = seen.filter((u) => u.includes("/api/v1/local/psearch/results")).length;
+    rec("결과 조회 간격이 너무 짧지 않음(12초에 4건 이하)", t2 - t1 <= 4, `${t2 - t1}건`);
+    // 서버 응답·화면 어디에도 HTS ID가 없음
+    const html = await page.content();
+    const apiRes = await ctx.request.get(`${BASE}/api/v1/local/psearch/results?seq=0`);
+    const apiBody = await apiRes.text();
+    rec("응답·화면 어디에도 HTS ID 문자열이 없음", !html.includes("e2e-hts-id-xyz") && !apiBody.includes("e2e-hts-id-xyz") && apiRes.status() === 200 && /no-store/.test(apiRes.headers()["cache-control"] ?? ""), String(apiRes.status()));
+    const bad = await ctx.request.get(`${BASE}/api/v1/local/psearch/results?seq=a%20b`);
+    rec("잘못된 조건 키는 400", bad.status() === 400, String(bad.status()));
+    await page.setViewportSize({ width: 390, height: 800 });
+    await page.waitForSelector(".broker-list__item", { timeout: 20000 });
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+    rec("모바일(390px)에서 카드 목록 표시, 가로 넘침 없음", !overflow);
+    await page.screenshot({ path: `${OUT}/broker-screen-390.png` });
+    rec("페이지 오류 없음", errs.length === 0, errs.join("|"));
+    await ctx.close();
+  }
+  // 일반 사용자: 전환 항목 없음, 조건검색 API 403
+  {
+    const { ctx, page, seen, errs } = await ctxPage();
+    await login(page, "lee", PW2);
+    await page.goto("/screener/pattern");
+    await page.waitForSelector("nav.screening-mode-nav", { timeout: 30000 });
+    await page.waitForTimeout(3000);
+    const navLinks = await page.$$eval("nav.screening-mode-nav a", (as) => as.map((a) => a.textContent));
+    rec("일반 사용자: '증권사 조건검색' 항목 없음", navLinks.length === 2 && !navLinks.includes("증권사 조건검색"), navLinks.join("|"));
+    const r = await ctx.request.get(`${BASE}/api/v1/local/psearch/conditions`);
+    const r2 = await ctx.request.get(`${BASE}/api/v1/local/psearch/results?seq=0`);
+    rec("일반 사용자: 조건검색 API는 403(관리자 전용)", r.status() === 403 && r2.status() === 403, `${r.status()}/${r2.status()}`);
+    await page.goto("/screener/broker");
+    await page.waitForTimeout(2500);
+    const tableCount = await page.locator(".broker-table, .broker-list").count();
+    rec("일반 사용자: 직접 주소로 열어도 결과 표 없음(안내만)", tableCount === 0, String(tableCount));
+    rec("일반 사용자: 결과 조회 요청 0건", seen.filter((u) => u.includes("/psearch/results")).length === 0);
+    rec("일반 사용자: 페이지 오류 없음", errs.length === 0, errs.join("|"));
+    await ctx.close();
+  }
   // 일반 사용자는 시세 열·안내가 없고 시세 API는 403
   {
     const { ctx, page, errs } = await ctxPage();
