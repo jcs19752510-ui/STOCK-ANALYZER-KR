@@ -15,6 +15,8 @@ export interface LiveBaseFill {
   done: number;
   total: number;
   filled: number;
+  /** filled 중 DB 캐시로 채운 종목 수(증권사 호출 없음) */
+  from_cache: number;
   excluded: number;
   mismatched: number;
   /** 아직 보충 결과가 정해지지 않은 종목 수("보충 중"). excluded(제외)와 구분해서 보인다. */

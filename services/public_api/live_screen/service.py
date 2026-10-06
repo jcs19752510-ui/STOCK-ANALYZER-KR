@@ -191,7 +191,7 @@ class LiveScreenService:
 def _fill_meta(gap_days: int, st: FillStatus | None, excluded: int) -> dict[str, Any]:
     if st is None or gap_days == 0:
         return {
-            "gap_days": 0, "state": "none", "done": 0, "total": 0, "filled": 0,
+            "gap_days": 0, "state": "none", "done": 0, "total": 0, "filled": 0, "from_cache": 0,
             "excluded": 0, "mismatched": 0, "pending": 0, "source": None,
         }
     return {
@@ -200,6 +200,7 @@ def _fill_meta(gap_days: int, st: FillStatus | None, excluded: int) -> dict[str,
         "done": st.attempted,
         "total": st.total,
         "filled": st.filled,
+        "from_cache": st.from_cache,
         "excluded": excluded,
         "mismatched": st.mismatched,
         "pending": max(0, st.total - st.filled - st.mismatched - st.missing - st.failed),

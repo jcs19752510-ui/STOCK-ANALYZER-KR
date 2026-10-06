@@ -35,7 +35,7 @@ from services.public_api.live_screen.types import DailyBar
 from services.public_api.live_screen.virtual import build_virtual_source, dump_rows
 from services.public_api.main import app
 from services.public_api.realtime.market import MarketQuote, MarketSnapshotPoller
-from shared.db_models.public_serving import DerivedMetricsDaily
+from shared.db_models.public_serving import DerivedMetricsDaily, KisDailyBar
 from tests.integration.pattern_api_env import api_client, prepare_database, seed_calendar
 from tests.integration.pattern_fixtures import TARGET_DATE, build_stocks
 from tests.integration.pg_temp_db import TempDb, TempDbUnavailable, temp_database
@@ -437,6 +437,45 @@ def test_gap_fill_flow_progress_then_ready_with_cross_checks(live_env):
     assert got["T00001"] == "live"
     assert all(b == "daily" for c, b in got.items() if c != "T00001")
     assert body["meta"]["live"]["basis_trade_date"] == "2026-09-30" and body["meta"]["live"]["expected_trade_date"] == "2026-10-01"
+
+
+def test_gap_fill_from_db_cache_needs_no_kis_calls(live_env, db):
+    """kis_daily_bar(DEC-097)에 P·E 행이 있으면 증권사 조회 0회로 보충이 끝난다."""
+    set_now(kst(2026, 10, 2, 10, 0))
+    hist = local_screen.load_history(TARGET_DATE)
+    anchors = {c: hist[c][-1] for c in CODES}
+    needed = [date(2026, 10, 1)]
+    calls: list[str] = []
+
+    def fetch(code):
+        calls.append(code)
+        return []
+
+    live_env.holder.fetch = fetch
+    live_env.svc._d.filler = BaseFiller(fetch, workers=2, max_attempts=2, retry_delay=0.01, cache_loader=local_screen.load_kis_cache)
+    engine = create_engine(TempDb.render(db.migrator_url))
+    try:
+        with Session(engine) as session:
+            for c in CODES:
+                for b in kis_bars_for(c, anchors[c], needed):
+                    session.add(KisDailyBar(stock_code=c, trade_date=b.trade_date, open=b.open, high=b.high, low=b.low, close=b.close, volume=b.volume))
+            session.commit()
+    finally:
+        engine.dispose()
+    live_env.client.get("/api/v1/local/screen")  # 보충 시작(첫 응답은 503일 수 있다)
+    st = wait_filled(live_env)
+    assert st.filled == 10 and st.from_cache == 10 and calls == [] and live_env.svc._d.filler.fetch_calls == 0
+    live_env.quote("T00001", float(anchors["T00001"].close) * 1.02, 7000)
+    r = live_env.client.get("/api/v1/local/screen", params={"page_size": 200})
+    assert r.status_code == 200, r.text
+    bf = r.json()["meta"]["live"]["base_fill"]
+    assert bf["filled"] == 10 and bf["from_cache"] == 10 and bf["excluded"] == 0 and bf["state"] == "ready"
+    engine = create_engine(TempDb.render(db.migrator_url))
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("DELETE FROM public_serving.kis_daily_bar"))  # 모듈 공유 DB — 다른 시험에 남기지 않는다
+    finally:
+        engine.dispose()
 
 
 def test_gap_beyond_limit_is_stale(live_env):

@@ -109,6 +109,62 @@ def test_filler_mixed_outcomes_and_retries_exhaust():
     assert "S001" not in f.bars() and "S002" in f.bars() and st.reasons == {"failed": 1, REASON_MISMATCH: 1, REASON_MISSING_DATES: 1}
 
 
+def cached_bars(anc, code):
+    return [anc[code], bar(E1, int(anc[code].close) + 1)]
+
+
+def test_filler_cache_fills_without_kis_calls():
+    anc = anchors(10)
+    loaded = []
+
+    def loader(p, e):
+        loaded.append((p, e))
+        return {c: cached_bars(anc, c) for c in anc}
+
+    def no_fetch(code):
+        raise AssertionError("KIS must not be called")
+
+    f, st = run_fill(no_fetch, anc, cache_loader=loader)
+    assert loaded == [(P, E1)]
+    assert st.state == "ready" and st.filled == 10 and st.from_cache == 10 and st.attempted == 10
+    assert f.fetch_calls == 0 and set(f.bars()) == set(anc)
+
+
+def test_filler_partial_cache_falls_back_to_kis_for_rest():
+    anc = anchors(10)
+    kis_called = []
+
+    def fetch(code):
+        kis_called.append(code)
+        return cached_bars(anc, code)
+
+    f, st = run_fill(fetch, anc, cache_loader=lambda p, e: {c: cached_bars(anc, c) for c in list(anc)[:6]})
+    assert st.filled == 10 and st.from_cache == 6 and f.fetch_calls == 4 and len(kis_called) == 4
+    assert not set(kis_called) & set(list(anc)[:6])
+
+
+def test_filler_cache_mismatch_or_missing_dates_fall_back_to_kis():
+    anc = anchors(4)
+    cache = {
+        "S000": [bar(P, 1), bar(E1, 2)],  # 앵커 종가 불일치
+        "S001": [anc["S001"]],  # 필요한 날 없음
+        "S002": [],  # 빈 목록
+        # S003: 캐시 없음
+    }
+    f, st = run_fill(good_fetch(anc), anc, cache_loader=lambda p, e: cache)
+    assert st.filled == 4 and st.from_cache == 0 and f.fetch_calls == 4 and st.mismatched == 0
+
+
+def test_filler_cache_loader_exception_falls_back_to_kis():
+    anc = anchors(5)
+
+    def boom(p, e):
+        raise RuntimeError("db down")
+
+    f, st = run_fill(good_fetch(anc), anc, cache_loader=boom)
+    assert st.state == "ready" and st.filled == 5 and st.from_cache == 0 and f.fetch_calls == 5
+
+
 def test_filler_same_key_is_idempotent_and_new_key_restarts():
     anc = anchors(5)
 

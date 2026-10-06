@@ -45,7 +45,12 @@ from services.public_api.live_screen.types import DailyBar
 from services.public_api.live_screen.virtual import build_virtual_source, dump_rows
 from services.public_api.schemas.live_screen import live_meta_from
 from shared.calendar_service import get_last_trading_day
-from shared.db_models.public_serving import CurrentPublishedBatch, DailyPrice, DerivedMetricsDaily
+from shared.db_models.public_serving import (
+    CurrentPublishedBatch,
+    DailyPrice,
+    DerivedMetricsDaily,
+    KisDailyBar,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/local", tags=["local-screen"])
@@ -140,6 +145,23 @@ def load_history(published_date: date) -> dict[str, list[DailyBar]]:
         session.close()
 
 
+def load_kis_cache(published: date, expected: date) -> dict[str, list[DailyBar]]:
+    """소유자 PC 배치가 적재한 증권사 일봉 캐시(DEC-097): 발행일(P, 교차검증 기준) 이상 직전 거래일(E) 이하 행. 종목→날짜 오름차순."""
+    session = get_session_factory()()
+    try:
+        stmt = (
+            select(KisDailyBar.stock_code, KisDailyBar.trade_date, KisDailyBar.open, KisDailyBar.high, KisDailyBar.low, KisDailyBar.close, KisDailyBar.volume)
+            .where(KisDailyBar.trade_date >= published, KisDailyBar.trade_date <= expected)
+            .order_by(KisDailyBar.stock_code, KisDailyBar.trade_date)
+        )
+        out: dict[str, list[DailyBar]] = {}
+        for code, d, o, h, lo, c, v in session.execute(stmt):
+            out.setdefault(str(code), []).append(DailyBar(d, o, h, lo, c, int(v)))
+        return out
+    finally:
+        session.close()
+
+
 # ── 서비스(프로세스당 하나) ─────────────────────────────────────────────────────────────
 _service: tuple[local_market.MarketRuntime, LiveScreenService, BaseFiller] | None = None
 
@@ -154,7 +176,7 @@ def _make_service(runtime: local_market.MarketRuntime) -> tuple[LiveScreenServic
         rows = body.get("output") if isinstance(body, dict) else None
         return normalize_daily_price([r for r in rows if isinstance(r, dict)]) if isinstance(rows, list) else []
 
-    filler = BaseFiller(fetch)
+    filler = BaseFiller(fetch, cache_loader=load_kis_cache)
 
     async def quote_state() -> QuoteState:
         await runtime.ensure_started()

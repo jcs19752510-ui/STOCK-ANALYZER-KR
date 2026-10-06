@@ -40,7 +40,7 @@ export function parseGeneratedAt(value: unknown): number | null {
 const FILL_STATES = new Set(["none", "running", "ready", "failed"]);
 
 export function parseBaseFill(raw: unknown): LiveBaseFill {
-  if (!isObj(raw)) return { gap_days: 0, state: "none", done: 0, total: 0, filled: 0, excluded: 0, mismatched: 0, pending: 0, source: null };
+  if (!isObj(raw)) return { gap_days: 0, state: "none", done: 0, total: 0, filled: 0, from_cache: 0, excluded: 0, mismatched: 0, pending: 0, source: null };
   const state = typeof raw.state === "string" && FILL_STATES.has(raw.state) ? (raw.state as LiveBaseFill["state"]) : "none";
   return {
     gap_days: nonNegInt(raw.gap_days),
@@ -48,6 +48,7 @@ export function parseBaseFill(raw: unknown): LiveBaseFill {
     done: nonNegInt(raw.done),
     total: nonNegInt(raw.total),
     filled: nonNegInt(raw.filled),
+    from_cache: nonNegInt(raw.from_cache),
     excluded: nonNegInt(raw.excluded),
     mismatched: nonNegInt(raw.mismatched),
     pending: nonNegInt(raw.pending),

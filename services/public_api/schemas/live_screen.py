@@ -15,6 +15,7 @@ class LiveBaseFill(BaseModel):
     done: int
     total: int
     filled: int
+    from_cache: int = 0
     excluded: int
     mismatched: int
     pending: int

@@ -72,6 +72,7 @@ interface LiveMeta {
     state: "none" | "running" | "ready" | "failed";
     done: number; total: number;  // 종목 단위 진행
     filled: number;               // 보충에 성공해 재계산에 쓰인 종목 수
+    from_cache: number;           // filled 중 DB 캐시(public_serving.kis_daily_bar, DEC-097)로 채워 증권사 호출이 없었던 종목 수
     excluded: number;             // 보충 실패·교차검증 불일치로 결과에서 뺀 종목 수(숨기지 않고 표시)
     mismatched: number;           // 겹치는 날짜의 증권사 종가가 발행 일봉과 달라 뺀 수(수정주가 불일치 방어)
     pending: number;              // 아직 보충 결과가 정해지지 않은 종목 수(보충 중). excluded와 구분해서 표시

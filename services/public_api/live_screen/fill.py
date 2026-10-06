@@ -50,6 +50,7 @@ class FillStatus:
     total: int = 0
     attempted: int = 0  # 한 번이라도 시도가 끝난 종목 수
     filled: int = 0
+    from_cache: int = 0  # filled 중 DB 캐시(kis_daily_bar)로 채운 종목 수(KIS 호출 없음)
     mismatched: int = 0
     missing: int = 0  # 응답에 P 행이나 필요한 날짜가 없는 종목
     failed: int = 0  # 시도했지만 실패(재시도 대기 또는 횟수 소진)
@@ -75,8 +76,10 @@ class BaseFiller:
         retry_delay: float = 20.0,
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], Any] | None = None,
+        cache_loader: Callable[[date, date], dict[str, list[DailyBar]]] | None = None,
     ) -> None:
         self._fetch = fetch
+        self._cache_loader = cache_loader
         self._workers = max(1, workers)
         self._max_attempts = max(1, max_attempts)
         self._retry_delay = retry_delay
@@ -138,7 +141,16 @@ class BaseFiller:
 
     # ── 작업 ──────────────────────────────────────────────────────────────────
     async def _run(self, st: FillStatus, anchors: dict[str, DailyBar]) -> None:
-        queue: deque[tuple[str, int]] = deque((c, 1) for c in anchors)
+        cache: dict[str, list[DailyBar]] = {}
+        if self._cache_loader is not None:
+            try:
+                cache = await asyncio.to_thread(self._cache_loader, st.key[0], st.key[1])
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # noqa: BLE001 — 캐시가 없어도 KIS 조회로 계속한다
+                logger.warning("일봉 캐시 읽기 실패(KIS 조회로 대체): %s", type(exc).__name__)
+                cache = {}
+        queue: deque[tuple[str, int]] = deque()
         retry: list[tuple[str, int]] = []
         first_seen: set[str] = set()
 
@@ -155,6 +167,16 @@ class BaseFiller:
                 st.missing += 1
             if reason != REASON_OK:
                 st.reasons[reason] = st.reasons.get(reason, 0) + 1
+
+        for code in anchors:
+            cached = cache.get(code)
+            if cached:
+                bars, reason = validate_fill(cached, anchors[code], st.needed_dates)
+                if reason == REASON_OK and bars is not None:
+                    settle(code, reason, 1, bars)
+                    st.from_cache += 1
+                    continue
+            queue.append((code, 1))
 
         async def worker() -> None:
             while queue:
