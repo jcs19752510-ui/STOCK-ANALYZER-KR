@@ -1,4 +1,4 @@
-// 상단 영역 순서 시험(DEC-082): ① 메뉴 줄 → ② 회원 메뉴 → ③ 제목, 스크롤 고정, 키보드 순서, axe. 612건.
+// 상단 영역 순서 시험(DEC-082·083): ① 메뉴 줄 → ② 회원 메뉴 → ③ 제목(모든 폭에서 세 줄), 스크롤 고정, 키보드 순서, axe. 612건.
 // 실행: NEXT_PUBLIC_AUTH_ENABLED=true 로 개발 서버(4202)를 띄운 뒤 node frontend/scripts/qa/header-order.mjs (playwright-core·axe-core는 QA_PW_DIR=/tmp/claude-0/pw 에 설치, scripts/qa/README.md 참고).
 import { createRequire } from "node:module";
 import fs from "node:fs";
@@ -26,7 +26,7 @@ for (const [w, h] of [[320, 568], [360, 800], [412, 968], [768, 1024], [1024, 76
         const links = [...nav.querySelectorAll(".global-nav__link")].map((a) => ({ t: a.textContent.trim(), cur: a.getAttribute("aria-current"), h: g(a).height, w: g(a).width, r: g(a).right, l: g(a).left }));
         return { bn: g(bn), nav: g(nav), mm: mm ? g(mm) : null, wm: g(wm), hd: g(hd), main: g(mn), domOK: rel(nav, hd) && (!mm || (rel(nav, mm) && rel(mm, wm))), sw: document.documentElement.scrollWidth, iw: innerWidth, ih: innerHeight, links, hdBorder: getComputedStyle(hd).borderBottomWidth, pos: getComputedStyle(nav).position, bh: getComputedStyle(document.documentElement).getPropertyValue("--banner-height") };
       });
-      const stacked = w < 1024; const act = m.links.filter((l) => l.cur === "page");
+      const stacked = true; /* DEC-083: 모든 폭에서 세 줄로 쌓는다 */ const act = m.links.filter((l) => l.cur === "page");
       rec(`[${tag}] ① 메뉴 줄이 배너 바로 아래 맨 위`, Math.abs(m.nav.top - m.bn.bottom) <= 1.5, `banner 끝 ${Math.round(m.bn.bottom)} / nav 시작 ${Math.round(m.nav.top)}`);
       rec(`[${tag}] 문서 순서: 메뉴 → 회원 메뉴 → 제목`, m.domOK);
       if (stacked) {
@@ -58,11 +58,11 @@ for (const [w, h] of [[320, 568], [360, 800], [412, 968], [768, 1024], [1024, 76
         await p.addScriptTag({ path: axeP });
         const v = await p.evaluate(async () => (await axe.run(".global-nav, .site-header, .disclaimer-banner", { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "best-practice"] } })).violations.map((x) => x.id));
         rec(`[${tag}] axe 위반 0`, v.length === 0, v.join(","));
-        if ([320, 412, 768, 1280].includes(w) && (role !== "user")) await p.screenshot({ path: `${OUT}/order-${w}-${role}.png`, clip: { x: 0, y: 0, width: w, height: Math.min(h, 440) } });
+        if ([320, 412, 768, 1024, 1280].includes(w) && (role !== "user")) await p.screenshot({ path: `${OUT}/order3-${w}-${role}.png`, clip: { x: 0, y: 0, width: w, height: Math.min(h, 440) } });
       }
     }
     await ctx.close();
   }
 }
 await b.close(); const f = res.filter((r) => !r.ok); console.log(`합계 ${res.length}건, 통과 ${res.length - f.length}, 실패 ${f.length}`);
-fs.writeFileSync(`${OUT}/header-order-test-raw.json`, JSON.stringify(res, null, 1)); process.exit(f.length ? 1 : 0);
+fs.writeFileSync(`${OUT}/header-stack-test-raw.json`, JSON.stringify(res, null, 1)); process.exit(f.length ? 1 : 0);
