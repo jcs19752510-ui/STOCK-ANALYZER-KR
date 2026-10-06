@@ -220,6 +220,24 @@ class DailyPrice(Base):
     )
 
 
+class KisDailyBar(Base):
+    """증권사(KIS) 일봉 보충 캐시(DEC-097, 0019). 소유자 PC 수집 스크립트가 적재. 확정 값이 아니며 발행일 이하 행은 지운다."""
+
+    __tablename__ = "kis_daily_bar"
+    __table_args__ = {"schema": "public_serving"}
+
+    stock_code: Mapped[str] = mapped_column(String(6), primary_key=True)
+    trade_date: Mapped[date] = mapped_column(Date, primary_key=True)
+    open: Mapped[Decimal] = mapped_column(Numeric, nullable=False)
+    high: Mapped[Decimal] = mapped_column(Numeric, nullable=False)
+    low: Mapped[Decimal] = mapped_column(Numeric, nullable=False)
+    close: Mapped[Decimal] = mapped_column(Numeric, nullable=False)
+    volume: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class CorpEarnings(Base):
     """종목 연간 실적(DEC-041, 0013). DART 사업보고서 기준 매출·영업이익·순이익(원), 결측은 NULL."""
 

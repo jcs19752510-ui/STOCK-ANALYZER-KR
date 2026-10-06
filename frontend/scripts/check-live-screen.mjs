@@ -191,12 +191,12 @@ test("statusKey: 값이 아니라 상태가 바뀔 때만 열쇠가 달라진다
 test("localStorage 기억: 읽기·쓰기 실패(차단·사설 창)에도 던지지 않는다", () => {
   const mem = new Map();
   const good = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, v) };
-  assert.equal(readStoredToggle(good), false);
+  assert.equal(readStoredToggle(good), true); // 저장값 없음 = 기본 켜짐
   assert.equal(writeStoredToggle(good, true), true); assert.equal(mem.get(TOGGLE_STORAGE_KEY), "1"); assert.equal(readStoredToggle(good), true);
-  writeStoredToggle(good, false); assert.equal(readStoredToggle(good), false);
+  writeStoredToggle(good, false); assert.equal(readStoredToggle(good), false); // 사용자가 끄면 유지
   const bad = { getItem() { throw new Error("blocked"); }, setItem() { throw new Error("quota"); } };
-  assert.equal(readStoredToggle(bad), false); assert.equal(writeStoredToggle(bad, true), false);
-  assert.equal(readStoredToggle(null), false); assert.equal(readStoredToggle(undefined), false); assert.equal(writeStoredToggle(null, true), false);
+  assert.equal(readStoredToggle(bad), true); assert.equal(writeStoredToggle(bad, true), false);
+  assert.equal(readStoredToggle(null), true); assert.equal(readStoredToggle(undefined), true); assert.equal(writeStoredToggle(null, true), false);
   assert.equal(readStoredToggle({ getItem: () => "garbage", setItem() {} }), false);
 });
 

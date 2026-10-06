@@ -188,11 +188,14 @@ export interface StorageLike {
   setItem(key: string, value: string): void;
 }
 
+/** 저장된 값이 없으면 켜짐이 기본이다(DEC-097: 최신 기준이 기본). 사용자가 끄면 "0"이 저장돼 유지된다. 알 수 없는 값은 꺼짐으로 본다. */
 export function readStoredToggle(storage: StorageLike | null | undefined): boolean {
   try {
-    return storage?.getItem(TOGGLE_STORAGE_KEY) === "1";
+    const v = storage?.getItem(TOGGLE_STORAGE_KEY);
+    if (v === null || v === undefined) return true;
+    return v === "1";
   } catch {
-    return false;
+    return true;
   }
 }
 
