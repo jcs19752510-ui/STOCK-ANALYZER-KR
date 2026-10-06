@@ -335,7 +335,10 @@ async function dev(browser) {
     const rowsN = await countSel(page, ".live-changes__row");
     rec("최근 변화: 최대 10건", rowsN >= 1 && rowsN <= 10, `${rowsN}건`);
     rec("신규 표지: 같은 종목이 갱신마다 중복 표지되지 않음(행당 1개)", await page.evaluate(() => [...document.querySelectorAll(".live-marks")].every((m) => m.querySelectorAll(".live-mark--new").length <= 1)));
-    await shot(page, "screener-new-changes-1280");
+    await page.locator(".live-mark--new").first().scrollIntoViewIfNeeded();
+    await shot(page, "screener-new-mark-1280");
+    await page.locator(".live-changes").scrollIntoViewIfNeeded();
+    await shot(page, "screener-changes-1280");
     // 60초 만료: 이후 스냅샷의 changes를 끄고(null) 기다린다 → 이미 붙은 표지는 약 60초 뒤 사라지고 행은 유지
     await setCtl("noChanges=1");
     const stampAt = Date.now();
