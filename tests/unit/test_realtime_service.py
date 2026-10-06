@@ -46,7 +46,7 @@ class ServiceRig:
 
     async def __aenter__(self):
         port = await self.server.start()
-        factory = functools.partial(KisWsManager, grace=0.05, backoff_min=0.02, backoff_max=0.1, http_factory=approval_http(), **self.kw)
+        factory = functools.partial(KisWsManager, grace=0.05, backoff_min=0.02, backoff_max=0.1, jitter=0.0, http_factory=approval_http(), **self.kw)
         self.svc = RealtimeService(settings(port), self.seed, manager_factory=factory)
         return self
 

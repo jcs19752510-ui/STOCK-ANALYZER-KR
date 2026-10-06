@@ -65,6 +65,7 @@ class KisWsManager:
         watchdog: float = WATCHDOG_SECONDS,
         backoff_min: float = BACKOFF_MIN,
         backoff_max: float = BACKOFF_MAX,
+        jitter: float = 0.5,
         sleep: Callable[[float], Any] = asyncio.sleep,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
@@ -77,6 +78,7 @@ class KisWsManager:
         self._watchdog = watchdog
         self._backoff_min = backoff_min
         self._backoff_max = backoff_max
+        self._jitter = jitter
         self._sleep = sleep
         self._clock = clock
         self._refs: dict[str, int] = {}
@@ -250,7 +252,7 @@ class KisWsManager:
             if self._rx_in_conn > 0:  # 이번 연결에서 무언가 받았으면 정상으로 보고 대기 시간을 처음으로 되돌린다
                 backoff = self._backoff_min
             self._set_state("reconnecting", self.last_error)
-            await self._sleep(backoff + random.uniform(0, 0.5))
+            await self._sleep(backoff + random.uniform(0, self._jitter))
             backoff = min(backoff * 2, self._backoff_max)
 
     async def _writer(self, ws: Any) -> None:

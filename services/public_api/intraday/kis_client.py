@@ -41,6 +41,11 @@ TR_CONCLUSION = "FHPST01060000"
 PATH_INVESTOR = "/uapi/domestic-stock/v1/quotations/inquire-investor"
 TR_INVESTOR = "FHKST01010900"
 
+# 관심종목 멀티종목 시세(한 번에 최대 30종목) — 준실시간 전 종목 스냅샷용
+PATH_MULTI_PRICE = "/uapi/domestic-stock/v1/quotations/intstock-multprice"
+TR_MULTI_PRICE = "FHKST11300006"
+MULTI_PRICE_MAX_CODES = 30
+
 _TOKEN_PATH = "/oauth2/tokenP"
 _TOKEN_SAFETY_SECONDS = 600
 _MARKET_DIV = "J"  # KRX
@@ -276,6 +281,21 @@ class KisClient:
                 "FID_INPUT_HOUR_1": hhmmss,
             },
         )
+
+    def multi_price(self, codes: list[str]) -> dict[str, Any]:
+        """관심종목 멀티종목 시세(최대 30종목). 응답 본문 전체를 돌려준다(행은 `output`, 필드는 normalize.MULTI_PRICE_FIELDS).
+
+        요청 파라미터는 `FID_COND_MRKT_DIV_CODE_n`/`FID_INPUT_ISCD_n`(n=1..종목 수). 같은 토큰·호출 간격·오류 처리(`_get`)를 쓴다.
+        """
+        if not codes:
+            raise ValueError("종목코드가 비어 있습니다.")
+        if len(codes) > MULTI_PRICE_MAX_CODES:
+            raise ValueError(f"한 번에 최대 {MULTI_PRICE_MAX_CODES}종목까지 조회할 수 있습니다.")
+        params: dict[str, str] = {}
+        for i, code in enumerate(codes, start=1):
+            params[f"FID_COND_MRKT_DIV_CODE_{i}"] = _MARKET_DIV
+            params[f"FID_INPUT_ISCD_{i}"] = code
+        return self._get(PATH_MULTI_PRICE, TR_MULTI_PRICE, params)
 
 
 def kst_now(clock: Callable[[], float] = time.time) -> datetime:

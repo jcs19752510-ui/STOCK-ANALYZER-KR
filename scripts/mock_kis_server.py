@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """모의 KIS Open API 서버 (DEC-052) — 앱키 없이 개인 로컬 모드 화면·연동을 시험하는 개발 도구.
 
-실제 증권사 서버가 아니다. 한국투자증권 시세 조회 엔드포인트(토큰·분봉(당일/과거)·호가·체결·투자자별 순매수)와 같은 모양의 응답을
+실제 증권사 서버가 아니다. 한국투자증권 시세 조회 엔드포인트(토큰·분봉(당일/과거)·호가·체결·투자자별 순매수·관심종목 멀티종목 시세)와 같은 모양의 응답을
 종목코드·날짜로 결정되는 가짜 값으로 돌려준다. **실제 시세가 아니므로** 화면 동작 확인용으로만 쓴다.
 
 사용:
@@ -142,6 +142,40 @@ def investor_rows(code: str, now: datetime) -> list[dict]:
     return rows
 
 
+MULTI_PRICE_MAX = 30
+
+
+def multi_price_rows(codes: list[str], now: datetime) -> list[dict]:
+    """관심종목 멀티종목 시세 모의 행(필드명은 공식 샘플 COLUMN_MAPPING 기준). 종목·분 단위로 결정되는 값.
+
+    종목코드 `000000`은 값이 빈 행(현재가 없음)을 돌려준다 — 정규화의 '빈 값 버림' 시험용.
+    """
+    rows = []
+    for code in codes:
+        if code == "000000":
+            rows.append({"inter_shrn_iscd": code, "inter2_prpr": "", "inter2_prdy_vrss": "", "prdy_vrss_sign": "3",
+                         "prdy_ctrt": "", "acml_vol": "", "inter2_oprc": "", "inter2_hgpr": "", "inter2_lwpr": ""})
+            continue
+        prev_close = _base_price(code)
+        rng = _rng(code, now.strftime("%Y%m%d%H%M"), "multi")
+        step = _tick_size(prev_close)
+        price = max(step, round(prev_close * (1 + rng.uniform(-0.05, 0.05)) / step) * step)
+        opn = max(step, round(prev_close * (1 + rng.uniform(-0.01, 0.01)) / step) * step)
+        high = max(price, opn) + step * rng.randint(0, 3)
+        low = max(step, min(price, opn) - step * rng.randint(0, 3))
+        diff = price - prev_close
+        rows.append({
+            "kospi_kosdaq_cls_name": "코스피", "mrkt_trtm_cls_name": "", "hour_cls_code": "0",
+            "inter_shrn_iscd": code, "inter_kor_isnm": f"모의{code}",
+            "inter2_prpr": str(int(price)), "inter2_prdy_vrss": str(abs(int(diff))),
+            "prdy_vrss_sign": "2" if diff > 0 else "5" if diff < 0 else "3",
+            "prdy_ctrt": f"{abs(diff) / prev_close * 100:.2f}", "acml_vol": str(rng.randint(1_000, 5_000_000)),
+            "inter2_oprc": str(int(opn)), "inter2_hgpr": str(int(high)), "inter2_lwpr": str(int(low)),
+            "inter2_prdy_clpr": str(prev_close),
+        })
+    return rows
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "MockKIS/1.0"
     fixed_now: datetime | None = None
@@ -195,6 +229,15 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {**ok, "output": ticks_today(code, now)[:30]})
         elif url.path.endswith("inquire-investor"):
             self._send(200, {**ok, "output": investor_rows(code, now)})
+        elif url.path.endswith("intstock-multprice"):
+            indexes = sorted(
+                int(k.rsplit("_", 1)[1]) for k in q if k.startswith("FID_INPUT_ISCD_") and k.rsplit("_", 1)[1].isdigit()
+            )
+            codes = [q[f"FID_INPUT_ISCD_{i}"] for i in indexes if q[f"FID_INPUT_ISCD_{i}"]]
+            if not codes or len(codes) > MULTI_PRICE_MAX or (indexes and indexes[-1] > MULTI_PRICE_MAX):
+                self._send(200, {"rt_cd": "1", "msg_cd": "MOCK400", "msg1": "종목은 1~30개까지 조회할 수 있습니다."})
+            else:
+                self._send(200, {**ok, "output": multi_price_rows(codes, now)})
         elif url.path.endswith("inquire-time-itemconclusion"):
             rows = [r for r in ticks_today(code, now) if r["stck_cntg_hour"] <= hour]
             self._send(200, {**ok, "output1": {}, "output2": rows[:30]})

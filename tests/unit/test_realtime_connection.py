@@ -60,7 +60,7 @@ class Rig:
 
     async def __aenter__(self):
         port = await self.server.start()
-        kwargs = {"grace": 0.05, "backoff_min": 0.02, "backoff_max": 0.1, "http_factory": approval_http(calls=self.http_calls)}
+        kwargs = {"grace": 0.05, "backoff_min": 0.02, "backoff_max": 0.1, "jitter": 0.0, "http_factory": approval_http(calls=self.http_calls)}
         kwargs.update(self.mgr_kwargs)
         self.mgr = KisWsManager(settings(port), self.frames.append, lambda s, d: self.states.append((s, d)), **kwargs)
         self.mgr.start()

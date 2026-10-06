@@ -9,10 +9,12 @@ askp_rsqn1~10/bidp_rsqn1~10/total_askp_rsqn/total_bidp_rsqn/aspr_acpt_hour` 와 
 # ruff: noqa: E501  (한글 설명 주석이 많아 줄 길이 제한은 이 파일에서만 완화)
 from __future__ import annotations
 
+import time
 from collections.abc import Iterable, Mapping
 from datetime import date
 from typing import Any
 
+from services.public_api.realtime.market import MarketQuote
 from services.public_api.schemas.intraday import (
     BookLevel,
     ExpectedExecution,
@@ -198,4 +200,61 @@ def normalize_investor_rows(rows: Iterable[Mapping[str, Any]]) -> list[InvestorD
             continue
         seen.add(day)
         out.append(item)
+    return out
+
+
+# 멀티종목 시세(intstock-multprice) 응답 필드 매핑 — 필드명이 바뀌면 이 한 곳만 고친다.
+# 출처: 공식 샘플 koreainvestment/open-trading-api examples_llm/domestic_stock/intstock_multprice/chk_intstock_multprice.py 의
+# COLUMN_MAPPING(응답 `output` 행의 키). 실제 응답으로는 아직 확인하지 못했다(앱키 필요).
+MULTI_PRICE_FIELDS: dict[str, str] = {
+    "code": "inter_shrn_iscd",  # 관심 단축 종목코드
+    "price": "inter2_prpr",  # 관심2 현재가
+    "change": "inter2_prdy_vrss",  # 관심2 전일 대비(절대값)
+    "sign": "prdy_vrss_sign",  # 전일 대비 부호(1상한 2상승 3보합 4하한 5하락)
+    "change_pct": "prdy_ctrt",  # 전일 대비율(부호 없음으로 가정 → sign으로 부호 적용)
+    "volume": "acml_vol",  # 누적 거래량
+    "open": "inter2_oprc",  # 관심2 시가
+    "high": "inter2_hgpr",  # 관심2 고가
+    "low": "inter2_lwpr",  # 관심2 저가
+}
+
+
+def _valid_code(code: str) -> bool:
+    """단축코드: 영문 대문자·숫자 6자(신형 코드는 영문 포함, 예 0000D0)."""
+    return len(code) == 6 and code.isascii() and code.isalnum() and code == code.upper()
+
+
+def normalize_multi_price(
+    rows: Iterable[Mapping[str, Any]], fetched_at: float | None = None
+) -> dict[str, MarketQuote]:
+    """멀티종목 시세 행 → {종목코드: MarketQuote}. 필수 값이 비었거나 숫자가 아니면 그 종목은 버린다(0으로 채우지 않음). 종목코드가 6자 영숫자가 아니어도 버린다.
+
+    현재가는 0 이하이면 버린다. 거래량이 음수여도 버린다. 시가·고가·저가의 0은 값이 있는 것으로 받는다(장 시작 전 값은 문서 참고).
+    """
+    f = MULTI_PRICE_FIELDS
+    stamp = time.time() if fetched_at is None else fetched_at
+    out: dict[str, MarketQuote] = {}
+    for r in rows:
+        code = str(r.get(f["code"]) or "").strip()
+        price = to_float(r.get(f["price"]))
+        change = to_float(r.get(f["change"]))
+        pct = to_float(r.get(f["change_pct"]))
+        volume = to_int(r.get(f["volume"]))
+        o, h, lo = (to_float(r.get(f[k])) for k in ("open", "high", "low"))
+        if not _valid_code(code) or price is None or price <= 0 or None in (change, pct, o, h, lo):
+            continue
+        if volume is None or volume < 0:
+            continue
+        sign = r.get(f["sign"])
+        out[code] = MarketQuote(
+            code=code,
+            price=price,
+            change=signed(change, sign),  # type: ignore[arg-type]
+            change_pct=signed(pct, sign),  # type: ignore[arg-type]
+            volume=volume,
+            open=o,  # type: ignore[arg-type]
+            high=h,  # type: ignore[arg-type]
+            low=lo,  # type: ignore[arg-type]
+            fetched_at=stamp,
+        )
     return out
