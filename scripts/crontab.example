@@ -6,3 +6,5 @@ CRON_TZ=Asia/Seoul
 30 18 * * * cd /srv/stock-analyzer-kr && set -a && . ./.env && set +a && python scripts/run_daily_batch.py >> logs/daily_batch.log 2>&1
 # Freshness check (read-only; webhook alert when stale).
 10 9 * * * cd /srv/stock-analyzer-kr && set -a && . ./.env && set +a && python scripts/check_data_freshness.py >> logs/freshness.log 2>&1
+# 투자자별 순매수 수집(소유자 PC·KIS 앱키 필요, 장 마감 후 20시 이후 — 당일 행은 확정 전이라 20:00 이전에는 적재하지 않는다)
+10 20 * * * cd /app && python scripts/collect_investor_flow.py >> logs/investor_flow.log 2>&1

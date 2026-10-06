@@ -47,6 +47,11 @@ docker start stock-screener-pg | Out-Null
 docker exec stock-screener-pg pg_isready
 if ($LASTEXITCODE -ne 0) { Write-Host "[ERROR] DB is not ready. Start Docker Desktop and run this script again." -ForegroundColor Red; exit 1 }
 
+# calendars: load every data\calendar\20xx.yaml (idempotent upsert) so a new year never leaves the batch without a trading calendar
+Get-ChildItem (Join-Path $repoRoot "data\calendar") -Filter "20??.yaml" | Sort-Object Name | ForEach-Object {
+    $null = Step ("[calendar] load " + $_.Name) ("py -3.12 scripts\load_calendar.py data\calendar\" + $_.Name)
+}
+
 $beforeExit = Step "[2/5] diagnosis BEFORE" "py -3.12 scripts\diagnose_local_data.py"
 $batchExit = Step "[3/5] catch-up batch (this can take several minutes)" "py -3.12 scripts\run_daily_batch.py"
 Write-Host "batch exit code: $batchExit  (0 = ok / nothing to do, 2 = source has not published the day yet, other = failure: read the lines above)"
@@ -55,8 +60,9 @@ $afterExit = Step "[4/5] diagnosis AFTER" "py -3.12 scripts\diagnose_local_data.
 Write-Host ""
 Write-Host "=== [5/5] scheduled task ===" -ForegroundColor Cyan
 $task = Get-ScheduledTask -TaskName "StockScreenerKR-DailyBatch" -ErrorAction SilentlyContinue
-if ($null -eq $task) {
-    Write-Host "Scheduled task is NOT registered. Registering now (14:30 and 18:30 every day) ..."
+$taskFlow = Get-ScheduledTask -TaskName "StockScreenerKR-InvestorFlow" -ErrorAction SilentlyContinue
+if ($null -eq $task -or $null -eq $taskFlow) {
+    Write-Host "A scheduled task is missing (daily batch 14:30/18:30, freshness 09:10, investor flow 20:10). Registering all now ..."
     powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "register_daily_batch_task.ps1")
 } else {
     $info = Get-ScheduledTaskInfo -TaskName "StockScreenerKR-DailyBatch"

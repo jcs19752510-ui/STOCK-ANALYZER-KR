@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """일일 배치 따라잡기(catch-up) 계획 (DEC-047, R5).
 
 스케줄러가 며칠 실패하거나 PC가 꺼져 있어도, 다음 실행이 "마지막 정상 가공일 이후의 빠진 거래일"을
@@ -32,6 +33,8 @@ MAX_ATTEMPTS_PER_PAST_DATE = 3
 # (shared는 services를 가져올 수 없어 복사해 둔다).
 NOT_PUBLISHED_PREFIX = "NOT_PUBLISHED"
 LEGACY_NOT_PUBLISHED_TEXT = "대상 거래일 데이터가 0건 반환되었습니다"
+# 직전 거래일 구멍 때문에 가공을 보류한 시도(DEC-093)도 세지 않는다 — 구멍이 메워지면 그 날짜를 다시 가공해야 한다.
+GAP_BLOCKED_PREFIX = "GAP_BLOCKED"
 
 
 def plan_catchup(
@@ -89,7 +92,8 @@ def fetch_exhausted_dates(
     not_waiting = or_(
         summary.is_(None),
         summary.not_like(f"{NOT_PUBLISHED_PREFIX}%")
-        & summary.not_like(f"{LEGACY_NOT_PUBLISHED_TEXT}%"),
+        & summary.not_like(f"{LEGACY_NOT_PUBLISHED_TEXT}%")
+        & summary.not_like(f"{GAP_BLOCKED_PREFIX}%"),
     )
     rows = session.execute(
         select(BatchRun.trade_date_covered)

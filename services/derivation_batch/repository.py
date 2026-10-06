@@ -90,6 +90,26 @@ def fetch_ohlcv_window(
     return [OhlcvPoint(trade_date=r.trade_date, close=r.close, volume=r.volume) for r in rows]
 
 
+def raw_ohlcv_has_rows(session: Session, *, market: str, on: date) -> bool:
+    """그 거래일의 원본 시세가 한 줄이라도 있는가(날짜 구멍 검사용)."""
+    stmt = (
+        select(raw_ohlcv_table.c.stock_code)
+        .where(raw_ohlcv_table.c.market == market, raw_ohlcv_table.c.trade_date == on)
+        .limit(1)
+    )
+    return session.execute(stmt).first() is not None
+
+
+def raw_ohlcv_has_rows_before(session: Session, *, market: str, before: date) -> bool:
+    """그 날짜보다 이전의 원본 시세가 있는가(DB에 이력이 시작된 뒤인지 판단)."""
+    stmt = (
+        select(raw_ohlcv_table.c.stock_code)
+        .where(raw_ohlcv_table.c.market == market, raw_ohlcv_table.c.trade_date < before)
+        .limit(1)
+    )
+    return session.execute(stmt).first() is not None
+
+
 def fetch_fundamentals_map(session: Session, trade_date: date) -> dict[str, FundamentalsRow]:
     stmt = select(
         raw_fundamentals_table.c.stock_code,
@@ -339,6 +359,8 @@ __all__ = [
     "OhlcvPoint",
     "fetch_active_stocks",
     "fetch_fundamentals_map",
+    "raw_ohlcv_has_rows",
+    "raw_ohlcv_has_rows_before",
     "fetch_ohlcv_window",
     "fetch_sector_map",
     "fetch_trading_values",

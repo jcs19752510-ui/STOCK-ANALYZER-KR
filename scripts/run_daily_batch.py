@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# ruff: noqa: E501
 """일일 배치(Ingestion → Derivation) 오케스트레이션 스크립트.
 
 03-system-design.md §2-1: "호스팅 플랫폼의 Scheduled Job 또는 cron 컨테이너가
@@ -57,6 +58,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 # 따라잡기에서 한 번에 되짚는 최대 거래일 수(공공데이터 호출 한도 보호). DEC-047.
+EXIT_GAP_BLOCKED = 3  # 직전 거래일 원본 시세가 비어 그 날 가공을 보류함(run_derivation과 같은 값, DEC-093)
 EXIT_NOT_PUBLISHED = 2  # 대상 거래일 데이터가 아직 배포되지 않음 → 스케줄러가 나중에 다시 실행
 
 
@@ -129,8 +131,18 @@ def _run_with_catchup(pending: list[date], target: date) -> int:
         print(f"[완료] 대상 거래일 {target} 까지 가공이 이미 끝나 있어 할 일이 없습니다.")
         return 0
     print(f"[정보] 처리 대상 거래일(오래된 순): {', '.join(d.isoformat() for d in pending)}")
+    blocked: list[date] = []
     for trade_date in pending:
         rc = _run_one_date(trade_date)
+        if rc == EXIT_GAP_BLOCKED:
+            # 이 날짜만 보류하고 다음 날짜로 계속한다(다음 날짜의 직전 거래일은 수집돼 있으므로 정확히 가공된다).
+            # 막힌 날짜는 가공이 끝나지 않은 채로 남아 구멍이 메워지면 다음 실행에서 처리된다.
+            blocked.append(trade_date)
+            print(
+                f"[경고] {trade_date} 가공 보류: 직전 거래일 원본 시세가 비어 있습니다. 다음 날짜로 계속합니다.",
+                file=sys.stderr,
+            )
+            continue
         if rc != 0:
             if trade_date == target:
                 print(
@@ -140,7 +152,14 @@ def _run_with_catchup(pending: list[date], target: date) -> int:
                 )
                 return EXIT_NOT_PUBLISHED
             return rc  # 더 이전 날짜가 막히면 건너뛰지 않고 중단(다음 실행이 이어서 처리)
-    print(f"[완료] {datetime.now(KST):%Y-%m-%d %H:%M:%S} KST 일일 배치 정상 종료.")
+    if blocked:
+        print(
+            "[경고] 가공이 보류된 거래일: "
+            + ", ".join(d.isoformat() for d in blocked)
+            + " — 그 직전 거래일의 시세가 비어 있습니다. `scripts\\diagnose_local_data.py`로 확인하세요.",
+            file=sys.stderr,
+        )
+    print(f"[완료] {datetime.now(KST):%Y-%m-%d %H:%M:%S} KST 일일 배치 {'종료(보류된 날짜 있음)' if blocked else '정상 종료'}.")
     return 0
 
 

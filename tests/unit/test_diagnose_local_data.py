@@ -51,3 +51,11 @@ def test_verdict_failed_and_no_run_and_fresh():
     assert "수집 실패" in "\n".join(dg.verdict([D1, D2], st, NOW - timedelta(hours=1), NOW))
     assert "시도조차" in "\n".join(dg.verdict([D2], states((D2, [])), NOW - timedelta(hours=1), NOW))
     assert dg.verdict([], {}, NOW, NOW)[0].startswith("[정상]")
+
+
+def test_calendar_end_warning():
+    today = date(2026, 12, 1)
+    assert dg.calendar_end_warning(date(2027, 12, 31), today) is None  # 충분히 남음
+    assert "30일 뒤" in dg.calendar_end_warning(date(2026, 12, 31), today)  # 곧 끝남
+    assert "이미 지났" in dg.calendar_end_warning(date(2026, 11, 30), today)
+    assert "달력이 DB에 없습니다" in dg.calendar_end_warning(None, today)

@@ -81,6 +81,18 @@ def verdict(missing: Sequence[date], states: dict[date, tuple[str, str]], last_r
     return out
 
 
+def calendar_end_warning(last_calendar_date: date | None, today: date, margin_days: int = 45) -> str | None:
+    """달력이 곧 끝나거나 이미 끝났으면 안내 문구(없으면 None). 달력이 끝나면 직전 거래일을 계산할 수 없어 화면·배치가 멈춘다."""
+    if last_calendar_date is None:
+        return "[경고] 휴장일 달력이 DB에 없습니다 → scripts\\fix_local_data.ps1 이 data\\calendar\\*.yaml 을 적재합니다."
+    left = (last_calendar_date - today).days
+    if left < 0:
+        return f"[경고] 휴장일 달력이 {last_calendar_date}에 끝나 이미 지났습니다 → 새 연도 data\\calendar\\<연도>.yaml 을 만들어 적재해야 합니다(없으면 직전 거래일을 계산할 수 없습니다)."
+    if left <= margin_days:
+        return f"[주의] 휴장일 달력이 {left}일 뒤({last_calendar_date})에 끝납니다 → 다음 연도 data\\calendar\\<연도>.yaml 이 있는지 확인하세요."
+    return None
+
+
 def tail(path: Path, n: int = 12) -> list[str]:
     try:
         lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -129,6 +141,7 @@ def main(now: datetime | None = None) -> int:
         with engine.connect() as c:
             published = c.execute(text("SELECT trade_date FROM public_serving.current_published_batch WHERE market = 'KRX'")).scalar()
             rows = c.execute(text("SELECT trade_date, is_trading_day, session_close_at FROM reference.market_calendar WHERE market = 'KRX' AND trade_date BETWEEN :a AND :b ORDER BY trade_date"), {"a": now.date() - timedelta(days=40), "b": now.date()}).all()
+            last_calendar = c.execute(text("SELECT max(trade_date) FROM reference.market_calendar WHERE market = 'KRX'")).scalar()
             runs = [Run(r[0], r[1], r[2], r[3], r[4]) for r in c.execute(text("SELECT run_type::text, status::text, trade_date_covered, started_at, error_summary FROM public_serving.batch_run WHERE started_at > now() - interval '30 days' ORDER BY started_at"))]
     except Exception as exc:  # noqa: BLE001 — 접속 문자열(비밀번호)이 메시지에 섞일 수 있어 종류만 보인다
         print(f"[진단 불가] DB를 읽지 못했습니다({type(exc).__name__}). DB가 켜져 있는지, .env의 BATCH_DATABASE_URL이 맞는지 확인하세요.")
@@ -154,6 +167,9 @@ def main(now: datetime | None = None) -> int:
     print(f"화면에 쓰이는 발행 거래일: {published}   /   지금 있어야 할 거래일: {expected}   /   뒤처진 거래일: {len(missing)}개")
     for d in missing:
         print(f"  - {d}: {states[d][1]}")
+    warn = calendar_end_warning(last_calendar, now.date())
+    if warn:
+        print(warn)
     print(f"마지막 배치 기록: {last_run_at:%Y-%m-%d %H:%M}" if last_run_at else "마지막 배치 기록: 없음")
     if ingests:
         li = ingests[-1]

@@ -8,13 +8,15 @@
 # Jobs (idempotent: re-running replaces them):
 #   StockScreenerKR-DailyBatch      14:30 and 18:30 every day (ingest + derive + catch-up)
 #   StockScreenerKR-FreshnessCheck  09:10 every day (read-only; webhook alert when stale)
+#   StockScreenerKR-InvestorFlow    20:10 every day (investor net-buy collection via KIS; today's rows are
+#                                   only loaded after 20:00 KST because they are not final before that)
 # The batch is safe to run several times a day: when data is already current it exits
 # without calling the API. If the PC was off, StartWhenAvailable runs it at next boot,
 # and the catch-up logic fills any missed trading days.
 param([switch]$Remove)
 
 $wrapper = Join-Path $PSScriptRoot "run_daily_batch.ps1"
-$names = @("StockScreenerKR-DailyBatch", "StockScreenerKR-FreshnessCheck")
+$names = @("StockScreenerKR-DailyBatch", "StockScreenerKR-FreshnessCheck", "StockScreenerKR-InvestorFlow")
 
 if ($Remove) {
     foreach ($n in $names) {
@@ -45,6 +47,11 @@ Register-ScheduledTask -TaskName $names[1] -Force -Settings $settings `
     -Action (New-PsAction "-Script scripts\check_data_freshness.py -LogName freshness.log") `
     -Trigger (New-ScheduledTaskTrigger -Daily -At "09:10") `
     -Description "Stock screener data freshness check (read-only)" | Out-Null
+
+Register-ScheduledTask -TaskName $names[2] -Force -Settings $settings `
+    -Action (New-PsAction "-Script scripts\collect_investor_flow.py -LogName investor_flow.log") `
+    -Trigger (New-ScheduledTaskTrigger -Daily -At "20:10") `
+    -Description "Stock screener investor net-buy collection (KIS, owner PC only)" | Out-Null
 
 Get-ScheduledTask -TaskName $names | Format-Table TaskName, State -AutoSize
 Write-Host "Done. Set DATA_FRESHNESS_WEBHOOK_URL in .env to receive stale-data alerts."

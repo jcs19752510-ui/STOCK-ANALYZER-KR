@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# ruff: noqa: E501
 """Derivation Batch 실행 CLI (REQ-002).
 
 03-system-design.md §1-2: "Derivation Batch — raw_internal을 읽어 등락률
@@ -26,7 +27,7 @@ from __future__ import annotations
 import argparse
 import sys
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -63,6 +64,8 @@ from services.derivation_batch.repository import (  # noqa: E402
     fetch_sector_map,
     fetch_trading_values,
     publish_current_batch,
+    raw_ohlcv_has_rows,
+    raw_ohlcv_has_rows_before,
     sync_daily_prices,
     upsert_derived_metrics,
     upsert_market_summary,
@@ -75,6 +78,9 @@ from shared.calendar_service import (  # noqa: E402
 from shared.calendar_service.types import CalendarLookup  # noqa: E402
 
 KST = ZoneInfo("Asia/Seoul")
+GAP_BLOCKED_PREFIX = "GAP_BLOCKED"  # error_summary 접두 — 따라잡기 시도 상한에 세지 않는다(DEC-093)
+EXIT_GAP_BLOCKED = 3  # 직전 거래일 원본 시세가 비어 이 날짜 가공을 보류함(CLI 종료코드)
+GAP_LOOKBACK_DAYS = 15
 DERIVATION_MARKET = "KRX"  # raw_ohlcv 거래소 세션 구분(§3-1-1). MVP 범위: KRX만(DEC-010)
 MAX_MISSING_RETURN_PCT_RATIO = 0.05  # §5-4 "결측 비율 임계치(예: 5%)"를 이 유닛이 확정한 수치
 
@@ -94,6 +100,27 @@ def resolve_target_trade_date(calendar: CalendarLookup, *, override: date | None
             "scripts/load_calendar.py로 캘린더를 먼저 적재하세요."
         )
     return trade_date
+
+
+def find_missing_previous_day(session: Session, calendar: CalendarLookup, target_date: date) -> date | None:
+    """`target_date`의 직전 거래일이 **DB 이력 한가운데 비어 있으면** 그 날짜를, 아니면 None.
+
+    전일 종가를 직전 행으로 쓰는 가공(등락률·이동평균·거래량 이상치)은 중간 거래일이 빠져 있으면 이틀 이상의 변화를
+    하루 변화로 계산해 **경고 없이 틀린 값**을 만든다(2026-10-02 사례). 그래서 구멍이 있으면 그날 가공을 보류한다.
+    이력이 아직 시작되기 전(직전 거래일 이전 데이터가 아예 없음)이거나 달력을 알 수 없으면 막지 않는다.
+    """
+    prev: date | None = None
+    for back in range(1, GAP_LOOKBACK_DAYS + 1):
+        day = target_date - timedelta(days=back)
+        row = calendar.get(day, DERIVATION_MARKET)
+        if row is not None and row.is_trading_day:
+            prev = day
+            break
+    if prev is None:
+        return None
+    if raw_ohlcv_has_rows(session, market=DERIVATION_MARKET, on=prev):
+        return None
+    return prev if raw_ohlcv_has_rows_before(session, market=DERIVATION_MARKET, before=prev) else None
 
 
 @dataclass(frozen=True)
@@ -342,6 +369,7 @@ def run_once(
     session: Session,
     *,
     trade_date_override: date | None,
+    allow_gap: bool = False,
 ) -> tuple[str, date | None, str | None]:
     """한 번의 배치 실행을 수행하고 (status, trade_date_covered, error_summary)를 반환한다.
 
@@ -365,6 +393,25 @@ def run_once(
             error_summary=str(exc),
         )
         return "FAILED", None, str(exc)
+
+    if not allow_gap:
+        hole = find_missing_previous_day(session, SqlCalendarRepository(session), target_date)
+        if hole is not None:
+            error_summary = (
+                f"{GAP_BLOCKED_PREFIX}: 직전 거래일 {hole} 원본 시세가 없어 {target_date} 가공을 보류합니다"
+                f"(전일 값이 틀려 등락률·이동평균이 잘못 계산되는 것을 막기 위함). "
+                f"먼저 `py -3.12 -m services.ingestion_batch.run_ingestion --trade-date {hole}`로 채우거나, "
+                "그 날이 영구히 없는 날이면 --allow-gap으로 강제하세요."
+            )
+            finish_run(
+                session,
+                batch_run_id,
+                status="FAILED",
+                trade_date_covered=target_date,
+                validation_passed=False,
+                error_summary=error_summary,
+            )
+            return "FAILED", target_date, error_summary
 
     active_stocks = fetch_active_stocks(session)
     if not active_stocks:
@@ -492,6 +539,11 @@ def main(argv: list[str] | None = None) -> int:
         help="수동 지정 대상 거래일(YYYY-MM-DD). 생략 시 캘린더로 자동 계산.",
     )
     parser.add_argument(
+        "--allow-gap",
+        action="store_true",
+        help="직전 거래일 원본 시세가 비어 있어도 가공한다(그 날이 영구히 없는 날일 때만).",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="설정만 검증하고 실제 DB 반영은 하지 않는다.",
@@ -513,7 +565,7 @@ def main(argv: list[str] | None = None) -> int:
     with Session(engine) as session:
         try:
             status, trade_date_covered, error_summary = run_once(
-                session, trade_date_override=args.trade_date
+                session, trade_date_override=args.trade_date, allow_gap=args.allow_gap
             )
             session.commit()
         except Exception as exc:  # DB 계층의 예기치 못한 예외도 명시적으로 기록
@@ -529,7 +581,7 @@ def main(argv: list[str] | None = None) -> int:
 
         if status == "FAILED":
             print(f"[실패] trade_date={trade_date_covered} {error_summary}", file=sys.stderr)
-            return 1
+            return EXIT_GAP_BLOCKED if (error_summary or "").startswith(GAP_BLOCKED_PREFIX) else 1
 
         print(f"[완료] status={status} trade_date={trade_date_covered}")
         if error_summary:

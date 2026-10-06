@@ -4,6 +4,7 @@
 | 작업 | 스크립트 | 주기(KST) | 역할 |
 |---|---|---|---|
 | 일일 배치 | `scripts/run_daily_batch.py` | 매일 14:30, 18:30 | 종목 마스터 갱신 → 수집(Ingestion) → 가공(Derivation). 빠진 거래일 따라잡기 |
+| 투자자 수급 수집 | `scripts/collect_investor_flow.py` | 매일 20:10 | 소유자 PC 전용(KIS 앱키 필요). 전 종목 약 2,800회 호출(수 분), 멱등. 20:00 이전에는 당일 행을 적재하지 않음. 로그 `logs/investor_flow.log` |
 | 신선도 점검 | `scripts/check_data_freshness.py` | 매일 09:10 | 읽기 전용. 발행 거래일이 기대보다 1거래일 넘게 늦으면 종료코드 1 + 웹훅 알림 |
 
 - 하루 두 번 실행해도 안전하다(이미 최신이면 API를 호출하지 않고 종료). 14:30은 +1영업일 공개 데이터가 올라온 뒤를 노린 시각이고, 18:30은 늦게 올라온 경우의 재시도다. **정확한 공개 시각은 아직 실측하지 못했다**(공공데이터포털 문서 미확정, `run_ingestion.py` docstring) — 로그에서 14:30 실행이 "아직 배포되지 않았을 수 있습니다"로 끝나는 일이 잦으면 시각을 늦춘다.
@@ -26,4 +27,4 @@
 
 ## 4. 연간 작업
 - **실적 재수집(R6)**: 매년 4월 5일경 이후 사업보고서가 공시되면 `py -3.12 scripts/enrich_earnings.py` 실행(약 30분, 개발 DB 기준 2,600여 종목). 금융회사 등 매출 계정이 없는 종목은 "-"로 표시된다.
-- **휴장일 캘린더**: 매년 말 다음 연도 캘린더를 `scripts/load_calendar.py`로 적재한다.
+- **휴장일 캘린더**: 매년 말 다음 연도 `data/calendar/<연도>.yaml`을 만들고(2027년 추정 초안은 이미 있음 — KRX 공식 공고가 나오면 대조) `scripts/load_calendar.py`로 적재한다. `fix_local_data.ps1`이 `data\calendar\`의 모든 파일을 자동 적재하고, `diagnose_local_data.py`가 달력이 45일 안에 끝나면 경고한다. 달력이 끝나면 직전 거래일을 계산할 수 없어(`CALENDAR_NOT_CONFIRMED`) 화면과 배치가 멈춘다.
