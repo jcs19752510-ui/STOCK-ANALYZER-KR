@@ -11,8 +11,8 @@ import yaml
 
 REPO = Path(__file__).resolve().parents[2]
 DOCKERFILE = (REPO / "deploy" / "unified.Dockerfile").read_text(encoding="utf-8")
-BLUEPRINT = yaml.safe_load((REPO / "render.unified.yaml").read_text(encoding="utf-8"))
-LIVE_BLUEPRINT = yaml.safe_load((REPO / "render.yaml").read_text(encoding="utf-8"))
+BLUEPRINT = yaml.safe_load((REPO / "render.yaml").read_text(encoding="utf-8"))  # 전환 후 운영 블루프린트(통합)
+LIVE_BLUEPRINT = yaml.safe_load((REPO / "deploy" / "render" / "render.two-services.yaml").read_text(encoding="utf-8"))  # 이전 2개 서비스(롤백용)
 WORKFLOW = (REPO / ".github" / "workflows" / "render-deploy.yml").read_text(encoding="utf-8")
 
 

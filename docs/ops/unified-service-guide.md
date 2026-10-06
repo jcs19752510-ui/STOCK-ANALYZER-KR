@@ -14,7 +14,7 @@
 ```
 
 - 진입점: `scripts/run_unified.py` — API를 먼저 띄우고 `/api/v1/live`가 응답한 뒤 웹을 띄운다. 한쪽이 죽으면 전체를 종료해 Render가 재시작한다.
-- 이미지: `deploy/unified.Dockerfile`. 블루프린트: `render.unified.yaml`(전환 전까지 `render.yaml`을 대체하지 않는다).
+- 이미지: `deploy/unified.Dockerfile`. 블루프린트: `render.yaml`(2026-10-06 통합 구성으로 교체됨. 이전 2개 서비스 구성은 `deploy/render/render.two-services.yaml`).
 
 ## 2. 전환 절차 (사용자 작업은 ①②④ 세 가지)
 
@@ -22,7 +22,7 @@
 |---|---|---|
 | ① | 사용자 | Render → `stock-analyzer-api` → Environment 에서 **`PUBLIC_API_DATABASE_URL`, `PUBLIC_API_AUTH_DATABASE_URL`** 값을 복사해 → `stock-analyzer-web` → Environment 에 **같은 이름으로 추가**(Add) 후 저장. (저장하면 Render가 재배포를 시작할 수 있다. 아직 기존 이미지라 값이 추가될 뿐 동작은 바뀌지 않으니 그대로 두면 된다.) |
 | ② | 사용자 | "①을 마쳤다"고 알려 준다. |
-| ③ | 에이전트 | `render.yaml`을 `render.unified.yaml` 내용으로 교체해 `PROD_SCH`에 푸시한다(Render가 서비스 설정을 동기화한다). |
+| ③ | 에이전트 | `render.yaml`을 통합 구성으로 교체해 `PROD_SCH`에 푸시한다(Render가 서비스 설정을 동기화한다). **완료(2026-10-06)** |
 | ④ | 사용자 | `stock-analyzer-web` → **Manual Deploy → Deploy latest commit**. 빌드가 끝나면 알려 준다. |
 | ⑤ | 에이전트 | 주소로 `/healthz`, `/auth/status`, 로그인, 스크리너 조회를 확인하고 결과를 보고한다. |
 | ⑥ | 사용자 | 이상이 없으면 `stock-analyzer-api` 서비스를 삭제(또는 Suspend)한다. **확인 전에는 삭제하지 않는다.** |
@@ -31,7 +31,7 @@
 
 ## 3. 롤백
 
-- ⑥ 전까지는 기존 `stock-analyzer-api`가 살아 있다. 문제가 생기면 `render.yaml`을 이전 커밋 내용으로 되돌려 푸시하고 웹을 다시 배포하면 이전 구조(웹+API 2개)로 돌아간다(웹의 `NEXT_PUBLIC_API_BASE_URL`을 API 서비스 주소로 되돌려야 한다).
+- ⑥ 전까지는 기존 `stock-analyzer-api`가 살아 있다. 문제가 생기면 `deploy/render/render.two-services.yaml` 내용을 `render.yaml`로 되돌려 푸시하고 웹을 다시 배포하면 이전 구조(웹+API 2개)로 돌아간다(웹의 `NEXT_PUBLIC_API_BASE_URL`을 API 서비스 주소로 되돌려야 한다).
 - ⑥ 이후에는 API 서비스를 새로 만들어야 하므로 롤백 비용이 크다. 그래서 검증 후에 삭제한다.
 
 ## 4. 동작 차이 (알아 둘 것)

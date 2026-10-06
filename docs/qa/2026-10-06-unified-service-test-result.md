@@ -10,7 +10,7 @@
 |---|---|---|
 | 기동·감시 | `scripts/run_unified.py` | API(내부 127.0.0.1:8000) 기동 → `/api/v1/live` 응답 후 웹(공개 PORT) 기동. 한쪽 종료 시 나머지 종료+비정상 종료 코드(→ Render 재시작). SIGTERM은 둘 다에 전달 후 0 종료. 웹은 `node next` 직접 실행, `NODE_OPTIONS` 기본 256MB 힙 |
 | 이미지 | `deploy/unified.Dockerfile` | 웹 빌드·운영 의존성 단계 + 파이썬 최종 이미지(node 실행 파일 복사, 일반 계정 `app`, `CMD run_unified.py`) |
-| 블루프린트 | `render.unified.yaml` | 서비스 1개(이름 `stock-analyzer-web` 유지 → 주소 동일). **전환 전까지 `render.yaml`은 그대로**(Render가 푸시마다 render.yaml을 동기화하므로 미리 바꾸면 운영이 즉시 바뀐다) |
+| 블루프린트 | `render.yaml` | 서비스 1개(이름 `stock-analyzer-web` 유지 → 주소 동일). 전환 승인(사용자가 DB 주소 2개 복사 완료)을 받은 뒤 `render.yaml`로 교체(Render가 render.yaml을 동기화). 이전 구성은 `deploy/render/render.two-services.yaml`에 보관 |
 | 자동 배포 | `.github/workflows/render-deploy.yml` | API 배포 훅을 선택 사항으로(통합 후엔 웹 훅만 필요) |
 | 시험 | `tests/unit/test_run_unified.py`(9), `tests/unit/test_unified_deploy_files.py`(11), `tests/e2e/login_stack.py --unified` | §2~§5 |
 | 문서 | DEC-078, `docs/ops/unified-service-guide.md` | 구조·전환 절차·롤백·한계 |
