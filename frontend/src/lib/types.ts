@@ -241,6 +241,8 @@ export interface StockQuote {
   high?: number | null;
   low?: number | null;
   volume?: number | null;
+  /** 로컬 모드 일괄 시세(DEC-084 B)로 덮어쓴 값이면 채워진다. 없으면 일 단위 종가 기준. */
+  live?: { fetchedAt: number; ageSec: number; stale: boolean };
 }
 
 // ── 개인 로컬 모드 장중 시세(DEC-052): 분봉·체결·호가 ─────────────────────────────────────────

@@ -329,6 +329,7 @@
     "resultsHeadingPrefix": "조건 충족 종목 목록 (총",
     "resultsHeadingSuffix": "건)",
     "percentileScopeNotice": "PER·PBR·시가총액 백분위는 코스피+코스닥 전체 종목 기준입니다.",
+    "liveQuoteNotice": "현재가는 내 증권사 준실시간 시세(본인 전용, 수 초~수십 초 간격 갱신)입니다. 조건 판정은 일봉 기준이며 장중 값으로 다시 계산하지 않습니다.",
     "paginationPrev": "이전",
     "paginationNext": "다음",
     "metricLabels": {

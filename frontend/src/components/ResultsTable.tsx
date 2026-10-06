@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { QuoteText } from "@/components/QuoteText";
 import { formatMatchedMetric } from "@/lib/screenMetricFormat";
-import type { ScreenResultItem } from "@/lib/types";
+import type { ScreenResultItem, StockQuote } from "@/lib/types";
 
 /**
  * 04-ux-design.md §4/§6 `ResultsTable` — 태블릿 이상(§6 `md`, ≥768px) 가로
@@ -11,9 +12,11 @@ interface ResultsTableProps {
   items: ScreenResultItem[];
   metricKeys: string[];
   captionText: string;
+  /** 로컬 모드에서만 넘긴다: "현재가" 열을 추가한다(조건 판정은 일봉 기준 그대로). */
+  quotes?: Record<string, StockQuote>;
 }
 
-export function ResultsTable({ items, metricKeys, captionText }: ResultsTableProps) {
+export function ResultsTable({ items, metricKeys, captionText, quotes }: ResultsTableProps) {
   const columnLabels = metricKeys.map((key) => ({
     key,
     label: formatMatchedMetric(key, null).label,
@@ -26,6 +29,7 @@ export function ResultsTable({ items, metricKeys, captionText }: ResultsTablePro
         <tr>
           <th scope="col">종목명</th>
           <th scope="col">시장</th>
+          {quotes && <th scope="col">현재가</th>}
           {columnLabels.map((column) => (
             <th scope="col" key={column.key}>
               {column.label}
@@ -44,6 +48,15 @@ export function ResultsTable({ items, metricKeys, captionText }: ResultsTablePro
             <td>
               <span className="market-badge">{item.market}</span>
             </td>
+            {quotes && (
+              <td>
+                {quotes[item.stock_code] ? (
+                  <QuoteText quote={quotes[item.stock_code]} />
+                ) : (
+                  <span aria-label="시세 없음">-</span>
+                )}
+              </td>
+            )}
             {metricKeys.map((key) => {
               const formatted = formatMatchedMetric(key, item.matched_metrics[key] ?? null);
               return (

@@ -100,6 +100,65 @@ if (MODE === "on") {
     rec("로그아웃 후 로컬 경로도 즉시 401", after.status() === 401, String(after.status()));
     await ctx.close();
   }
+  // ---- 3b. 전 종목 준실시간 시세를 스크리닝·목록 화면에 연결(DEC-084 B)
+  {
+    const { ctx, page, seen, errs } = await ctxPage();
+    await login(page, "kim", PW);
+    await page.goto("/screener");
+    await page.getByRole("button", { name: "조건 적용" }).first().click();
+    await page.waitForSelector(".results-table tbody tr", { timeout: 40000 });
+    const header = await page.$$eval(".results-table thead th", (e) => e.map((x) => x.textContent));
+    rec("스크리닝 결과에 '현재가' 열이 생김(관리자·로컬)", header.includes("현재가"), header.join("|"));
+    await page.waitForSelector(".results-table .quote-text--live", { timeout: 60000 });
+    const liveCells = await page.$$eval(".results-table .quote-text--live", (e) => e.length);
+    const rows = await page.$$eval(".results-table tbody tr", (e) => e.length);
+    rec("현재가 칸이 준실시간 값으로 채워짐(실시간 표지 포함)", liveCells >= 1, `${liveCells}/${rows}행`);
+    const label = await page.$eval(".results-table .quote-text__live", (e) => e.textContent);
+    rec("표지 문구는 '실시간' 또는 '지연'(색에만 의존하지 않음)", label === "실시간" || label === "지연", label ?? "");
+    const price = await page.$eval(".results-table .quote-text__price", (e) => e.textContent);
+    rec("현재가는 숫자 형식", /^[\d,]+$/.test(price ?? ""), price ?? "");
+    const notice = await page.locator(".inline-notice", { hasText: "조건 판정은 일봉 기준" }).count();
+    rec("조건 판정은 일봉 기준이라는 안내 표시", notice === 1, String(notice));
+    const marketReqs = seen.filter((u) => u.includes("/api/v1/local/market/quotes"));
+    rec("시세 조회는 웹 서버 대행 경로로만 나감", marketReqs.length >= 1 && marketReqs.every((u) => u.startsWith(BASE)), `${marketReqs.length}건`);
+    const direct = seen.filter((u) => u.startsWith(apiOrigin));
+    rec("브라우저가 API 서버를 직접 부르지 않음(시세 포함)", direct.length === 0, `${direct.length}건`);
+    // 조회 주기: 3초 하한 — 12초 동안 6건 이하
+    const before = marketReqs.length;
+    await page.waitForTimeout(12000);
+    const after = seen.filter((u) => u.includes("/api/v1/local/market/quotes")).length;
+    rec("조회 간격이 너무 짧지 않음(12초에 5건 이하)", after - before <= 5, `${after - before}건`);
+    // 모바일 폭: 카드에도 현재가
+    await page.setViewportSize({ width: 390, height: 800 });
+    await page.waitForSelector(".results-list__quote .quote-text--live", { timeout: 30000 });
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+    rec("모바일(390px) 카드에 현재가 표시, 가로 넘침 없음", !overflow);
+    await page.screenshot({ path: `${OUT}/live-market-screener-390.png` });
+    // 탭을 가리면 조회 중단
+    await page.setViewportSize({ width: 1280, height: 800 });
+    // 종목 검색 목록
+    await page.goto("/stocks");
+    await page.fill("input[type=search], input[type=text]", "T0000");
+    await page.waitForSelector(".stock-list__item .quote-text--live", { timeout: 60000 });
+    rec("종목 검색 목록 행에 준실시간 현재가", true);
+    rec("페이지 오류 없음", errs.length === 0, errs.join("|"));
+    await ctx.close();
+  }
+  // 일반 사용자는 시세 열·안내가 없고 시세 API는 403
+  {
+    const { ctx, page, errs } = await ctxPage();
+    await login(page, "lee", PW2);
+    const q = await ctx.request.get(`${BASE}/api/v1/local/market/quotes?codes=T00001`);
+    rec("일반 사용자: 준실시간 시세 조회는 403(관리자 전용)", q.status() === 403, String(q.status()));
+    await page.goto("/screener");
+    await page.getByRole("button", { name: "조건 적용" }).first().click();
+    await page.waitForSelector(".results-table tbody tr", { timeout: 40000 });
+    await page.waitForTimeout(3000);
+    const header = await page.$$eval(".results-table thead th", (e) => e.map((x) => x.textContent));
+    rec("일반 사용자: 현재가 열·실시간 표지 없음", !header.includes("현재가") && (await page.locator(".quote-text--live").count()) === 0, header.join("|"));
+    rec("일반 사용자: 페이지 오류 없음", errs.length === 0, errs.join("|"));
+    await ctx.close();
+  }
   // ---- 4. 일반 사용자: 호가·체결은 되고 투자자 수급은 관리자 전용
   {
     const { ctx, page } = await ctxPage();

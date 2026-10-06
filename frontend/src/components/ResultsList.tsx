@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { QuoteText } from "@/components/QuoteText";
 import { formatMatchedMetric } from "@/lib/screenMetricFormat";
-import type { ScreenResultItem } from "@/lib/types";
+import type { ScreenResultItem, StockQuote } from "@/lib/types";
 
 /**
  * 04-ux-design.md §4/§6 `ResultsList` — 모바일(< 768px, §6 `md` 미만) 카드
@@ -11,9 +12,11 @@ import type { ScreenResultItem } from "@/lib/types";
 interface ResultsListProps {
   items: ScreenResultItem[];
   metricKeys: string[];
+  /** 로컬 모드에서만 넘긴다: 카드에 현재가를 보인다. */
+  quotes?: Record<string, StockQuote>;
 }
 
-export function ResultsList({ items, metricKeys }: ResultsListProps) {
+export function ResultsList({ items, metricKeys, quotes }: ResultsListProps) {
   return (
     <ul className="results-list">
       {items.map((item) => (
@@ -24,6 +27,11 @@ export function ResultsList({ items, metricKeys }: ResultsListProps) {
               <span className="results-list__code">({item.stock_code})</span>
               <span className="market-badge">{item.market}</span>
             </div>
+            {quotes && quotes[item.stock_code] && (
+              <div className="results-list__quote">
+                <QuoteText quote={quotes[item.stock_code]} />
+              </div>
+            )}
             <dl className="results-list__metrics">
               {metricKeys.map((key) => {
                 const formatted = formatMatchedMetric(key, item.matched_metrics[key] ?? null);

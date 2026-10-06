@@ -15,6 +15,7 @@ import { fetchScreenResults, type ScreenQuery, type ScreenSortBy, type ScreenSor
 import { SCREEN_FIELD_IDS } from "@/lib/screenFieldIds";
 import { orderMatchedMetricKeys } from "@/lib/screenMetricFormat";
 import { useIsDesktopViewport } from "@/lib/useIsDesktopViewport";
+import { useLocalQuotes } from "@/lib/useQuotes";
 import {
   DEFAULT_SCREEN_FORM_VALUES,
   defaultScreenFormValuesFor,
@@ -80,6 +81,9 @@ export function ScreenerClient() {
   const [state, setState] = useState<ScreenerState>({ kind: "idle" });
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const isDesktopResults = useIsDesktopViewport(768);
+  // 개인 로컬 모드(내 PC, 관리자)에서만 결과 옆에 현재가(준실시간)를 보인다. 조건 판정은 일봉 기준 그대로(DEC-084 B).
+  const resultCodes = state.kind === "success" ? state.data.items.map((item) => item.stock_code) : [];
+  const { quotes: resultQuotes, enabled: showQuotes } = useLocalQuotes(resultCodes);
 
   function updateField(field: keyof ScreenFormValues, value: string) {
     setFormValues((prev) => ({ ...prev, [field]: value }));
@@ -211,6 +215,9 @@ export function ScreenerClient() {
                   {copy.screener.percentileScopeNotice}
                 </p>
               )}
+              {showQuotes && (
+                <p className="inline-notice inline-notice--info">{copy.screener.liveQuoteNotice}</p>
+              )}
               <h2 className="screener-page__results-heading">
                 {copy.screener.resultsHeadingPrefix} {state.data.total_count}
                 {copy.screener.resultsHeadingSuffix}
@@ -224,9 +231,14 @@ export function ScreenerClient() {
                     items={state.data.items}
                     metricKeys={metricKeys}
                     captionText={`${copy.screener.resultsHeadingPrefix} ${state.data.total_count}${copy.screener.resultsHeadingSuffix}`}
+                    quotes={showQuotes ? resultQuotes : undefined}
                   />
                 ) : (
-                  <ResultsList items={state.data.items} metricKeys={metricKeys} />
+                  <ResultsList
+                    items={state.data.items}
+                    metricKeys={metricKeys}
+                    quotes={showQuotes ? resultQuotes : undefined}
+                  />
                 );
               })()}
               <Pagination

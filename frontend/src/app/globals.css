@@ -1787,6 +1787,36 @@ main {
   font-variant-numeric: tabular-nums;
 }
 
+/* 준실시간 값 표시(DEC-084 B): 작은 글자 표지 + 표(조건 스크리닝) 안에서는 크기·여백을 줄인다 */
+.quote-text__live {
+  padding: 1px 6px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+}
+
+.quote-text__live--stale {
+  color: var(--color-semantic-warning);
+}
+
+.results-table .quote-text,
+.results-list__quote .quote-text {
+  margin-top: 0;
+}
+
+.results-table .quote-text__price,
+.results-list__quote .quote-text__price {
+  font-size: 16px;
+}
+
+.results-list__quote {
+  margin-top: var(--space-2);
+}
+
 .quote-text__price {
   font-size: 22px;
   font-weight: 700;

@@ -226,6 +226,13 @@ if (should("C")) {
   await p.waitForSelector("button:has-text('조건 적용'), button:has-text('조회')", { timeout: 15000 }).catch(() => {});
   const apply = p.locator("button:has-text('조건 적용'), button:has-text('조회'), button:has-text('검색')").first();
   if (await apply.count()) { await apply.click().catch(() => {}); await p.waitForTimeout(2500); }
+  // 운영 빌드(로컬 모드 꺼짐)에는 준실시간 시세 열·조회가 없어야 한다(DEC-084 B)
+  {
+    const heads = await p.$$eval(".results-table thead th", (e) => e.map((x) => x.textContent)).catch(() => []);
+    const resources = await p.evaluate(() => performance.getEntriesByType("resource").map((e) => e.name));
+    rec("C 운영 빌드: 스크리닝 결과에 '현재가' 열·실시간 표지 없음", !heads.includes("현재가") && (await p.locator(".quote-text--live").count()) === 0, heads.join("|"));
+    rec("C 운영 빌드: 준실시간 시세 조회(/local/market) 요청 0건", resources.filter((u) => u.includes("/local/market")).length === 0);
+  }
   rec("C 브라우저는 API 서버(4321)를 직접 부르지 않는다(웹 서버 경로만)", ![...apiHosts].some((o) => o === new URL(API).origin), [...apiHosts].join(","));
   // 대행 경로
   const rq = ctx.request;
