@@ -16,6 +16,8 @@
 
 - **(2026-10-06 사용자 지시, 계속 기억) 최대한 빠르게 처리한다**: 최적·최단 경로로, 불필요한 설명·재확인·중복 시험을 줄이고 결과 중심으로 짧게 보고한다. (정확성·내부 테스트 결과서는 줄이지 않는다.)
 
+- **(2026-10-06 사용자 지시, `CLAUDE.MD` 상시 규칙에도 기록) 에이전트가 할 수 있는 시험은 사용자에게 시키지 않고 직접 한다.** PowerShell 스크립트도 `pwsh`(PowerShell 7)를 내려받아 `python tests/e2e/ps1_scripts_check.py`로 직접 실행한다(`PWSH=<경로>`; 내려받기: GitHub PowerShell 릴리스 `powershell-7.4.5-linux-x64.tar.gz`). 내부 테스트 결과서는 항상 작성한다.
+
 ## 현재 운영 구조 (2026-10-06 전환 완료)
 - Render 서비스 **1개** `stock-analyzer-web` (https://stock-analyzer-web-q7cx.onrender.com): 컨테이너 안에서 API(내부 127.0.0.1:8000)와 웹(공개 PORT)을 `scripts/run_unified.py`가 함께 기동·감시 (DEC-078). 이미지 `deploy/unified.Dockerfile`, 블루프린트 `render.yaml`.
 - 이전 2개 서비스 구성: `deploy/render/render.two-services.yaml`(롤백용). 기존 `stock-analyzer-api` Render 서비스는 **Suspended**(삭제 전, 롤백 경로). 며칠 안정 확인 뒤 사용자가 삭제.
