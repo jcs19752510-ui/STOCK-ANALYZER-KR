@@ -17,6 +17,7 @@
 - `.env`에 `BATCH_DATABASE_URL`, `GOV_DATA_PORTAL_SERVICE_KEY`, `DART_API_KEY`가 있어야 하고, 알림을 받으려면 `DATA_FRESHNESS_WEBHOOK_URL`(Slack/Discord 호환)을 추가한다.
 
 ## 3. 점검·장애 대응
+0. **원인을 한 번에 진단**: `py -3.12 scripts\diagnose_local_data.py` (읽기 전용). 발행 거래일·빠진 거래일별 배치 결과(미공개/실패/시도 없음)·마지막 배치 시각·작업 스케줄러 상태·로그 끝부분을 보여 주고 **원인 판정과 다음 행동**을 출력한다.
 1. `logs/daily_batch.log`(배치), `logs/freshness.log`(신선도) 확인. 헤더/푸터에 종료코드가 남는다.
 2. 수동 실행: `py -3.12 scripts/run_daily_batch.py` (한 날짜만: `py -3.12 -m services.ingestion_batch.run_ingestion --trade-date YYYY-MM-DD` 후 `run_derivation`).
 3. `ModuleNotFoundError` → 스케줄러가 `py -3.12`를 쓰는지 확인(DEC-036). 캘린더 오류 → `scripts/load_calendar.py`로 휴장일 캘린더 갱신.

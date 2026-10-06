@@ -31,7 +31,11 @@ LOG_DIR = Path(os.environ.get("E2E_LOG_DIR", "/tmp/claude-0/e2e-logs"))
 import pytest  # noqa: E402
 
 from tests.e2e.login_stack import wait_http  # noqa: E402
-from tests.integration.live_screen_env import KST, FullStack, align_published_closes_with_mock  # noqa: E402
+from tests.integration.live_screen_env import (  # noqa: E402
+    KST,
+    FullStack,
+    align_published_closes_with_mock,
+)
 from tests.integration.pattern_api_env import prepare_database  # noqa: E402
 from tests.integration.pg_temp_db import temp_database  # noqa: E402
 
@@ -49,7 +53,7 @@ def main() -> int:
         with temp_database() as tdb:
             prepare_database(tdb)
             align_published_closes_with_mock(tdb)
-            with FullStack(tdb, mp, datetime(2026, 10, 2, 10, 0, tzinfo=KST), port=API_PORT) as st:
+            with FullStack(tdb, mp, datetime(2026, 10, 2, 10, 0, tzinfo=KST), port=API_PORT):
                 web_env = {**os.environ, "NEXT_PUBLIC_API_BASE_URL": f"http://127.0.0.1:{API_PORT}", "FRONTEND_TRUSTED_PROXY_HOPS": "0",
                            "NEXT_PUBLIC_PRICE_EXPOSURE_ENABLED": "true"}
                 if not args.prod:
