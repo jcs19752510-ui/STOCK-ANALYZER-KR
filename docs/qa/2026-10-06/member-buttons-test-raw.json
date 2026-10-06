@@ -1,0 +1,2102 @@
+[
+ {
+  "name": "[320px admin /] 버튼 개수",
+  "ok": true,
+  "detail": "회원 관리|로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[320px admin /] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[320px admin /] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none 1px/none"
+ },
+ {
+  "name": "[320px admin /] 터치 ≥44px",
+  "ok": true,
+  "detail": "94x44 90x44 182x44"
+ },
+ {
+  "name": "[320px admin /] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px admin /] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 96"
+ },
+ {
+  "name": "[320px admin /] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "320/320"
+ },
+ {
+  "name": "[320px admin /] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "6.7 17.7 6.5"
+ },
+ {
+  "name": "[320px admin /] 테두리 대비≥3",
+  "ok": true,
+  "detail": "6.7 4.8 6.5"
+ },
+ {
+  "name": "[320px admin /] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px admin /] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 142 회원 158~254 메뉴 266"
+ },
+ {
+  "name": "[320px admin /] 포커스 윤곽선",
+  "ok": true,
+  "detail": "solid 2px"
+ },
+ {
+  "name": "[320px admin /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px admin /stocks] 버튼 개수",
+  "ok": true,
+  "detail": "회원 관리|로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[320px admin /stocks] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[320px admin /stocks] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none 1px/none"
+ },
+ {
+  "name": "[320px admin /stocks] 터치 ≥44px",
+  "ok": true,
+  "detail": "94x44 90x44 182x44"
+ },
+ {
+  "name": "[320px admin /stocks] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px admin /stocks] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 96"
+ },
+ {
+  "name": "[320px admin /stocks] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "320/320"
+ },
+ {
+  "name": "[320px admin /stocks] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "6.7 17.7 6.5"
+ },
+ {
+  "name": "[320px admin /stocks] 테두리 대비≥3",
+  "ok": true,
+  "detail": "6.7 4.8 6.5"
+ },
+ {
+  "name": "[320px admin /stocks] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px admin /stocks] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 142 회원 158~254 메뉴 266"
+ },
+ {
+  "name": "[320px admin /screener] 버튼 개수",
+  "ok": true,
+  "detail": "회원 관리|로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[320px admin /screener] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[320px admin /screener] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none 1px/none"
+ },
+ {
+  "name": "[320px admin /screener] 터치 ≥44px",
+  "ok": true,
+  "detail": "94x44 90x44 182x44"
+ },
+ {
+  "name": "[320px admin /screener] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px admin /screener] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 96"
+ },
+ {
+  "name": "[320px admin /screener] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "320/320"
+ },
+ {
+  "name": "[320px admin /screener] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "6.7 17.7 6.5"
+ },
+ {
+  "name": "[320px admin /screener] 테두리 대비≥3",
+  "ok": true,
+  "detail": "6.7 4.8 6.5"
+ },
+ {
+  "name": "[320px admin /screener] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px admin /screener] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 142 회원 158~254 메뉴 266"
+ },
+ {
+  "name": "[320px user /] 버튼 개수",
+  "ok": true,
+  "detail": "로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[320px user /] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[320px user /] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none"
+ },
+ {
+  "name": "[320px user /] 터치 ≥44px",
+  "ok": true,
+  "detail": "90x44 182x44"
+ },
+ {
+  "name": "[320px user /] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px user /] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 96"
+ },
+ {
+  "name": "[320px user /] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "320/320"
+ },
+ {
+  "name": "[320px user /] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "17.7 6.5"
+ },
+ {
+  "name": "[320px user /] 테두리 대비≥3",
+  "ok": true,
+  "detail": "4.8 6.5"
+ },
+ {
+  "name": "[320px user /] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px user /] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 142 회원 158~254 메뉴 266"
+ },
+ {
+  "name": "[320px user /] 포커스 윤곽선",
+  "ok": true,
+  "detail": "solid 2px"
+ },
+ {
+  "name": "[320px user /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px user /stocks] 버튼 개수",
+  "ok": true,
+  "detail": "로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[320px user /stocks] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[320px user /stocks] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none"
+ },
+ {
+  "name": "[320px user /stocks] 터치 ≥44px",
+  "ok": true,
+  "detail": "90x44 182x44"
+ },
+ {
+  "name": "[320px user /stocks] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px user /stocks] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 96"
+ },
+ {
+  "name": "[320px user /stocks] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "320/320"
+ },
+ {
+  "name": "[320px user /stocks] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "17.7 6.5"
+ },
+ {
+  "name": "[320px user /stocks] 테두리 대비≥3",
+  "ok": true,
+  "detail": "4.8 6.5"
+ },
+ {
+  "name": "[320px user /stocks] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px user /stocks] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 142 회원 158~254 메뉴 266"
+ },
+ {
+  "name": "[320px user /screener] 버튼 개수",
+  "ok": true,
+  "detail": "로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[320px user /screener] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[320px user /screener] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none"
+ },
+ {
+  "name": "[320px user /screener] 터치 ≥44px",
+  "ok": true,
+  "detail": "90x44 182x44"
+ },
+ {
+  "name": "[320px user /screener] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px user /screener] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 96"
+ },
+ {
+  "name": "[320px user /screener] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "320/320"
+ },
+ {
+  "name": "[320px user /screener] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "17.7 6.5"
+ },
+ {
+  "name": "[320px user /screener] 테두리 대비≥3",
+  "ok": true,
+  "detail": "4.8 6.5"
+ },
+ {
+  "name": "[320px user /screener] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px user /screener] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 142 회원 158~254 메뉴 266"
+ },
+ {
+  "name": "[360px admin /] 버튼 개수",
+  "ok": true,
+  "detail": "회원 관리|로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[360px admin /] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[360px admin /] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none 1px/none"
+ },
+ {
+  "name": "[360px admin /] 터치 ≥44px",
+  "ok": true,
+  "detail": "94x44 90x44 182x44"
+ },
+ {
+  "name": "[360px admin /] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px admin /] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 96"
+ },
+ {
+  "name": "[360px admin /] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "360/360"
+ },
+ {
+  "name": "[360px admin /] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "6.7 17.7 6.5"
+ },
+ {
+  "name": "[360px admin /] 테두리 대비≥3",
+  "ok": true,
+  "detail": "6.7 4.8 6.5"
+ },
+ {
+  "name": "[360px admin /] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px admin /] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 132 회원 148~244 메뉴 256"
+ },
+ {
+  "name": "[360px admin /] 포커스 윤곽선",
+  "ok": true,
+  "detail": "solid 2px"
+ },
+ {
+  "name": "[360px admin /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px admin /stocks] 버튼 개수",
+  "ok": true,
+  "detail": "회원 관리|로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[360px admin /stocks] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[360px admin /stocks] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none 1px/none"
+ },
+ {
+  "name": "[360px admin /stocks] 터치 ≥44px",
+  "ok": true,
+  "detail": "94x44 90x44 182x44"
+ },
+ {
+  "name": "[360px admin /stocks] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px admin /stocks] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 96"
+ },
+ {
+  "name": "[360px admin /stocks] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "360/360"
+ },
+ {
+  "name": "[360px admin /stocks] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "6.7 17.7 6.5"
+ },
+ {
+  "name": "[360px admin /stocks] 테두리 대비≥3",
+  "ok": true,
+  "detail": "6.7 4.8 6.5"
+ },
+ {
+  "name": "[360px admin /stocks] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px admin /stocks] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 132 회원 148~244 메뉴 256"
+ },
+ {
+  "name": "[360px admin /screener] 버튼 개수",
+  "ok": true,
+  "detail": "회원 관리|로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[360px admin /screener] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[360px admin /screener] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none 1px/none"
+ },
+ {
+  "name": "[360px admin /screener] 터치 ≥44px",
+  "ok": true,
+  "detail": "94x44 90x44 182x44"
+ },
+ {
+  "name": "[360px admin /screener] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px admin /screener] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 96"
+ },
+ {
+  "name": "[360px admin /screener] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "360/360"
+ },
+ {
+  "name": "[360px admin /screener] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "6.7 17.7 6.5"
+ },
+ {
+  "name": "[360px admin /screener] 테두리 대비≥3",
+  "ok": true,
+  "detail": "6.7 4.8 6.5"
+ },
+ {
+  "name": "[360px admin /screener] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px admin /screener] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 132 회원 148~244 메뉴 256"
+ },
+ {
+  "name": "[360px user /] 버튼 개수",
+  "ok": true,
+  "detail": "로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[360px user /] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[360px user /] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none"
+ },
+ {
+  "name": "[360px user /] 터치 ≥44px",
+  "ok": true,
+  "detail": "90x44 182x44"
+ },
+ {
+  "name": "[360px user /] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px user /] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 96"
+ },
+ {
+  "name": "[360px user /] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "360/360"
+ },
+ {
+  "name": "[360px user /] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "17.7 6.5"
+ },
+ {
+  "name": "[360px user /] 테두리 대비≥3",
+  "ok": true,
+  "detail": "4.8 6.5"
+ },
+ {
+  "name": "[360px user /] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px user /] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 132 회원 148~244 메뉴 256"
+ },
+ {
+  "name": "[360px user /] 포커스 윤곽선",
+  "ok": true,
+  "detail": "solid 2px"
+ },
+ {
+  "name": "[360px user /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px user /stocks] 버튼 개수",
+  "ok": true,
+  "detail": "로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[360px user /stocks] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[360px user /stocks] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none"
+ },
+ {
+  "name": "[360px user /stocks] 터치 ≥44px",
+  "ok": true,
+  "detail": "90x44 182x44"
+ },
+ {
+  "name": "[360px user /stocks] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px user /stocks] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 96"
+ },
+ {
+  "name": "[360px user /stocks] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "360/360"
+ },
+ {
+  "name": "[360px user /stocks] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "17.7 6.5"
+ },
+ {
+  "name": "[360px user /stocks] 테두리 대비≥3",
+  "ok": true,
+  "detail": "4.8 6.5"
+ },
+ {
+  "name": "[360px user /stocks] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px user /stocks] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 132 회원 148~244 메뉴 256"
+ },
+ {
+  "name": "[360px user /screener] 버튼 개수",
+  "ok": true,
+  "detail": "로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[360px user /screener] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[360px user /screener] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none"
+ },
+ {
+  "name": "[360px user /screener] 터치 ≥44px",
+  "ok": true,
+  "detail": "90x44 182x44"
+ },
+ {
+  "name": "[360px user /screener] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px user /screener] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 96"
+ },
+ {
+  "name": "[360px user /screener] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "360/360"
+ },
+ {
+  "name": "[360px user /screener] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "17.7 6.5"
+ },
+ {
+  "name": "[360px user /screener] 테두리 대비≥3",
+  "ok": true,
+  "detail": "4.8 6.5"
+ },
+ {
+  "name": "[360px user /screener] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px user /screener] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 132 회원 148~244 메뉴 256"
+ },
+ {
+  "name": "[412px admin /] 버튼 개수",
+  "ok": true,
+  "detail": "회원 관리|로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[412px admin /] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[412px admin /] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none 1px/none"
+ },
+ {
+  "name": "[412px admin /] 터치 ≥44px",
+  "ok": true,
+  "detail": "94x44 90x44 182x44"
+ },
+ {
+  "name": "[412px admin /] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px admin /] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 96"
+ },
+ {
+  "name": "[412px admin /] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "412/412"
+ },
+ {
+  "name": "[412px admin /] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "6.7 17.7 6.5"
+ },
+ {
+  "name": "[412px admin /] 테두리 대비≥3",
+  "ok": true,
+  "detail": "6.7 4.8 6.5"
+ },
+ {
+  "name": "[412px admin /] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px admin /] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 132 회원 148~244 메뉴 256"
+ },
+ {
+  "name": "[412px admin /] 포커스 윤곽선",
+  "ok": true,
+  "detail": "solid 2px"
+ },
+ {
+  "name": "[412px admin /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px admin /stocks] 버튼 개수",
+  "ok": true,
+  "detail": "회원 관리|로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[412px admin /stocks] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[412px admin /stocks] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none 1px/none"
+ },
+ {
+  "name": "[412px admin /stocks] 터치 ≥44px",
+  "ok": true,
+  "detail": "94x44 90x44 182x44"
+ },
+ {
+  "name": "[412px admin /stocks] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px admin /stocks] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 96"
+ },
+ {
+  "name": "[412px admin /stocks] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "412/412"
+ },
+ {
+  "name": "[412px admin /stocks] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "6.7 17.7 6.5"
+ },
+ {
+  "name": "[412px admin /stocks] 테두리 대비≥3",
+  "ok": true,
+  "detail": "6.7 4.8 6.5"
+ },
+ {
+  "name": "[412px admin /stocks] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px admin /stocks] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 132 회원 148~244 메뉴 256"
+ },
+ {
+  "name": "[412px admin /screener] 버튼 개수",
+  "ok": true,
+  "detail": "회원 관리|로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[412px admin /screener] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[412px admin /screener] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none 1px/none"
+ },
+ {
+  "name": "[412px admin /screener] 터치 ≥44px",
+  "ok": true,
+  "detail": "94x44 90x44 182x44"
+ },
+ {
+  "name": "[412px admin /screener] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px admin /screener] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 96"
+ },
+ {
+  "name": "[412px admin /screener] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "412/412"
+ },
+ {
+  "name": "[412px admin /screener] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "6.7 17.7 6.5"
+ },
+ {
+  "name": "[412px admin /screener] 테두리 대비≥3",
+  "ok": true,
+  "detail": "6.7 4.8 6.5"
+ },
+ {
+  "name": "[412px admin /screener] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px admin /screener] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 132 회원 148~244 메뉴 256"
+ },
+ {
+  "name": "[412px user /] 버튼 개수",
+  "ok": true,
+  "detail": "로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[412px user /] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[412px user /] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none"
+ },
+ {
+  "name": "[412px user /] 터치 ≥44px",
+  "ok": true,
+  "detail": "90x44 182x44"
+ },
+ {
+  "name": "[412px user /] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px user /] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 44"
+ },
+ {
+  "name": "[412px user /] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "412/412"
+ },
+ {
+  "name": "[412px user /] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "17.7 6.5"
+ },
+ {
+  "name": "[412px user /] 테두리 대비≥3",
+  "ok": true,
+  "detail": "4.8 6.5"
+ },
+ {
+  "name": "[412px user /] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px user /] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 132 회원 148~192 메뉴 204"
+ },
+ {
+  "name": "[412px user /] 포커스 윤곽선",
+  "ok": true,
+  "detail": "solid 2px"
+ },
+ {
+  "name": "[412px user /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px user /stocks] 버튼 개수",
+  "ok": true,
+  "detail": "로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[412px user /stocks] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[412px user /stocks] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none"
+ },
+ {
+  "name": "[412px user /stocks] 터치 ≥44px",
+  "ok": true,
+  "detail": "90x44 182x44"
+ },
+ {
+  "name": "[412px user /stocks] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px user /stocks] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 44"
+ },
+ {
+  "name": "[412px user /stocks] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "412/412"
+ },
+ {
+  "name": "[412px user /stocks] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "17.7 6.5"
+ },
+ {
+  "name": "[412px user /stocks] 테두리 대비≥3",
+  "ok": true,
+  "detail": "4.8 6.5"
+ },
+ {
+  "name": "[412px user /stocks] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px user /stocks] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 132 회원 148~192 메뉴 204"
+ },
+ {
+  "name": "[412px user /screener] 버튼 개수",
+  "ok": true,
+  "detail": "로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[412px user /screener] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[412px user /screener] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none"
+ },
+ {
+  "name": "[412px user /screener] 터치 ≥44px",
+  "ok": true,
+  "detail": "90x44 182x44"
+ },
+ {
+  "name": "[412px user /screener] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px user /screener] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 44"
+ },
+ {
+  "name": "[412px user /screener] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "412/412"
+ },
+ {
+  "name": "[412px user /screener] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "17.7 6.5"
+ },
+ {
+  "name": "[412px user /screener] 테두리 대비≥3",
+  "ok": true,
+  "detail": "4.8 6.5"
+ },
+ {
+  "name": "[412px user /screener] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px user /screener] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 132 회원 148~192 메뉴 204"
+ },
+ {
+  "name": "[1024px admin /] 버튼 개수",
+  "ok": true,
+  "detail": "회원 관리|로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[1024px admin /] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[1024px admin /] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none 1px/none"
+ },
+ {
+  "name": "[1024px admin /] 터치 ≥44px",
+  "ok": true,
+  "detail": "94x44 90x44 182x44"
+ },
+ {
+  "name": "[1024px admin /] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px admin /] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 44"
+ },
+ {
+  "name": "[1024px admin /] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "1024/1024"
+ },
+ {
+  "name": "[1024px admin /] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "6.7 17.7 6.5"
+ },
+ {
+  "name": "[1024px admin /] 테두리 대비≥3",
+  "ok": true,
+  "detail": "6.7 4.8 6.5"
+ },
+ {
+  "name": "[1024px admin /] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px admin /] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 93 회원 49~93 메뉴 105"
+ },
+ {
+  "name": "[1024px admin /] 포커스 윤곽선",
+  "ok": true,
+  "detail": "solid 2px"
+ },
+ {
+  "name": "[1024px admin /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px admin /stocks] 버튼 개수",
+  "ok": true,
+  "detail": "회원 관리|로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[1024px admin /stocks] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[1024px admin /stocks] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none 1px/none"
+ },
+ {
+  "name": "[1024px admin /stocks] 터치 ≥44px",
+  "ok": true,
+  "detail": "94x44 90x44 182x44"
+ },
+ {
+  "name": "[1024px admin /stocks] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px admin /stocks] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 44"
+ },
+ {
+  "name": "[1024px admin /stocks] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "1024/1024"
+ },
+ {
+  "name": "[1024px admin /stocks] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "6.7 17.7 6.5"
+ },
+ {
+  "name": "[1024px admin /stocks] 테두리 대비≥3",
+  "ok": true,
+  "detail": "6.7 4.8 6.5"
+ },
+ {
+  "name": "[1024px admin /stocks] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px admin /stocks] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 93 회원 49~93 메뉴 105"
+ },
+ {
+  "name": "[1024px admin /screener] 버튼 개수",
+  "ok": true,
+  "detail": "회원 관리|로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[1024px admin /screener] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[1024px admin /screener] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none 1px/none"
+ },
+ {
+  "name": "[1024px admin /screener] 터치 ≥44px",
+  "ok": true,
+  "detail": "94x44 90x44 182x44"
+ },
+ {
+  "name": "[1024px admin /screener] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px admin /screener] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 44"
+ },
+ {
+  "name": "[1024px admin /screener] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "1024/1024"
+ },
+ {
+  "name": "[1024px admin /screener] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "6.7 17.7 6.5"
+ },
+ {
+  "name": "[1024px admin /screener] 테두리 대비≥3",
+  "ok": true,
+  "detail": "6.7 4.8 6.5"
+ },
+ {
+  "name": "[1024px admin /screener] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px admin /screener] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 93 회원 49~93 메뉴 105"
+ },
+ {
+  "name": "[1024px user /] 버튼 개수",
+  "ok": true,
+  "detail": "로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[1024px user /] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[1024px user /] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none"
+ },
+ {
+  "name": "[1024px user /] 터치 ≥44px",
+  "ok": true,
+  "detail": "90x44 182x44"
+ },
+ {
+  "name": "[1024px user /] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px user /] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 44"
+ },
+ {
+  "name": "[1024px user /] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "1024/1024"
+ },
+ {
+  "name": "[1024px user /] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "17.7 6.5"
+ },
+ {
+  "name": "[1024px user /] 테두리 대비≥3",
+  "ok": true,
+  "detail": "4.8 6.5"
+ },
+ {
+  "name": "[1024px user /] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px user /] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 93 회원 49~93 메뉴 105"
+ },
+ {
+  "name": "[1024px user /] 포커스 윤곽선",
+  "ok": true,
+  "detail": "solid 2px"
+ },
+ {
+  "name": "[1024px user /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px user /stocks] 버튼 개수",
+  "ok": true,
+  "detail": "로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[1024px user /stocks] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[1024px user /stocks] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none"
+ },
+ {
+  "name": "[1024px user /stocks] 터치 ≥44px",
+  "ok": true,
+  "detail": "90x44 182x44"
+ },
+ {
+  "name": "[1024px user /stocks] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px user /stocks] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 44"
+ },
+ {
+  "name": "[1024px user /stocks] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "1024/1024"
+ },
+ {
+  "name": "[1024px user /stocks] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "17.7 6.5"
+ },
+ {
+  "name": "[1024px user /stocks] 테두리 대비≥3",
+  "ok": true,
+  "detail": "4.8 6.5"
+ },
+ {
+  "name": "[1024px user /stocks] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px user /stocks] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 93 회원 49~93 메뉴 105"
+ },
+ {
+  "name": "[1024px user /screener] 버튼 개수",
+  "ok": true,
+  "detail": "로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[1024px user /screener] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[1024px user /screener] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none"
+ },
+ {
+  "name": "[1024px user /screener] 터치 ≥44px",
+  "ok": true,
+  "detail": "90x44 182x44"
+ },
+ {
+  "name": "[1024px user /screener] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px user /screener] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 44"
+ },
+ {
+  "name": "[1024px user /screener] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "1024/1024"
+ },
+ {
+  "name": "[1024px user /screener] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "17.7 6.5"
+ },
+ {
+  "name": "[1024px user /screener] 테두리 대비≥3",
+  "ok": true,
+  "detail": "4.8 6.5"
+ },
+ {
+  "name": "[1024px user /screener] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px user /screener] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 93 회원 49~93 메뉴 105"
+ },
+ {
+  "name": "[1280px admin /] 버튼 개수",
+  "ok": true,
+  "detail": "회원 관리|로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[1280px admin /] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[1280px admin /] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none 1px/none"
+ },
+ {
+  "name": "[1280px admin /] 터치 ≥44px",
+  "ok": true,
+  "detail": "94x44 90x44 182x44"
+ },
+ {
+  "name": "[1280px admin /] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px admin /] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 44"
+ },
+ {
+  "name": "[1280px admin /] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "1280/1280"
+ },
+ {
+  "name": "[1280px admin /] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "6.7 17.7 6.5"
+ },
+ {
+  "name": "[1280px admin /] 테두리 대비≥3",
+  "ok": true,
+  "detail": "6.7 4.8 6.5"
+ },
+ {
+  "name": "[1280px admin /] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px admin /] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 93 회원 49~93 메뉴 105"
+ },
+ {
+  "name": "[1280px admin /] 포커스 윤곽선",
+  "ok": true,
+  "detail": "solid 2px"
+ },
+ {
+  "name": "[1280px admin /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px admin /stocks] 버튼 개수",
+  "ok": true,
+  "detail": "회원 관리|로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[1280px admin /stocks] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[1280px admin /stocks] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none 1px/none"
+ },
+ {
+  "name": "[1280px admin /stocks] 터치 ≥44px",
+  "ok": true,
+  "detail": "94x44 90x44 182x44"
+ },
+ {
+  "name": "[1280px admin /stocks] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px admin /stocks] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 44"
+ },
+ {
+  "name": "[1280px admin /stocks] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "1280/1280"
+ },
+ {
+  "name": "[1280px admin /stocks] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "6.7 17.7 6.5"
+ },
+ {
+  "name": "[1280px admin /stocks] 테두리 대비≥3",
+  "ok": true,
+  "detail": "6.7 4.8 6.5"
+ },
+ {
+  "name": "[1280px admin /stocks] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px admin /stocks] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 93 회원 49~93 메뉴 105"
+ },
+ {
+  "name": "[1280px admin /screener] 버튼 개수",
+  "ok": true,
+  "detail": "회원 관리|로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[1280px admin /screener] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[1280px admin /screener] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none 1px/none"
+ },
+ {
+  "name": "[1280px admin /screener] 터치 ≥44px",
+  "ok": true,
+  "detail": "94x44 90x44 182x44"
+ },
+ {
+  "name": "[1280px admin /screener] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px admin /screener] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 44"
+ },
+ {
+  "name": "[1280px admin /screener] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "1280/1280"
+ },
+ {
+  "name": "[1280px admin /screener] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "6.7 17.7 6.5"
+ },
+ {
+  "name": "[1280px admin /screener] 테두리 대비≥3",
+  "ok": true,
+  "detail": "6.7 4.8 6.5"
+ },
+ {
+  "name": "[1280px admin /screener] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px admin /screener] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 93 회원 49~93 메뉴 105"
+ },
+ {
+  "name": "[1280px user /] 버튼 개수",
+  "ok": true,
+  "detail": "로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[1280px user /] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[1280px user /] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none"
+ },
+ {
+  "name": "[1280px user /] 터치 ≥44px",
+  "ok": true,
+  "detail": "90x44 182x44"
+ },
+ {
+  "name": "[1280px user /] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px user /] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 44"
+ },
+ {
+  "name": "[1280px user /] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "1280/1280"
+ },
+ {
+  "name": "[1280px user /] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "17.7 6.5"
+ },
+ {
+  "name": "[1280px user /] 테두리 대비≥3",
+  "ok": true,
+  "detail": "4.8 6.5"
+ },
+ {
+  "name": "[1280px user /] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px user /] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 93 회원 49~93 메뉴 105"
+ },
+ {
+  "name": "[1280px user /] 포커스 윤곽선",
+  "ok": true,
+  "detail": "solid 2px"
+ },
+ {
+  "name": "[1280px user /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px user /stocks] 버튼 개수",
+  "ok": true,
+  "detail": "로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[1280px user /stocks] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[1280px user /stocks] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none"
+ },
+ {
+  "name": "[1280px user /stocks] 터치 ≥44px",
+  "ok": true,
+  "detail": "90x44 182x44"
+ },
+ {
+  "name": "[1280px user /stocks] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px user /stocks] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 44"
+ },
+ {
+  "name": "[1280px user /stocks] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "1280/1280"
+ },
+ {
+  "name": "[1280px user /stocks] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "17.7 6.5"
+ },
+ {
+  "name": "[1280px user /stocks] 테두리 대비≥3",
+  "ok": true,
+  "detail": "4.8 6.5"
+ },
+ {
+  "name": "[1280px user /stocks] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px user /stocks] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 93 회원 49~93 메뉴 105"
+ },
+ {
+  "name": "[1280px user /screener] 버튼 개수",
+  "ok": true,
+  "detail": "로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[1280px user /screener] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[1280px user /screener] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none"
+ },
+ {
+  "name": "[1280px user /screener] 터치 ≥44px",
+  "ok": true,
+  "detail": "90x44 182x44"
+ },
+ {
+  "name": "[1280px user /screener] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px user /screener] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 44"
+ },
+ {
+  "name": "[1280px user /screener] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "1280/1280"
+ },
+ {
+  "name": "[1280px user /screener] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "17.7 6.5"
+ },
+ {
+  "name": "[1280px user /screener] 테두리 대비≥3",
+  "ok": true,
+  "detail": "4.8 6.5"
+ },
+ {
+  "name": "[1280px user /screener] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px user /screener] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 93 회원 49~93 메뉴 105"
+ },
+ {
+  "name": "[768px admin /] 버튼 개수",
+  "ok": true,
+  "detail": "회원 관리|로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[768px admin /] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[768px admin /] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none 1px/none"
+ },
+ {
+  "name": "[768px admin /] 터치 ≥44px",
+  "ok": true,
+  "detail": "94x44 90x44 182x44"
+ },
+ {
+  "name": "[768px admin /] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px admin /] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 44"
+ },
+ {
+  "name": "[768px admin /] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "768/768"
+ },
+ {
+  "name": "[768px admin /] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "6.7 17.7 6.5"
+ },
+ {
+  "name": "[768px admin /] 테두리 대비≥3",
+  "ok": true,
+  "detail": "6.7 4.8 6.5"
+ },
+ {
+  "name": "[768px admin /] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px admin /] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 112 회원 128~172 메뉴 184"
+ },
+ {
+  "name": "[768px admin /] 포커스 윤곽선",
+  "ok": true,
+  "detail": "solid 2px"
+ },
+ {
+  "name": "[768px admin /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px admin /stocks] 버튼 개수",
+  "ok": true,
+  "detail": "회원 관리|로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[768px admin /stocks] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[768px admin /stocks] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none 1px/none"
+ },
+ {
+  "name": "[768px admin /stocks] 터치 ≥44px",
+  "ok": true,
+  "detail": "94x44 90x44 182x44"
+ },
+ {
+  "name": "[768px admin /stocks] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px admin /stocks] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 44"
+ },
+ {
+  "name": "[768px admin /stocks] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "768/768"
+ },
+ {
+  "name": "[768px admin /stocks] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "6.7 17.7 6.5"
+ },
+ {
+  "name": "[768px admin /stocks] 테두리 대비≥3",
+  "ok": true,
+  "detail": "6.7 4.8 6.5"
+ },
+ {
+  "name": "[768px admin /stocks] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px admin /stocks] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 112 회원 128~172 메뉴 184"
+ },
+ {
+  "name": "[768px admin /screener] 버튼 개수",
+  "ok": true,
+  "detail": "회원 관리|로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[768px admin /screener] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[768px admin /screener] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none 1px/none"
+ },
+ {
+  "name": "[768px admin /screener] 터치 ≥44px",
+  "ok": true,
+  "detail": "94x44 90x44 182x44"
+ },
+ {
+  "name": "[768px admin /screener] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px admin /screener] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 44"
+ },
+ {
+  "name": "[768px admin /screener] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "768/768"
+ },
+ {
+  "name": "[768px admin /screener] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "6.7 17.7 6.5"
+ },
+ {
+  "name": "[768px admin /screener] 테두리 대비≥3",
+  "ok": true,
+  "detail": "6.7 4.8 6.5"
+ },
+ {
+  "name": "[768px admin /screener] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px admin /screener] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 112 회원 128~172 메뉴 184"
+ },
+ {
+  "name": "[768px user /] 버튼 개수",
+  "ok": true,
+  "detail": "로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[768px user /] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[768px user /] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none"
+ },
+ {
+  "name": "[768px user /] 터치 ≥44px",
+  "ok": true,
+  "detail": "90x44 182x44"
+ },
+ {
+  "name": "[768px user /] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px user /] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 44"
+ },
+ {
+  "name": "[768px user /] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "768/768"
+ },
+ {
+  "name": "[768px user /] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "17.7 6.5"
+ },
+ {
+  "name": "[768px user /] 테두리 대비≥3",
+  "ok": true,
+  "detail": "4.8 6.5"
+ },
+ {
+  "name": "[768px user /] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px user /] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 112 회원 68~112 메뉴 124"
+ },
+ {
+  "name": "[768px user /] 포커스 윤곽선",
+  "ok": true,
+  "detail": "solid 2px"
+ },
+ {
+  "name": "[768px user /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px user /stocks] 버튼 개수",
+  "ok": true,
+  "detail": "로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[768px user /stocks] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[768px user /stocks] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none"
+ },
+ {
+  "name": "[768px user /stocks] 터치 ≥44px",
+  "ok": true,
+  "detail": "90x44 182x44"
+ },
+ {
+  "name": "[768px user /stocks] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px user /stocks] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 44"
+ },
+ {
+  "name": "[768px user /stocks] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "768/768"
+ },
+ {
+  "name": "[768px user /stocks] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "17.7 6.5"
+ },
+ {
+  "name": "[768px user /stocks] 테두리 대비≥3",
+  "ok": true,
+  "detail": "4.8 6.5"
+ },
+ {
+  "name": "[768px user /stocks] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px user /stocks] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 112 회원 68~112 메뉴 124"
+ },
+ {
+  "name": "[768px user /screener] 버튼 개수",
+  "ok": true,
+  "detail": "로그아웃|모든 기기에서 로그아웃"
+ },
+ {
+  "name": "[768px user /screener] 이름은 글자(버튼 아님)",
+  "ok": true,
+  "detail": "정찬욱님"
+ },
+ {
+  "name": "[768px user /screener] 모두 버튼 모양(테두리 1px+, 밑줄 없음)",
+  "ok": true,
+  "detail": "1px/none 1px/none"
+ },
+ {
+  "name": "[768px user /screener] 터치 ≥44px",
+  "ok": true,
+  "detail": "90x44 182x44"
+ },
+ {
+  "name": "[768px user /screener] 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px user /screener] 회원 메뉴가 두 줄 이하(어색한 3줄 꺾임 없음)",
+  "ok": true,
+  "detail": "높이 44"
+ },
+ {
+  "name": "[768px user /screener] 화면 밖 이탈·가로 넘침 없음",
+  "ok": true,
+  "detail": "768/768"
+ },
+ {
+  "name": "[768px user /screener] 글자 대비≥4.5",
+  "ok": true,
+  "detail": "17.7 6.5"
+ },
+ {
+  "name": "[768px user /screener] 테두리 대비≥3",
+  "ok": true,
+  "detail": "4.8 6.5"
+ },
+ {
+  "name": "[768px user /screener] 눌림 가능(가려지지 않음)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px user /screener] 배치: 회원 메뉴가 제목과 겹치지 않고(아래 또는 오른쪽) 메뉴 줄은 둘 다 아래",
+  "ok": true,
+  "detail": "제목 112 회원 68~112 메뉴 124"
+ }
+]

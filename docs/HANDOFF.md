@@ -6,6 +6,8 @@
 - 모든 작업은 **내부 테스트 결과서를 완벽하게** 작성한다(`docs/qa/`).
 - 보안 이야기는 하지 않는다("보안은 나중에").
 - 운영 변경은 사용자가 요청했을 때만. 응답은 짧고 결과 중심으로.
+- (2026-10-06 재확인) 사용자는 **빠른 응답**을 원한다(느리면 질책). 길게 돌아가지 말고, 오래 걸리는 작업은 시작 때 이유를 한 줄로 말한다. 추측으로 원인을 늘어놓지 않는다(에러 문구를 확인한 뒤에만 원인을 말한다). 사용자 PC·Render·Neon 화면은 볼 수 없으므로 필요한 출력은 **한 번에 한 번만** 요청한다.
+- **운영 반영(Render 배포)이 필요한 변경은 보고 맨 위에 "배포 필요"를 먼저 적는다.** 자동 배포는 꺼져 있다(`autoDeployTrigger: off`, GitHub Secrets 미등록) — 사용자가 Render에서 Deploy latest commit을 눌러야 반영된다.
 
 ## 현재 운영 구조 (2026-10-06 전환 완료)
 - Render 서비스 **1개** `stock-analyzer-web` (https://stock-analyzer-web-q7cx.onrender.com): 컨테이너 안에서 API(내부 127.0.0.1:8000)와 웹(공개 PORT)을 `scripts/run_unified.py`가 함께 기동·감시 (DEC-078). 이미지 `deploy/unified.Dockerfile`, 블루프린트 `render.yaml`.

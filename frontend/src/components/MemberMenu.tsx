@@ -80,7 +80,7 @@ export function MemberMenu() {
       <button type="button" className="member-menu__logout" onClick={logout}>
         {copy.auth.logout}
       </button>
-      <button type="button" className="member-menu__logout" onClick={logoutAll} disabled={busy}>
+      <button type="button" className="member-menu__logout member-menu__logout--all" onClick={logoutAll} disabled={busy}>
         {busy ? copy.auth.logoutAllBusy : copy.auth.logoutAll}
       </button>
       {notice ? (
