@@ -1,0 +1,3062 @@
+[
+ {
+  "name": "[320px admin /] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[320px admin /] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px admin /] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 253"
+ },
+ {
+  "name": "[320px admin /] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 137 회원 149~245 제목 253"
+ },
+ {
+  "name": "[320px admin /] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px admin /] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[320px admin /] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "홈"
+ },
+ {
+  "name": "[320px admin /] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "320/320"
+ },
+ {
+  "name": "[320px admin /] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px admin /] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[320px admin /] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":320,\"iw\":320}"
+ },
+ {
+  "name": "[320px admin /] 키보드 Tab 순서(메뉴 → 회원 메뉴)",
+  "ok": true,
+  "detail": "본문 바로가기 > 자세히 보기 > 홈 > 조건 스크리닝 > 종목 검색 > 관심종목 > 회원 관리 > 로그아웃 > 모든 기기에서 로그아웃 > 국내주식 조건 스크리닝 정 > 다시 시도 > 서비스 안내 자세히 보기"
+ },
+ {
+  "name": "[320px admin /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px admin /stocks] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[320px admin /stocks] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px admin /stocks] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 253"
+ },
+ {
+  "name": "[320px admin /stocks] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 137 회원 149~245 제목 253"
+ },
+ {
+  "name": "[320px admin /stocks] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px admin /stocks] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[320px admin /stocks] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "종목 검색"
+ },
+ {
+  "name": "[320px admin /stocks] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "320/320"
+ },
+ {
+  "name": "[320px admin /stocks] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px admin /stocks] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[320px admin /stocks] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":320,\"iw\":320}"
+ },
+ {
+  "name": "[320px admin /screener] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[320px admin /screener] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px admin /screener] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 253"
+ },
+ {
+  "name": "[320px admin /screener] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 137 회원 149~245 제목 253"
+ },
+ {
+  "name": "[320px admin /screener] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px admin /screener] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[320px admin /screener] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "조건 스크리닝"
+ },
+ {
+  "name": "[320px admin /screener] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "320/320"
+ },
+ {
+  "name": "[320px admin /screener] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px admin /screener] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[320px admin /screener] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":320,\"iw\":320}"
+ },
+ {
+  "name": "[320px user /] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[320px user /] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px user /] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 253"
+ },
+ {
+  "name": "[320px user /] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 137 회원 149~245 제목 253"
+ },
+ {
+  "name": "[320px user /] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px user /] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[320px user /] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "홈"
+ },
+ {
+  "name": "[320px user /] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "320/320"
+ },
+ {
+  "name": "[320px user /] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px user /] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[320px user /] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":320,\"iw\":320}"
+ },
+ {
+  "name": "[320px user /] 키보드 Tab 순서(메뉴 → 회원 메뉴)",
+  "ok": true,
+  "detail": "본문 바로가기 > 자세히 보기 > 홈 > 조건 스크리닝 > 종목 검색 > 관심종목 > 로그아웃 > 모든 기기에서 로그아웃 > 국내주식 조건 스크리닝 정 > 다시 시도 > 서비스 안내 자세히 보기"
+ },
+ {
+  "name": "[320px user /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px user /stocks] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[320px user /stocks] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px user /stocks] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 253"
+ },
+ {
+  "name": "[320px user /stocks] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 137 회원 149~245 제목 253"
+ },
+ {
+  "name": "[320px user /stocks] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px user /stocks] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[320px user /stocks] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "종목 검색"
+ },
+ {
+  "name": "[320px user /stocks] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "320/320"
+ },
+ {
+  "name": "[320px user /stocks] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px user /stocks] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[320px user /stocks] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":320,\"iw\":320}"
+ },
+ {
+  "name": "[320px user /screener] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[320px user /screener] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px user /screener] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 253"
+ },
+ {
+  "name": "[320px user /screener] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 137 회원 149~245 제목 253"
+ },
+ {
+  "name": "[320px user /screener] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px user /screener] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[320px user /screener] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "조건 스크리닝"
+ },
+ {
+  "name": "[320px user /screener] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "320/320"
+ },
+ {
+  "name": "[320px user /screener] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px user /screener] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[320px user /screener] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":320,\"iw\":320}"
+ },
+ {
+  "name": "[320px anon /] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[320px anon /] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px anon /] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 149"
+ },
+ {
+  "name": "[320px anon /] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px anon /] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[320px anon /] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "홈"
+ },
+ {
+  "name": "[320px anon /] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "320/320"
+ },
+ {
+  "name": "[320px anon /] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px anon /] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[320px anon /] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":320,\"iw\":320}"
+ },
+ {
+  "name": "[320px anon /] 키보드 Tab 순서(메뉴 → 회원 메뉴)",
+  "ok": true,
+  "detail": "본문 바로가기 > 자세히 보기 > 홈 > 조건 스크리닝 > 종목 검색 > 관심종목 > 국내주식 조건 스크리닝 정 > 다시 시도 > 서비스 안내 자세히 보기 > 본문 바로가기"
+ },
+ {
+  "name": "[320px anon /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px anon /stocks] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[320px anon /stocks] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px anon /stocks] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 149"
+ },
+ {
+  "name": "[320px anon /stocks] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px anon /stocks] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[320px anon /stocks] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "종목 검색"
+ },
+ {
+  "name": "[320px anon /stocks] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "320/320"
+ },
+ {
+  "name": "[320px anon /stocks] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px anon /stocks] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[320px anon /stocks] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":320,\"iw\":320}"
+ },
+ {
+  "name": "[320px anon /screener] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[320px anon /screener] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px anon /screener] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 149"
+ },
+ {
+  "name": "[320px anon /screener] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px anon /screener] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[320px anon /screener] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "조건 스크리닝"
+ },
+ {
+  "name": "[320px anon /screener] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "320/320"
+ },
+ {
+  "name": "[320px anon /screener] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px anon /screener] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[320px anon /screener] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":320,\"iw\":320}"
+ },
+ {
+  "name": "[360px admin /] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[360px admin /] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px admin /] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 253"
+ },
+ {
+  "name": "[360px admin /] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 137 회원 149~245 제목 253"
+ },
+ {
+  "name": "[360px admin /] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px admin /] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[360px admin /] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "홈"
+ },
+ {
+  "name": "[360px admin /] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "360/360"
+ },
+ {
+  "name": "[360px admin /] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px admin /] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[360px admin /] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":360,\"iw\":360}"
+ },
+ {
+  "name": "[360px admin /] 키보드 Tab 순서(메뉴 → 회원 메뉴)",
+  "ok": true,
+  "detail": "본문 바로가기 > 자세히 보기 > 홈 > 조건 스크리닝 > 종목 검색 > 관심종목 > 회원 관리 > 로그아웃 > 모든 기기에서 로그아웃 > 국내주식 조건 스크리닝 정 > 다시 시도 > 서비스 안내 자세히 보기"
+ },
+ {
+  "name": "[360px admin /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px admin /stocks] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[360px admin /stocks] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px admin /stocks] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 253"
+ },
+ {
+  "name": "[360px admin /stocks] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 137 회원 149~245 제목 253"
+ },
+ {
+  "name": "[360px admin /stocks] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px admin /stocks] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[360px admin /stocks] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "종목 검색"
+ },
+ {
+  "name": "[360px admin /stocks] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "360/360"
+ },
+ {
+  "name": "[360px admin /stocks] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px admin /stocks] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[360px admin /stocks] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":360,\"iw\":360}"
+ },
+ {
+  "name": "[360px admin /screener] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[360px admin /screener] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px admin /screener] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 253"
+ },
+ {
+  "name": "[360px admin /screener] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 137 회원 149~245 제목 253"
+ },
+ {
+  "name": "[360px admin /screener] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px admin /screener] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[360px admin /screener] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "조건 스크리닝"
+ },
+ {
+  "name": "[360px admin /screener] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "360/360"
+ },
+ {
+  "name": "[360px admin /screener] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px admin /screener] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[360px admin /screener] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":360,\"iw\":360}"
+ },
+ {
+  "name": "[360px user /] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[360px user /] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px user /] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 253"
+ },
+ {
+  "name": "[360px user /] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 137 회원 149~245 제목 253"
+ },
+ {
+  "name": "[360px user /] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px user /] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[360px user /] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "홈"
+ },
+ {
+  "name": "[360px user /] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "360/360"
+ },
+ {
+  "name": "[360px user /] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px user /] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[360px user /] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":360,\"iw\":360}"
+ },
+ {
+  "name": "[360px user /] 키보드 Tab 순서(메뉴 → 회원 메뉴)",
+  "ok": true,
+  "detail": "본문 바로가기 > 자세히 보기 > 홈 > 조건 스크리닝 > 종목 검색 > 관심종목 > 로그아웃 > 모든 기기에서 로그아웃 > 국내주식 조건 스크리닝 정 > 다시 시도 > 서비스 안내 자세히 보기"
+ },
+ {
+  "name": "[360px user /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px user /stocks] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[360px user /stocks] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px user /stocks] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 253"
+ },
+ {
+  "name": "[360px user /stocks] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 137 회원 149~245 제목 253"
+ },
+ {
+  "name": "[360px user /stocks] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px user /stocks] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[360px user /stocks] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "종목 검색"
+ },
+ {
+  "name": "[360px user /stocks] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "360/360"
+ },
+ {
+  "name": "[360px user /stocks] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px user /stocks] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[360px user /stocks] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":360,\"iw\":360}"
+ },
+ {
+  "name": "[360px user /screener] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[360px user /screener] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px user /screener] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 253"
+ },
+ {
+  "name": "[360px user /screener] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 137 회원 149~245 제목 253"
+ },
+ {
+  "name": "[360px user /screener] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px user /screener] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[360px user /screener] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "조건 스크리닝"
+ },
+ {
+  "name": "[360px user /screener] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "360/360"
+ },
+ {
+  "name": "[360px user /screener] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px user /screener] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[360px user /screener] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":360,\"iw\":360}"
+ },
+ {
+  "name": "[360px anon /] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[360px anon /] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px anon /] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 149"
+ },
+ {
+  "name": "[360px anon /] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px anon /] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[360px anon /] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "홈"
+ },
+ {
+  "name": "[360px anon /] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "360/360"
+ },
+ {
+  "name": "[360px anon /] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px anon /] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[360px anon /] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":360,\"iw\":360}"
+ },
+ {
+  "name": "[360px anon /] 키보드 Tab 순서(메뉴 → 회원 메뉴)",
+  "ok": true,
+  "detail": "본문 바로가기 > 자세히 보기 > 홈 > 조건 스크리닝 > 종목 검색 > 관심종목 > 국내주식 조건 스크리닝 정 > 다시 시도 > 서비스 안내 자세히 보기 > 본문 바로가기"
+ },
+ {
+  "name": "[360px anon /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px anon /stocks] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[360px anon /stocks] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px anon /stocks] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 149"
+ },
+ {
+  "name": "[360px anon /stocks] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px anon /stocks] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[360px anon /stocks] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "종목 검색"
+ },
+ {
+  "name": "[360px anon /stocks] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "360/360"
+ },
+ {
+  "name": "[360px anon /stocks] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px anon /stocks] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[360px anon /stocks] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":360,\"iw\":360}"
+ },
+ {
+  "name": "[360px anon /screener] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[360px anon /screener] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px anon /screener] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 149"
+ },
+ {
+  "name": "[360px anon /screener] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px anon /screener] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[360px anon /screener] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "조건 스크리닝"
+ },
+ {
+  "name": "[360px anon /screener] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "360/360"
+ },
+ {
+  "name": "[360px anon /screener] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px anon /screener] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[360px anon /screener] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":360,\"iw\":360}"
+ },
+ {
+  "name": "[412px admin /] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[412px admin /] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px admin /] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 253"
+ },
+ {
+  "name": "[412px admin /] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 137 회원 149~245 제목 253"
+ },
+ {
+  "name": "[412px admin /] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px admin /] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[412px admin /] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "홈"
+ },
+ {
+  "name": "[412px admin /] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "412/412"
+ },
+ {
+  "name": "[412px admin /] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px admin /] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[412px admin /] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":412,\"iw\":412}"
+ },
+ {
+  "name": "[412px admin /] 키보드 Tab 순서(메뉴 → 회원 메뉴)",
+  "ok": true,
+  "detail": "본문 바로가기 > 자세히 보기 > 홈 > 조건 스크리닝 > 종목 검색 > 관심종목 > 회원 관리 > 로그아웃 > 모든 기기에서 로그아웃 > 국내주식 조건 스크리닝 정 > 다시 시도 > 서비스 안내 자세히 보기"
+ },
+ {
+  "name": "[412px admin /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px admin /stocks] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[412px admin /stocks] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px admin /stocks] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 253"
+ },
+ {
+  "name": "[412px admin /stocks] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 137 회원 149~245 제목 253"
+ },
+ {
+  "name": "[412px admin /stocks] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px admin /stocks] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[412px admin /stocks] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "종목 검색"
+ },
+ {
+  "name": "[412px admin /stocks] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "412/412"
+ },
+ {
+  "name": "[412px admin /stocks] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px admin /stocks] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[412px admin /stocks] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":412,\"iw\":412}"
+ },
+ {
+  "name": "[412px admin /screener] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[412px admin /screener] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px admin /screener] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 253"
+ },
+ {
+  "name": "[412px admin /screener] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 137 회원 149~245 제목 253"
+ },
+ {
+  "name": "[412px admin /screener] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px admin /screener] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[412px admin /screener] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "조건 스크리닝"
+ },
+ {
+  "name": "[412px admin /screener] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "412/412"
+ },
+ {
+  "name": "[412px admin /screener] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px admin /screener] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[412px admin /screener] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":412,\"iw\":412}"
+ },
+ {
+  "name": "[412px user /] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[412px user /] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px user /] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 201"
+ },
+ {
+  "name": "[412px user /] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 137 회원 149~193 제목 201"
+ },
+ {
+  "name": "[412px user /] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px user /] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[412px user /] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "홈"
+ },
+ {
+  "name": "[412px user /] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "412/412"
+ },
+ {
+  "name": "[412px user /] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px user /] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[412px user /] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":412,\"iw\":412}"
+ },
+ {
+  "name": "[412px user /] 키보드 Tab 순서(메뉴 → 회원 메뉴)",
+  "ok": true,
+  "detail": "본문 바로가기 > 자세히 보기 > 홈 > 조건 스크리닝 > 종목 검색 > 관심종목 > 로그아웃 > 모든 기기에서 로그아웃 > 국내주식 조건 스크리닝 정 > 다시 시도 > 서비스 안내 자세히 보기"
+ },
+ {
+  "name": "[412px user /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px user /stocks] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[412px user /stocks] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px user /stocks] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 201"
+ },
+ {
+  "name": "[412px user /stocks] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 137 회원 149~193 제목 201"
+ },
+ {
+  "name": "[412px user /stocks] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px user /stocks] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[412px user /stocks] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "종목 검색"
+ },
+ {
+  "name": "[412px user /stocks] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "412/412"
+ },
+ {
+  "name": "[412px user /stocks] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px user /stocks] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[412px user /stocks] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":412,\"iw\":412}"
+ },
+ {
+  "name": "[412px user /screener] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[412px user /screener] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px user /screener] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 201"
+ },
+ {
+  "name": "[412px user /screener] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 137 회원 149~193 제목 201"
+ },
+ {
+  "name": "[412px user /screener] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px user /screener] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[412px user /screener] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "조건 스크리닝"
+ },
+ {
+  "name": "[412px user /screener] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "412/412"
+ },
+ {
+  "name": "[412px user /screener] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px user /screener] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[412px user /screener] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":412,\"iw\":412}"
+ },
+ {
+  "name": "[412px anon /] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[412px anon /] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px anon /] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 149"
+ },
+ {
+  "name": "[412px anon /] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px anon /] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[412px anon /] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "홈"
+ },
+ {
+  "name": "[412px anon /] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "412/412"
+ },
+ {
+  "name": "[412px anon /] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px anon /] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[412px anon /] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":412,\"iw\":412}"
+ },
+ {
+  "name": "[412px anon /] 키보드 Tab 순서(메뉴 → 회원 메뉴)",
+  "ok": true,
+  "detail": "본문 바로가기 > 자세히 보기 > 홈 > 조건 스크리닝 > 종목 검색 > 관심종목 > 국내주식 조건 스크리닝 정 > 다시 시도 > 서비스 안내 자세히 보기 > 본문 바로가기"
+ },
+ {
+  "name": "[412px anon /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px anon /stocks] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[412px anon /stocks] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px anon /stocks] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 149"
+ },
+ {
+  "name": "[412px anon /stocks] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px anon /stocks] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[412px anon /stocks] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "종목 검색"
+ },
+ {
+  "name": "[412px anon /stocks] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "412/412"
+ },
+ {
+  "name": "[412px anon /stocks] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px anon /stocks] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[412px anon /stocks] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":412,\"iw\":412}"
+ },
+ {
+  "name": "[412px anon /screener] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 76 / nav 시작 76"
+ },
+ {
+  "name": "[412px anon /screener] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px anon /screener] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 137 / 제목 시작 149"
+ },
+ {
+  "name": "[412px anon /screener] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px anon /screener] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[412px anon /screener] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "조건 스크리닝"
+ },
+ {
+  "name": "[412px anon /screener] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "412/412"
+ },
+ {
+  "name": "[412px anon /screener] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px anon /screener] 배너 높이 변수",
+  "ok": true,
+  "detail": "75.5px"
+ },
+ {
+  "name": "[412px anon /screener] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":412,\"iw\":412}"
+ },
+ {
+  "name": "[768px admin /] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 56 / nav 시작 56"
+ },
+ {
+  "name": "[768px admin /] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px admin /] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 117 / 제목 시작 181"
+ },
+ {
+  "name": "[768px admin /] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 117 회원 129~173 제목 181"
+ },
+ {
+  "name": "[768px admin /] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px admin /] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[768px admin /] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "홈"
+ },
+ {
+  "name": "[768px admin /] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "768/768"
+ },
+ {
+  "name": "[768px admin /] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px admin /] 배너 높이 변수",
+  "ok": true,
+  "detail": "56px"
+ },
+ {
+  "name": "[768px admin /] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":768,\"iw\":768}"
+ },
+ {
+  "name": "[768px admin /] 키보드 Tab 순서(메뉴 → 회원 메뉴)",
+  "ok": true,
+  "detail": "본문 바로가기 > 자세히 보기 > 홈 > 조건 스크리닝 > 종목 검색 > 관심종목 > 회원 관리 > 로그아웃 > 모든 기기에서 로그아웃 > 국내주식 조건 스크리닝 정 > 다시 시도 > 서비스 안내 자세히 보기"
+ },
+ {
+  "name": "[768px admin /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px admin /stocks] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 56 / nav 시작 56"
+ },
+ {
+  "name": "[768px admin /stocks] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px admin /stocks] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 117 / 제목 시작 181"
+ },
+ {
+  "name": "[768px admin /stocks] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 117 회원 129~173 제목 181"
+ },
+ {
+  "name": "[768px admin /stocks] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px admin /stocks] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[768px admin /stocks] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "종목 검색"
+ },
+ {
+  "name": "[768px admin /stocks] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "768/768"
+ },
+ {
+  "name": "[768px admin /stocks] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px admin /stocks] 배너 높이 변수",
+  "ok": true,
+  "detail": "56px"
+ },
+ {
+  "name": "[768px admin /stocks] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":768,\"iw\":768}"
+ },
+ {
+  "name": "[768px admin /screener] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 56 / nav 시작 56"
+ },
+ {
+  "name": "[768px admin /screener] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px admin /screener] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 117 / 제목 시작 181"
+ },
+ {
+  "name": "[768px admin /screener] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 117 회원 129~173 제목 181"
+ },
+ {
+  "name": "[768px admin /screener] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px admin /screener] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[768px admin /screener] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "조건 스크리닝"
+ },
+ {
+  "name": "[768px admin /screener] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "768/768"
+ },
+ {
+  "name": "[768px admin /screener] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px admin /screener] 배너 높이 변수",
+  "ok": true,
+  "detail": "56px"
+ },
+ {
+  "name": "[768px admin /screener] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":768,\"iw\":768}"
+ },
+ {
+  "name": "[768px user /] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 56 / nav 시작 56"
+ },
+ {
+  "name": "[768px user /] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px user /] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 117 / 제목 시작 181"
+ },
+ {
+  "name": "[768px user /] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 117 회원 129~173 제목 181"
+ },
+ {
+  "name": "[768px user /] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px user /] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[768px user /] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "홈"
+ },
+ {
+  "name": "[768px user /] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "768/768"
+ },
+ {
+  "name": "[768px user /] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px user /] 배너 높이 변수",
+  "ok": true,
+  "detail": "56px"
+ },
+ {
+  "name": "[768px user /] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":768,\"iw\":768}"
+ },
+ {
+  "name": "[768px user /] 키보드 Tab 순서(메뉴 → 회원 메뉴)",
+  "ok": true,
+  "detail": "본문 바로가기 > 자세히 보기 > 홈 > 조건 스크리닝 > 종목 검색 > 관심종목 > 로그아웃 > 모든 기기에서 로그아웃 > 국내주식 조건 스크리닝 정 > 다시 시도 > 서비스 안내 자세히 보기"
+ },
+ {
+  "name": "[768px user /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px user /stocks] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 56 / nav 시작 56"
+ },
+ {
+  "name": "[768px user /stocks] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px user /stocks] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 117 / 제목 시작 181"
+ },
+ {
+  "name": "[768px user /stocks] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 117 회원 129~173 제목 181"
+ },
+ {
+  "name": "[768px user /stocks] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px user /stocks] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[768px user /stocks] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "종목 검색"
+ },
+ {
+  "name": "[768px user /stocks] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "768/768"
+ },
+ {
+  "name": "[768px user /stocks] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px user /stocks] 배너 높이 변수",
+  "ok": true,
+  "detail": "56px"
+ },
+ {
+  "name": "[768px user /stocks] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":768,\"iw\":768}"
+ },
+ {
+  "name": "[768px user /screener] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 56 / nav 시작 56"
+ },
+ {
+  "name": "[768px user /screener] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px user /screener] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 117 / 제목 시작 181"
+ },
+ {
+  "name": "[768px user /screener] ① 메뉴 → ② 회원 메뉴 → ③ 제목 (위→아래)",
+  "ok": true,
+  "detail": "nav 117 회원 129~173 제목 181"
+ },
+ {
+  "name": "[768px user /screener] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px user /screener] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[768px user /screener] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "조건 스크리닝"
+ },
+ {
+  "name": "[768px user /screener] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "768/768"
+ },
+ {
+  "name": "[768px user /screener] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px user /screener] 배너 높이 변수",
+  "ok": true,
+  "detail": "56px"
+ },
+ {
+  "name": "[768px user /screener] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":768,\"iw\":768}"
+ },
+ {
+  "name": "[768px anon /] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 56 / nav 시작 56"
+ },
+ {
+  "name": "[768px anon /] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px anon /] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 117 / 제목 시작 129"
+ },
+ {
+  "name": "[768px anon /] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px anon /] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[768px anon /] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "홈"
+ },
+ {
+  "name": "[768px anon /] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "768/768"
+ },
+ {
+  "name": "[768px anon /] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px anon /] 배너 높이 변수",
+  "ok": true,
+  "detail": "56px"
+ },
+ {
+  "name": "[768px anon /] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":768,\"iw\":768}"
+ },
+ {
+  "name": "[768px anon /] 키보드 Tab 순서(메뉴 → 회원 메뉴)",
+  "ok": true,
+  "detail": "본문 바로가기 > 자세히 보기 > 홈 > 조건 스크리닝 > 종목 검색 > 관심종목 > 국내주식 조건 스크리닝 정 > 다시 시도 > 서비스 안내 자세히 보기 > 본문 바로가기"
+ },
+ {
+  "name": "[768px anon /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px anon /stocks] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 56 / nav 시작 56"
+ },
+ {
+  "name": "[768px anon /stocks] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px anon /stocks] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 117 / 제목 시작 129"
+ },
+ {
+  "name": "[768px anon /stocks] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px anon /stocks] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[768px anon /stocks] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "종목 검색"
+ },
+ {
+  "name": "[768px anon /stocks] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "768/768"
+ },
+ {
+  "name": "[768px anon /stocks] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px anon /stocks] 배너 높이 변수",
+  "ok": true,
+  "detail": "56px"
+ },
+ {
+  "name": "[768px anon /stocks] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":768,\"iw\":768}"
+ },
+ {
+  "name": "[768px anon /screener] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 56 / nav 시작 56"
+ },
+ {
+  "name": "[768px anon /screener] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px anon /screener] ① 메뉴 줄 → ③ 제목 순서",
+  "ok": true,
+  "detail": "nav 끝 117 / 제목 시작 129"
+ },
+ {
+  "name": "[768px anon /screener] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px anon /screener] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[768px anon /screener] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "조건 스크리닝"
+ },
+ {
+  "name": "[768px anon /screener] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "768/768"
+ },
+ {
+  "name": "[768px anon /screener] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px anon /screener] 배너 높이 변수",
+  "ok": true,
+  "detail": "56px"
+ },
+ {
+  "name": "[768px anon /screener] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":768,\"iw\":768}"
+ },
+ {
+  "name": "[1024px admin /] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 37 / nav 시작 37"
+ },
+ {
+  "name": "[1024px admin /] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px admin /] ① 메뉴 줄이 제목·회원 메뉴 줄보다 위",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px admin /] 한 줄: 제목(왼쪽) → 회원 메뉴(오른쪽), 겹침 없음",
+  "ok": true,
+  "detail": "제목 끝 306 / 회원 시작 546"
+ },
+ {
+  "name": "[1024px admin /] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px admin /] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[1024px admin /] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "홈"
+ },
+ {
+  "name": "[1024px admin /] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "1024/1024"
+ },
+ {
+  "name": "[1024px admin /] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px admin /] 배너 높이 변수",
+  "ok": true,
+  "detail": "36.5px"
+ },
+ {
+  "name": "[1024px admin /] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":1024,\"iw\":1024}"
+ },
+ {
+  "name": "[1024px admin /] 키보드 Tab 순서(메뉴 → 회원 메뉴)",
+  "ok": true,
+  "detail": "본문 바로가기 > 자세히 보기 > 홈 > 조건 스크리닝 > 종목 검색 > 관심종목 > 회원 관리 > 로그아웃 > 모든 기기에서 로그아웃 > 국내주식 조건 스크리닝 정 > 다시 시도 > 서비스 안내 자세히 보기"
+ },
+ {
+  "name": "[1024px admin /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px admin /stocks] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 37 / nav 시작 37"
+ },
+ {
+  "name": "[1024px admin /stocks] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px admin /stocks] ① 메뉴 줄이 제목·회원 메뉴 줄보다 위",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px admin /stocks] 한 줄: 제목(왼쪽) → 회원 메뉴(오른쪽), 겹침 없음",
+  "ok": true,
+  "detail": "제목 끝 306 / 회원 시작 546"
+ },
+ {
+  "name": "[1024px admin /stocks] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px admin /stocks] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[1024px admin /stocks] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "종목 검색"
+ },
+ {
+  "name": "[1024px admin /stocks] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "1024/1024"
+ },
+ {
+  "name": "[1024px admin /stocks] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px admin /stocks] 배너 높이 변수",
+  "ok": true,
+  "detail": "36.5px"
+ },
+ {
+  "name": "[1024px admin /stocks] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":1024,\"iw\":1024}"
+ },
+ {
+  "name": "[1024px admin /screener] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 37 / nav 시작 37"
+ },
+ {
+  "name": "[1024px admin /screener] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px admin /screener] ① 메뉴 줄이 제목·회원 메뉴 줄보다 위",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px admin /screener] 한 줄: 제목(왼쪽) → 회원 메뉴(오른쪽), 겹침 없음",
+  "ok": true,
+  "detail": "제목 끝 306 / 회원 시작 546"
+ },
+ {
+  "name": "[1024px admin /screener] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px admin /screener] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[1024px admin /screener] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "조건 스크리닝"
+ },
+ {
+  "name": "[1024px admin /screener] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "1024/1024"
+ },
+ {
+  "name": "[1024px admin /screener] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px admin /screener] 배너 높이 변수",
+  "ok": true,
+  "detail": "36.5px"
+ },
+ {
+  "name": "[1024px admin /screener] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":1024,\"iw\":1024}"
+ },
+ {
+  "name": "[1024px user /] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 37 / nav 시작 37"
+ },
+ {
+  "name": "[1024px user /] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px user /] ① 메뉴 줄이 제목·회원 메뉴 줄보다 위",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px user /] 한 줄: 제목(왼쪽) → 회원 메뉴(오른쪽), 겹침 없음",
+  "ok": true,
+  "detail": "제목 끝 306 / 회원 시작 652"
+ },
+ {
+  "name": "[1024px user /] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px user /] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[1024px user /] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "홈"
+ },
+ {
+  "name": "[1024px user /] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "1024/1024"
+ },
+ {
+  "name": "[1024px user /] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px user /] 배너 높이 변수",
+  "ok": true,
+  "detail": "36.5px"
+ },
+ {
+  "name": "[1024px user /] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":1024,\"iw\":1024}"
+ },
+ {
+  "name": "[1024px user /] 키보드 Tab 순서(메뉴 → 회원 메뉴)",
+  "ok": true,
+  "detail": "본문 바로가기 > 자세히 보기 > 홈 > 조건 스크리닝 > 종목 검색 > 관심종목 > 로그아웃 > 모든 기기에서 로그아웃 > 국내주식 조건 스크리닝 정 > 다시 시도 > 서비스 안내 자세히 보기"
+ },
+ {
+  "name": "[1024px user /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px user /stocks] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 37 / nav 시작 37"
+ },
+ {
+  "name": "[1024px user /stocks] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px user /stocks] ① 메뉴 줄이 제목·회원 메뉴 줄보다 위",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px user /stocks] 한 줄: 제목(왼쪽) → 회원 메뉴(오른쪽), 겹침 없음",
+  "ok": true,
+  "detail": "제목 끝 306 / 회원 시작 652"
+ },
+ {
+  "name": "[1024px user /stocks] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px user /stocks] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[1024px user /stocks] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "종목 검색"
+ },
+ {
+  "name": "[1024px user /stocks] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "1024/1024"
+ },
+ {
+  "name": "[1024px user /stocks] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px user /stocks] 배너 높이 변수",
+  "ok": true,
+  "detail": "36.5px"
+ },
+ {
+  "name": "[1024px user /stocks] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":1024,\"iw\":1024}"
+ },
+ {
+  "name": "[1024px user /screener] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 37 / nav 시작 37"
+ },
+ {
+  "name": "[1024px user /screener] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px user /screener] ① 메뉴 줄이 제목·회원 메뉴 줄보다 위",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px user /screener] 한 줄: 제목(왼쪽) → 회원 메뉴(오른쪽), 겹침 없음",
+  "ok": true,
+  "detail": "제목 끝 306 / 회원 시작 652"
+ },
+ {
+  "name": "[1024px user /screener] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px user /screener] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[1024px user /screener] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "조건 스크리닝"
+ },
+ {
+  "name": "[1024px user /screener] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "1024/1024"
+ },
+ {
+  "name": "[1024px user /screener] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px user /screener] 배너 높이 변수",
+  "ok": true,
+  "detail": "36.5px"
+ },
+ {
+  "name": "[1024px user /screener] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":1024,\"iw\":1024}"
+ },
+ {
+  "name": "[1024px anon /] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 37 / nav 시작 37"
+ },
+ {
+  "name": "[1024px anon /] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px anon /] ① 메뉴 줄이 제목·회원 메뉴 줄보다 위",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px anon /] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px anon /] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[1024px anon /] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "홈"
+ },
+ {
+  "name": "[1024px anon /] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "1024/1024"
+ },
+ {
+  "name": "[1024px anon /] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px anon /] 배너 높이 변수",
+  "ok": true,
+  "detail": "36.5px"
+ },
+ {
+  "name": "[1024px anon /] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":1024,\"iw\":1024}"
+ },
+ {
+  "name": "[1024px anon /] 키보드 Tab 순서(메뉴 → 회원 메뉴)",
+  "ok": true,
+  "detail": "본문 바로가기 > 자세히 보기 > 홈 > 조건 스크리닝 > 종목 검색 > 관심종목 > 국내주식 조건 스크리닝 정 > 다시 시도 > 서비스 안내 자세히 보기 > 본문 바로가기"
+ },
+ {
+  "name": "[1024px anon /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px anon /stocks] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 37 / nav 시작 37"
+ },
+ {
+  "name": "[1024px anon /stocks] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px anon /stocks] ① 메뉴 줄이 제목·회원 메뉴 줄보다 위",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px anon /stocks] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px anon /stocks] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[1024px anon /stocks] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "종목 검색"
+ },
+ {
+  "name": "[1024px anon /stocks] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "1024/1024"
+ },
+ {
+  "name": "[1024px anon /stocks] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px anon /stocks] 배너 높이 변수",
+  "ok": true,
+  "detail": "36.5px"
+ },
+ {
+  "name": "[1024px anon /stocks] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":1024,\"iw\":1024}"
+ },
+ {
+  "name": "[1024px anon /screener] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 37 / nav 시작 37"
+ },
+ {
+  "name": "[1024px anon /screener] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px anon /screener] ① 메뉴 줄이 제목·회원 메뉴 줄보다 위",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px anon /screener] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px anon /screener] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[1024px anon /screener] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "조건 스크리닝"
+ },
+ {
+  "name": "[1024px anon /screener] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "1024/1024"
+ },
+ {
+  "name": "[1024px anon /screener] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1024px anon /screener] 배너 높이 변수",
+  "ok": true,
+  "detail": "36.5px"
+ },
+ {
+  "name": "[1024px anon /screener] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":1024,\"iw\":1024}"
+ },
+ {
+  "name": "[1280px admin /] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 37 / nav 시작 37"
+ },
+ {
+  "name": "[1280px admin /] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px admin /] ① 메뉴 줄이 제목·회원 메뉴 줄보다 위",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px admin /] 한 줄: 제목(왼쪽) → 회원 메뉴(오른쪽), 겹침 없음",
+  "ok": true,
+  "detail": "제목 끝 330 / 회원 시작 778"
+ },
+ {
+  "name": "[1280px admin /] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px admin /] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[1280px admin /] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "홈"
+ },
+ {
+  "name": "[1280px admin /] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "1280/1280"
+ },
+ {
+  "name": "[1280px admin /] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px admin /] 배너 높이 변수",
+  "ok": true,
+  "detail": "36.5px"
+ },
+ {
+  "name": "[1280px admin /] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":1280,\"iw\":1280}"
+ },
+ {
+  "name": "[1280px admin /] 키보드 Tab 순서(메뉴 → 회원 메뉴)",
+  "ok": true,
+  "detail": "본문 바로가기 > 자세히 보기 > 홈 > 조건 스크리닝 > 종목 검색 > 관심종목 > 회원 관리 > 로그아웃 > 모든 기기에서 로그아웃 > 국내주식 조건 스크리닝 정 > 다시 시도 > 서비스 안내 자세히 보기"
+ },
+ {
+  "name": "[1280px admin /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px admin /stocks] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 37 / nav 시작 37"
+ },
+ {
+  "name": "[1280px admin /stocks] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px admin /stocks] ① 메뉴 줄이 제목·회원 메뉴 줄보다 위",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px admin /stocks] 한 줄: 제목(왼쪽) → 회원 메뉴(오른쪽), 겹침 없음",
+  "ok": true,
+  "detail": "제목 끝 330 / 회원 시작 778"
+ },
+ {
+  "name": "[1280px admin /stocks] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px admin /stocks] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[1280px admin /stocks] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "종목 검색"
+ },
+ {
+  "name": "[1280px admin /stocks] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "1280/1280"
+ },
+ {
+  "name": "[1280px admin /stocks] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px admin /stocks] 배너 높이 변수",
+  "ok": true,
+  "detail": "36.5px"
+ },
+ {
+  "name": "[1280px admin /stocks] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":1280,\"iw\":1280}"
+ },
+ {
+  "name": "[1280px admin /screener] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 37 / nav 시작 37"
+ },
+ {
+  "name": "[1280px admin /screener] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px admin /screener] ① 메뉴 줄이 제목·회원 메뉴 줄보다 위",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px admin /screener] 한 줄: 제목(왼쪽) → 회원 메뉴(오른쪽), 겹침 없음",
+  "ok": true,
+  "detail": "제목 끝 330 / 회원 시작 778"
+ },
+ {
+  "name": "[1280px admin /screener] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px admin /screener] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[1280px admin /screener] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "조건 스크리닝"
+ },
+ {
+  "name": "[1280px admin /screener] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "1280/1280"
+ },
+ {
+  "name": "[1280px admin /screener] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px admin /screener] 배너 높이 변수",
+  "ok": true,
+  "detail": "36.5px"
+ },
+ {
+  "name": "[1280px admin /screener] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":1280,\"iw\":1280}"
+ },
+ {
+  "name": "[1280px user /] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 37 / nav 시작 37"
+ },
+ {
+  "name": "[1280px user /] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px user /] ① 메뉴 줄이 제목·회원 메뉴 줄보다 위",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px user /] 한 줄: 제목(왼쪽) → 회원 메뉴(오른쪽), 겹침 없음",
+  "ok": true,
+  "detail": "제목 끝 330 / 회원 시작 884"
+ },
+ {
+  "name": "[1280px user /] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px user /] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[1280px user /] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "홈"
+ },
+ {
+  "name": "[1280px user /] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "1280/1280"
+ },
+ {
+  "name": "[1280px user /] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px user /] 배너 높이 변수",
+  "ok": true,
+  "detail": "36.5px"
+ },
+ {
+  "name": "[1280px user /] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":1280,\"iw\":1280}"
+ },
+ {
+  "name": "[1280px user /] 키보드 Tab 순서(메뉴 → 회원 메뉴)",
+  "ok": true,
+  "detail": "본문 바로가기 > 자세히 보기 > 홈 > 조건 스크리닝 > 종목 검색 > 관심종목 > 로그아웃 > 모든 기기에서 로그아웃 > 국내주식 조건 스크리닝 정 > 다시 시도 > 서비스 안내 자세히 보기"
+ },
+ {
+  "name": "[1280px user /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px user /stocks] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 37 / nav 시작 37"
+ },
+ {
+  "name": "[1280px user /stocks] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px user /stocks] ① 메뉴 줄이 제목·회원 메뉴 줄보다 위",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px user /stocks] 한 줄: 제목(왼쪽) → 회원 메뉴(오른쪽), 겹침 없음",
+  "ok": true,
+  "detail": "제목 끝 330 / 회원 시작 884"
+ },
+ {
+  "name": "[1280px user /stocks] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px user /stocks] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[1280px user /stocks] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "종목 검색"
+ },
+ {
+  "name": "[1280px user /stocks] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "1280/1280"
+ },
+ {
+  "name": "[1280px user /stocks] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px user /stocks] 배너 높이 변수",
+  "ok": true,
+  "detail": "36.5px"
+ },
+ {
+  "name": "[1280px user /stocks] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":1280,\"iw\":1280}"
+ },
+ {
+  "name": "[1280px user /screener] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 37 / nav 시작 37"
+ },
+ {
+  "name": "[1280px user /screener] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px user /screener] ① 메뉴 줄이 제목·회원 메뉴 줄보다 위",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px user /screener] 한 줄: 제목(왼쪽) → 회원 메뉴(오른쪽), 겹침 없음",
+  "ok": true,
+  "detail": "제목 끝 330 / 회원 시작 884"
+ },
+ {
+  "name": "[1280px user /screener] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px user /screener] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[1280px user /screener] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "조건 스크리닝"
+ },
+ {
+  "name": "[1280px user /screener] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "1280/1280"
+ },
+ {
+  "name": "[1280px user /screener] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px user /screener] 배너 높이 변수",
+  "ok": true,
+  "detail": "36.5px"
+ },
+ {
+  "name": "[1280px user /screener] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":1280,\"iw\":1280}"
+ },
+ {
+  "name": "[1280px anon /] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 37 / nav 시작 37"
+ },
+ {
+  "name": "[1280px anon /] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px anon /] ① 메뉴 줄이 제목·회원 메뉴 줄보다 위",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px anon /] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px anon /] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[1280px anon /] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "홈"
+ },
+ {
+  "name": "[1280px anon /] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "1280/1280"
+ },
+ {
+  "name": "[1280px anon /] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px anon /] 배너 높이 변수",
+  "ok": true,
+  "detail": "36.5px"
+ },
+ {
+  "name": "[1280px anon /] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":1280,\"iw\":1280}"
+ },
+ {
+  "name": "[1280px anon /] 키보드 Tab 순서(메뉴 → 회원 메뉴)",
+  "ok": true,
+  "detail": "본문 바로가기 > 자세히 보기 > 홈 > 조건 스크리닝 > 종목 검색 > 관심종목 > 국내주식 조건 스크리닝 정 > 다시 시도 > 서비스 안내 자세히 보기 > 본문 바로가기"
+ },
+ {
+  "name": "[1280px anon /] axe 위반 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px anon /stocks] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 37 / nav 시작 37"
+ },
+ {
+  "name": "[1280px anon /stocks] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px anon /stocks] ① 메뉴 줄이 제목·회원 메뉴 줄보다 위",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px anon /stocks] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px anon /stocks] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[1280px anon /stocks] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "종목 검색"
+ },
+ {
+  "name": "[1280px anon /stocks] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "1280/1280"
+ },
+ {
+  "name": "[1280px anon /stocks] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px anon /stocks] 배너 높이 변수",
+  "ok": true,
+  "detail": "36.5px"
+ },
+ {
+  "name": "[1280px anon /stocks] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":1280,\"iw\":1280}"
+ },
+ {
+  "name": "[1280px anon /screener] ① 메뉴 줄이 배너 바로 아래 맨 위",
+  "ok": true,
+  "detail": "banner 끝 37 / nav 시작 37"
+ },
+ {
+  "name": "[1280px anon /screener] 문서 순서: 메뉴 → 회원 메뉴 → 제목",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px anon /screener] ① 메뉴 줄이 제목·회원 메뉴 줄보다 위",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px anon /screener] 본문은 머리글 아래",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px anon /screener] 머리글 아래 구분선",
+  "ok": true,
+  "detail": "1px"
+ },
+ {
+  "name": "[1280px anon /screener] 선택 표시 1개/대상",
+  "ok": true,
+  "detail": "조건 스크리닝"
+ },
+ {
+  "name": "[1280px anon /screener] 가로 넘침·이탈 없음",
+  "ok": true,
+  "detail": "1280/1280"
+ },
+ {
+  "name": "[1280px anon /screener] 제목 터치 ≥44px, 메뉴 글자 한 줄",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px anon /screener] 배너 높이 변수",
+  "ok": true,
+  "detail": "36.5px"
+ },
+ {
+  "name": "[1280px anon /screener] 스크롤 후 메뉴 줄만 배너 아래에 고정·눌림 가능",
+  "ok": true,
+  "detail": "{\"gap\":0,\"hit\":true,\"wmGone\":true,\"sw\":1280,\"iw\":1280}"
+ }
+]

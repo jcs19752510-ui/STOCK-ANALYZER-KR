@@ -101,6 +101,7 @@ input:focus-visible,
 
 .site-header {
   padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .site-header__bar {
@@ -2670,9 +2671,22 @@ main {
 }
 
 @media (max-width: 1023px) {
-  /* 제목 + 회원 메뉴 버튼(최대 4개, 약 430px)이 한 줄에 못 들어가는 폭에서는 제목 아래 줄로 내려 버튼이 어색하게 꺾이지 않게 한다 */
+  /* 제목 + 회원 메뉴 버튼(최대 4개, 약 430px)이 한 줄에 못 들어가는 폭에서는 위(회원 메뉴) → 아래(제목) 두 줄로 쌓는다(사용자 지정 순서 ② → ③) */
   .site-header__bar {
     flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+  }
+
+  /* 회원 메뉴는 항상 자기 줄을 차지한다(버튼이 적은 일반 회원이 768px에서 제목 옆에 붙어 ② → ③ 순서가 깨지는 것을 막음) */
+  .member-menu {
+    flex: 0 0 100%;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* 한 줄에 둘 다 들어가는 폭: 보는 순서는 제목(왼쪽) → 회원 메뉴(오른쪽). 문서 순서(회원 메뉴 → 제목)는 쌓였을 때 기준이라 시각 순서만 뒤집는다 */
+  .site-header__wordmark {
+    order: -1;
   }
 }
 
