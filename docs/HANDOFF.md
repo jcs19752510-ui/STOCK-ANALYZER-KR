@@ -12,7 +12,7 @@
 
 - **(2026-10-06 사용자 지시, 계속 기억)**: **매번 작업이 끝날 때마다 `PROD_SCH`에도 푸시한다**(작업 브랜치와 함께). 병합이 필요하면 `PROD_SCH`로 fast-forward/병합 후 푸시하고, 푸시하면 Render가 자동 배포하므로(DEC-081) (Render 배포를 하지 않기로 했으므로 위 Render 규칙을 따른다.)
 
-- **(2026-10-06 사용자 지시, 계속 기억) Render 배포는 하지 않는다. 테스트는 사용자의 로컬 노트북에서만 한다.** 새 기능은 로컬 모드(내 PC)에서 확인하며, Render 화면 확인·배포 안내·"자동 배포됨" 보고는 하지 않는다. 주의: `PROD_SCH` 푸시는 계속 하지만(위 규칙), `render.yaml`의 `autoDeployTrigger: commit` 때문에 Render 쪽 자동 배포가 켜져 있으면 푸시가 배포를 일으킬 수 있다 — 이를 끄는 방법(Render 화면에서 자동 배포 끄기, 또는 `render.yaml` 변경)은 사용자 결정 대기 중이며 임의로 바꾸지 않았다.
+- **(2026-10-06 사용자 지시, 계속 기억) Render 배포는 하지 않는다. 테스트는 사용자의 로컬 노트북에서만 한다.** 새 기능은 로컬 모드(내 PC)에서 확인하며, Render 화면 확인·배포 안내·"자동 배포됨" 보고는 하지 않는다. 주의: `PROD_SCH` 푸시는 계속 하지만(위 규칙), `render.yaml`의 `autoDeployTrigger: commit` 때문에 Render 쪽 자동 배포가 켜져 있으면 푸시가 배포를 일으킬 수 있다 — **결정(2026-10-06): 사용자가 Render 화면에서 자동 배포를 직접 끈다**(`render.yaml`은 바꾸지 않는다). 사용자가 끈 것을 확인하기 전까지는 `PROD_SCH` 푸시가 배포를 일으킬 수 있다고 본다.
 
 ## 현재 운영 구조 (2026-10-06 전환 완료)
 - Render 서비스 **1개** `stock-analyzer-web` (https://stock-analyzer-web-q7cx.onrender.com): 컨테이너 안에서 API(내부 127.0.0.1:8000)와 웹(공개 PORT)을 `scripts/run_unified.py`가 함께 기동·감시 (DEC-078). 이미지 `deploy/unified.Dockerfile`, 블루프린트 `render.yaml`.
