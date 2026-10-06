@@ -7,78 +7,13 @@
  * - 같은 주소의 요청이 진행 중이면 새로 보내지 않고, 다른 주소(조건·쪽 변경)면 이전 요청을 취소한다. 취소·교체된 요청의 늦은 응답은 버린다.
  * - 목록은 제자리에서 바꾼다: 새 응답이 올 때까지 이전 값을 지우지 않는다(조건이 바뀔 때만 비운다).
  */
-import {
-  EMPTY_CHANGE_LOG,
-  MIN_REFRESH_SECONDS,
-  DEFAULT_REFRESH_SECONDS,
-  applyChanges,
-  buildLiveUrl,
-  mapLiveError,
-  mergeNames,
-  nextBackoffMs,
-  parseLiveSuccess,
-  retryPolicy,
-  type ChangeLog,
-} from "./logic.ts";
-import type { LiveError, LiveMeta, LiveScreenKind } from "./types.ts";
+import { MIN_REFRESH_SECONDS, applyChanges, mergeNames, nextBackoffMs } from "./logic.ts";
+import { buildLiveUrl, mapLiveError, parseLiveSuccess, retryPolicy } from "./protocol.ts";
+import { EMPTY_LIVE_VIEW, type LiveHttp, type LiveQuery, type LiveScreenView } from "./view.ts";
+import type { LiveError } from "./types.ts";
 
-export interface LiveQuery {
-  kind: LiveScreenKind;
-  /** `page`·`snapshot_id`를 뺀 조건 문자열(일봉 화면의 빌더가 만든 것에서 `stripLiveParams`로 정리) */
-  params: string;
-}
-
-export interface LiveHttp {
-  status: number;
-  body: unknown;
-}
-
-export interface LiveScreenView<T> {
-  query: LiveQuery | null;
-  page: number;
-  /** 마지막으로 성공한 응답의 데이터(조건이 바뀌면 비워진다) */
-  data: T | null;
-  meta: LiveMeta | null;
-  /** 마지막 성공 응답을 받은 시각(브라우저 epoch 초) */
-  receivedAt: number | null;
-  /** 응답 봉투의 서버 시각(epoch 초). 계산 시각의 경과를 시계 어긋남 없이 구하는 데 쓴다. */
-  generatedAt: number | null;
-  /** 요청이 진행 중 */
-  loading: boolean;
-  paused: boolean;
-  pinnedSnapshotId: string | null;
-  /** 가장 최근 시도의 오류(성공하면 null). `data`가 남아 있으면 "지연" 상태다. */
-  error: LiveError | null;
-  failures: number;
-  /** 다음 재시도까지(ms). 재시도하지 않거나 일시정지면 null */
-  retryInMs: number | null;
-  refreshSeconds: number;
-  changeLog: ChangeLog;
-  names: Record<string, string>;
-  /** 일시정지 중 고정한 계산 결과가 만료되어 새로 계산했음 */
-  expiredNotice: boolean;
-  seq: number;
-}
-
-export const EMPTY_LIVE_VIEW: LiveScreenView<never> = {
-  query: null,
-  page: 1,
-  data: null,
-  meta: null,
-  receivedAt: null,
-  generatedAt: null,
-  loading: false,
-  paused: false,
-  pinnedSnapshotId: null,
-  error: null,
-  failures: 0,
-  retryInMs: null,
-  refreshSeconds: DEFAULT_REFRESH_SECONDS,
-  changeLog: EMPTY_CHANGE_LOG,
-  names: {},
-  expiredNotice: false,
-  seq: 0,
-};
+export { EMPTY_LIVE_VIEW };
+export type { LiveHttp, LiveQuery, LiveScreenView };
 
 export interface ControllerDeps {
   request: (url: string, signal: AbortSignal) => Promise<LiveHttp>;

@@ -7,10 +7,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  EMPTY_CHANGE_LOG, MAX_BACKOFF_MS, NEW_WINDOW_SEC, TOGGLE_STORAGE_KEY, applyChanges, bannerNotices, buildLiveUrl, changeRows, clampRefreshSeconds,
-  clearsData, dataAgeSeconds, isDelayed, mapLiveError, mergeNames, newCodes, nextBackoffMs, nextNewExpiryMs, parseLiveMeta, parseLiveSuccess,
-  readStoredToggle, retryPolicy, statusKey, stripLiveParams, writeStoredToggle,
+  EMPTY_CHANGE_LOG, MAX_BACKOFF_MS, NEW_WINDOW_SEC, applyChanges, bannerNotices, changeRows, clampRefreshSeconds,
+  dataAgeSeconds, isDelayed, mergeNames, newCodes, nextBackoffMs, nextNewExpiryMs, statusKey, stripLiveParams,
 } from "../src/lib/liveScreen/logic.ts";
+import {
+  TOGGLE_STORAGE_KEY, buildLiveUrl, clearsData, mapLiveError, parseLiveMeta, parseLiveSuccess, readStoredToggle, retryPolicy, writeStoredToggle,
+} from "../src/lib/liveScreen/protocol.ts";
 import { LiveScreenController } from "../src/lib/liveScreen/controller.ts";
 import { MAX_QUERY_LENGTH } from "../src/lib/auth/bffPaths.ts";
 
