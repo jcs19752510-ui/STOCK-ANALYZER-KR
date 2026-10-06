@@ -68,6 +68,35 @@ def _run(args: list[str]) -> int:
     return result.returncode
 
 
+def _kis_daily_bars_enabled() -> bool:
+    """소유자 PC 설정(증권사 앱키 + 장중 기준 화면 켜짐)일 때만 증권사 일봉 캐시 단계를 실행한다(DEC-097)."""
+    return (
+        bool(os.environ.get("KIS_APP_KEY", "").strip())
+        and bool(os.environ.get("KIS_APP_SECRET", "").strip())
+        and os.environ.get("LOCAL_INTRADAY_ENABLED", "").strip().lower() == "true"
+    )
+
+
+def _run_kis_daily_bars() -> None:
+    """부가 단계: 증권사 일봉 캐시 적재·정리. 실패해도 배치 종료코드는 바꾸지 않고 경고만 한다(핵심 기능 아님).
+    발행일이 직전 거래일 이상이면 스크립트가 KIS를 호출하지 않고 캐시 정리만 한다."""
+    if not _kis_daily_bars_enabled():
+        return
+    try:
+        rc = _run([sys.executable, str(REPO_ROOT / "scripts" / "collect_kis_daily_bars.py")])
+    except Exception as exc:  # 부가 단계가 배치를 깨뜨리지 않게 한다
+        print(
+            f"[경고] 증권사 일봉 캐시 단계 실행 실패({type(exc).__name__}) — 배치 결과에는 영향이 없습니다.",
+            file=sys.stderr,
+        )
+        return
+    if rc != 0:
+        print(
+            f"[경고] 증권사 일봉 캐시 단계가 종료코드 {rc}로 끝났습니다 — 핵심 기능이 아니므로 배치 결과에는 영향이 없습니다.",
+            file=sys.stderr,
+        )
+
+
 def _pending_dates() -> tuple[list[date], date] | None:
     """(빠진 거래일 오름차순, 대상 거래일). DB·캘린더를 못 읽으면 None(단일 실행 폴백)."""
     try:
@@ -129,6 +158,7 @@ def _run_one_date(trade_date: date | None) -> int:
 def _run_with_catchup(pending: list[date], target: date) -> int:
     if not pending:
         print(f"[완료] 대상 거래일 {target} 까지 가공이 이미 끝나 있어 할 일이 없습니다.")
+        _run_kis_daily_bars()  # 캐시 정리(필요할 때만 KIS 호출)
         return 0
     print(f"[정보] 처리 대상 거래일(오래된 순): {', '.join(d.isoformat() for d in pending)}")
     blocked: list[date] = []
@@ -159,6 +189,7 @@ def _run_with_catchup(pending: list[date], target: date) -> int:
             + " — 그 직전 거래일의 시세가 비어 있습니다. `scripts\\diagnose_local_data.py`로 확인하세요.",
             file=sys.stderr,
         )
+    _run_kis_daily_bars()
     print(f"[완료] {datetime.now(KST):%Y-%m-%d %H:%M:%S} KST 일일 배치 {'종료(보류된 날짜 있음)' if blocked else '정상 종료'}.")
     return 0
 
@@ -229,6 +260,7 @@ def _main_locked(argv: list[str]) -> int:
         print(f"[실패] Derivation Batch가 종료코드 {derive_rc}로 실패했습니다.", file=sys.stderr)
         return derive_rc
 
+    _run_kis_daily_bars()
     print(f"[완료] {datetime.now(KST):%Y-%m-%d %H:%M:%S} KST 일일 배치 정상 종료.")
     return 0
 
