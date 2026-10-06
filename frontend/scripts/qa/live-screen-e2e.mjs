@@ -53,21 +53,31 @@ if (PHASE === "prod") {
     await ctx.close();
   }
 } else {
-  // ── 1) 꺼진 상태: 전환은 보이지만 요청은 0건
+  const setLive = async (pg, want) => {
+    const cur = (await pg.getByRole("switch", { name: /장중 기준/ }).getAttribute("aria-checked")) === "true";
+    if (cur !== want) await pg.getByRole("switch", { name: /장중 기준/ }).click();
+  };
+  // ── 1) 기본 켜짐 확인 → 끄면 요청 0건이고 새로고침해도 꺼짐 유지(DEC-097)
   {
     const { ctx, page, reqs } = await newPage();
     await page.goto(BASE + "/screener", { waitUntil: "networkidle" });
     rec("조건 스크리닝: 로컬 모드 관리자에게 전환 표시", (await page.getByRole("switch", { name: /장중 기준/ }).count()) === 1);
+    rec("저장값이 없으면 기본 켜짐(aria-checked=true)", (await page.getByRole("switch", { name: /장중 기준/ }).getAttribute("aria-checked")) === "true");
+    await page.getByRole("switch", { name: /장중 기준/ }).click(); // 끄기
+    await sleep(1500);
+    const before = liveReqs(reqs).length;
     await page.getByRole("button", { name: "조건 적용" }).click();
     await sleep(2500);
-    rec("전환을 켜지 않으면 /local/screen 요청 0건", liveReqs(reqs).length === 0);
+    rec("전환을 끄면 이후 /local/screen 요청이 늘지 않음", liveReqs(reqs).length === before, `${liveReqs(reqs).length - before}건`);
+    await page.reload({ waitUntil: "networkidle" });
+    rec("끈 선택은 새로고침 후에도 유지(aria-checked=false)", (await page.getByRole("switch", { name: /장중 기준/ }).getAttribute("aria-checked")) === "false");
     await ctx.close();
   }
 
   // ── 2) 켜기: 일봉 보충 진행 → 결과 → 배너
   const { ctx, page, reqs, bodies } = await newPage();
   await page.goto(BASE + "/screener", { waitUntil: "networkidle" });
-  await page.getByRole("switch", { name: /장중 기준/ }).click();
+  await setLive(page, true);
   rec("전환 켜면 aria-checked=true", (await page.getByRole("switch", { name: /장중 기준/ }).getAttribute("aria-checked")) === "true");
   await page.getByRole("button", { name: "조건 적용" }).click();
   const sawFilling = await until(
@@ -152,7 +162,7 @@ if (PHASE === "prod") {
     const { ctx: c2, page: p2, reqs: r2, bodies: b2 } = await newPage();
     await p2.goto(BASE + "/screener/pattern", { waitUntil: "networkidle" });
     rec("패턴 스크리닝: 전환 표시", (await p2.getByRole("switch", { name: /장중 기준/ }).count()) === 1);
-    await p2.getByRole("switch", { name: /장중 기준/ }).click();
+    await setLive(p2, true);
     await p2.getByRole("button", { name: "조건 적용" }).click().catch(() => {});
     const ok = await until(async () => (await p2.locator(".live-banner").count()) > 0, 60000);
     const code = b2.filter((b) => b.url.includes("/local/screen/pattern")).map((b) => b.status).join(",");
@@ -166,7 +176,7 @@ if (PHASE === "prod") {
   {
     const { ctx: c3, page: p3 } = await newPage(390, 844, "dark");
     await p3.goto(BASE + "/screener", { waitUntil: "networkidle" });
-    await p3.getByRole("switch", { name: /장중 기준/ }).click();
+    await setLive(p3, true);
     await p3.getByRole("button", { name: "조건 필터 열기" }).click(); // 휴대폰 폭에서는 조건 패널이 대화상자로 열린다
     await p3.getByRole("button", { name: "조건 적용" }).click();
     const ok = await until(async () => (await p3.locator(".live-banner").count()) > 0, 90000);

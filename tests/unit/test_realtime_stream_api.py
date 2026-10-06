@@ -9,6 +9,7 @@ import json
 import sys
 import threading
 import types
+from datetime import datetime
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
@@ -37,6 +38,10 @@ class Stack:
         self.ws = mock.MockKisWsServer()
 
     async def __aenter__(self) -> Stack:
+        # 모의 증권사가 실제 현재 시각을 쓰면 장 시작 전(한국 시간 새벽)에는 분봉이 비어 시험이 시각에 따라 실패한다.
+        # 날짜는 실제 오늘 그대로 두고 시각만 장 마감(15:30)으로 고정한다(시험이 15:31 체결을 보냄)(DEC-097).
+        self._orig_fixed_now = mock_kis_server.Handler.fixed_now
+        mock_kis_server.Handler.fixed_now = datetime.now(mock_kis_server.KST).replace(hour=15, minute=30, second=0, microsecond=0)
         self.rest = ThreadingHTTPServer(("127.0.0.1", 0), mock_kis_server.Handler)
         threading.Thread(target=self.rest.serve_forever, daemon=True).start()
         ws_port = await self.ws.start()
@@ -64,6 +69,7 @@ class Stack:
         self.server.should_exit = True
         await asyncio.to_thread(self.thread.join, 10)
         self.rest.shutdown()
+        mock_kis_server.Handler.fixed_now = self._orig_fixed_now
         await self.ws.stop()
         local_intraday.reset_intraday_service()
         local_realtime.reset_realtime_service()
@@ -114,7 +120,7 @@ def test_스트림은_스냅샷을_보내고_실시간_체결_호가를_밀어�
                 assert snap["code"] == "005930" and snap["seeded"] is True and snap["bars"] and snap["ticks"]
                 await until(lambda: len(s.ws.subscriptions) == 2)
                 last_acml = max(t.get("acml_volume") or 0 for t in snap["ticks"])
-                await s.ws.emit(p.TR_TRADE, mock.trade_values("005930", "153100", 91234, 17, 99_999_999, prev_close=90000))  # 모의 분봉이 15:30까지 있어 그 뒤 시각을 쓴다
+                await s.ws.emit(p.TR_TRADE, mock.trade_values("005930", "153100", 91234, 17, 99_999_999, date=mock_kis_server.Handler.fixed_now.strftime("%Y%m%d"), prev_close=90000))  # 모의 분봉이 15:30까지 있어 그 뒤 시각을 쓴다
                 await s.ws.emit(p.TR_BOOK, mock.book_values("005930", "153100", 91234))
                 got = dict(await reader.until({"tick", "quote", "book", "bar"}))
                 assert got["quote"]["price"] == 91234 and got["quote"]["change"] == 1234 and got["tick"]["volume"] >= 1

@@ -47,6 +47,10 @@ docker start stock-screener-pg | Out-Null
 docker exec stock-screener-pg pg_isready
 if ($LASTEXITCODE -ne 0) { Write-Host "[ERROR] DB is not ready. Start Docker Desktop and run this script again." -ForegroundColor Red; exit 1 }
 
+# migrations first (idempotent): a new table such as kis_daily_bar (0019) must exist before the batch helper steps use it
+$migExit = Step "[migrate] alembic upgrade head" "py -3.12 -m alembic upgrade head"
+if ($migExit -ne 0) { Write-Host "[WARN] DB migration failed (exit $migExit). Data catch-up continues; newer optional features may be skipped." -ForegroundColor Yellow }
+
 # calendars: load every data\calendar\20xx.yaml (idempotent upsert) so a new year never leaves the batch without a trading calendar
 Get-ChildItem (Join-Path $repoRoot "data\calendar") -Filter "20??.yaml" | Sort-Object Name | ForEach-Object {
     $null = Step ("[calendar] load " + $_.Name) ("py -3.12 scripts\load_calendar.py data\calendar\" + $_.Name)

@@ -64,4 +64,4 @@
 ## 2026-10-07 DEC-097 (최신 데이터 강화)
 - 구현 완료·테스트 통과: 장중 기준 기본 켜짐, `KIS_MARKET_MIN_INTERVAL`, `kis_daily_bar`(0019) + `collect_kis_daily_bars.py` + 배치 부가 단계 + API 캐시 우선 사용(`base_fill.from_cache`). 결과서: docs/qa/2026-10-07-live-latest-data-test-result.md
 - 사용자 PC 확인 항목(제가 대신 못 함): KIS 실제 응답·한도(`kis_smoke_test.py`, `kis_daily_price_smoke_test.py`), PowerShell 5.1·작업 스케줄러.
-- 알려진 이슈: `test_realtime_stream_api` 1건이 한국 시간 장 시작 전에 실패(시각 의존, 변경 전에도 동일).
+- 시각 의존 시험(`test_realtime_stream_api`) 수정 완료. 전체 회귀 1491 통과. `fix_local_data.ps1`은 배치 전에 마이그레이션을 적용한다.

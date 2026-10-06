@@ -90,6 +90,7 @@ def main() -> int:
             rec("fix_local_data: 단계 제목 5개가 모두 출력", all(t in out for t in ("[1/5] DB container", "[2/5] diagnosis BEFORE", "[3/5] catch-up batch", "[4/5] diagnosis AFTER", "[5/5] scheduled task")), out[:80].replace("\n", " "))
             rec("fix_local_data: 진단 출력이 사라지지 않고 두 번 보임(이전 버그 회귀)", out.count("화면에 쓰이는 발행 거래일") == 2, f"{out.count('화면에 쓰이는 발행 거래일')}번")
             rec("fix_local_data: 배치 종료코드가 숫자 하나로 표시(출력 섞임 버그 회귀)", re.search(r"batch exit code: 2\s+\(0 = ok", out) is not None)
+            rec("fix_local_data: 배치 전에 DB 마이그레이션(alembic upgrade head) 단계 실행", "[migrate] alembic upgrade head" in out and out.index("[migrate]") < out.index("[3/5] catch-up batch"))
             rec("fix_local_data: 달력 2026·2027 적재 단계 실행", "[calendar] load 2026.yaml" in out and "[calendar] load 2027.yaml" in out)
             eng = create_engine(TempDb.render(tdb.migrator_url))
             with eng.connect() as c:
