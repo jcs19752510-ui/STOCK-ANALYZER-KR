@@ -176,6 +176,27 @@ def multi_price_rows(codes: list[str], now: datetime) -> list[dict]:
     return rows
 
 
+PSEARCH_CALLS: dict[str, int] = {}
+PSEARCH_CHANGE_EVERY = 3  # seq 0: 호출 3번마다 결과 종목이 하나씩 바뀐다(시간과 무관해 시험이 결정적이다)
+
+
+def psearch_result(q: dict, ok: dict) -> dict:
+    """HTS 조건검색 결과 모의. seq 0: 호출마다 조금씩 바뀌는 결과, seq 1: 0건(증권사는 오류를 돌려준다), seq 2: 100건(한도)."""
+    seq = q.get("seq", "")
+    if not q.get("user_id") or seq == "":
+        return {"rt_cd": "1", "msg_cd": "MOCK400", "msg1": "user_id와 seq가 필요합니다."}
+    n = PSEARCH_CALLS[seq] = PSEARCH_CALLS.get(seq, 0) + 1
+    if seq == "1":
+        return {"rt_cd": "1", "msg_cd": "MOCK_EMPTY", "msg1": "검색 결과가 없습니다."}
+    if seq == "2":
+        codes = [f"{i:06d}" for i in range(1, 101)]
+    else:
+        step = (n - 1) // PSEARCH_CHANGE_EVERY  # 3번 호출마다 한 종목이 들어오고(편입) 한 종목이 빠진다(이탈)
+        codes = [f"{i:06d}" for i in range(1 + step, 6 + step)]
+    rows = [{"code": c, "name": f"모의{c}", "price": str(10000 + int(c)), "chgrate": "1.25", "acml_vol": "123456"} for c in codes]
+    return {**ok, "output2": rows}
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "MockKIS/1.0"
     fixed_now: datetime | None = None
@@ -238,6 +259,17 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"rt_cd": "1", "msg_cd": "MOCK400", "msg1": "종목은 1~30개까지 조회할 수 있습니다."})
             else:
                 self._send(200, {**ok, "output": multi_price_rows(codes, now)})
+        elif url.path.endswith("psearch-title"):
+            if not q.get("user_id"):
+                self._send(200, {"rt_cd": "1", "msg_cd": "MOCK400", "msg1": "user_id가 필요합니다."})
+            else:
+                self._send(200, {**ok, "output2": [
+                    {"user_id": q["user_id"], "seq": "0", "grp_nm": "모의그룹", "condition_nm": "모의 변동 조건"},
+                    {"user_id": q["user_id"], "seq": "1", "grp_nm": "모의그룹", "condition_nm": "모의 빈 조건"},
+                    {"user_id": q["user_id"], "seq": "2", "grp_nm": "모의그룹", "condition_nm": "모의 100건 조건"},
+                ]})
+        elif url.path.endswith("psearch-result"):
+            self._send(200, psearch_result(q, ok))
         elif url.path.endswith("inquire-time-itemconclusion"):
             rows = [r for r in ticks_today(code, now) if r["stck_cntg_hour"] <= hour]
             self._send(200, {**ok, "output1": {}, "output2": rows[:30]})

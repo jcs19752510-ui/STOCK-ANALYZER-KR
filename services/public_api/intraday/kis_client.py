@@ -45,6 +45,12 @@ TR_INVESTOR = "FHKST01010900"
 PATH_MULTI_PRICE = "/uapi/domestic-stock/v1/quotations/intstock-multprice"
 TR_MULTI_PRICE = "FHKST11300006"
 MULTI_PRICE_MAX_CODES = 30
+# HTS 조건검색(서버 저장 조건) 목록·결과 — 공식 샘플 koreainvestment/open-trading-api `psearch_title.py`·`psearch_result.py` 기준.
+# HTS(eFriend Plus) [0110] 조건검색에서 조건을 만들고 "서버저장"한 것만 보인다. 결과는 조건당 최대 100건이며 0건이면 증권사가 오류를 돌려준다.
+PATH_PSEARCH_TITLE = "/uapi/domestic-stock/v1/quotations/psearch-title"
+TR_PSEARCH_TITLE = "HHKST03900300"
+PATH_PSEARCH_RESULT = "/uapi/domestic-stock/v1/quotations/psearch-result"
+TR_PSEARCH_RESULT = "HHKST03900400"
 LOW_PRIORITY_YIELD_SECONDS = 0.02  # 낮은 우선순위 호출이 양보하며 기다리는 단위
 LOW_PRIORITY_MAX_YIELDS = 100  # 최대 2초까지만 양보한다
 
@@ -324,6 +330,18 @@ class KisClient:
             params[f"FID_COND_MRKT_DIV_CODE_{i}"] = _MARKET_DIV
             params[f"FID_INPUT_ISCD_{i}"] = code
         return self._get(PATH_MULTI_PRICE, TR_MULTI_PRICE, params, low_priority=True)  # 상세 화면 호출에 양보
+
+    def psearch_titles(self, user_id: str) -> dict[str, Any]:
+        """HTS에 서버저장한 내 조건검색 목록(`output2`: seq·grp_nm·condition_nm)."""
+        if not user_id:
+            raise ValueError("HTS ID가 비어 있습니다.")
+        return self._get(PATH_PSEARCH_TITLE, TR_PSEARCH_TITLE, {"user_id": user_id})
+
+    def psearch_result(self, user_id: str, seq: str) -> dict[str, Any]:
+        """조건 하나의 현재 결과 종목(`output2`, 최대 100건). `seq`는 `psearch_titles` 결과의 조건 키값."""
+        if not user_id or seq == "":
+            raise ValueError("HTS ID와 조건 키값이 필요합니다.")
+        return self._get(PATH_PSEARCH_RESULT, TR_PSEARCH_RESULT, {"user_id": user_id, "seq": str(seq)})
 
 
 def kst_now(clock: Callable[[], float] = time.time) -> datetime:
