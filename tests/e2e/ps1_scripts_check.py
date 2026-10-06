@@ -43,7 +43,7 @@ def make_shims(root: Path, python: str) -> Path:
     (b / "docker").write_text('#!/bin/bash\n[ "$1" = exec ] && echo "/var/run/postgresql:5432 - accepting connections"\nexit 0\n')
     (b / "py").write_text(
         f'#!/bin/bash\nshift\nargs=("${{@//\\\\//}}")\n'
-        'case "${args[0]}" in\n  scripts/run_daily_batch.py) echo "[대기] 2026-10-06 데이터가 아직 배포되지 않았을 수 있습니다(대역: 실제 배치는 pytest 종단 시험이 확인)"; exit 2;;\nesac\n'
+        'case "${args[0]}" in\n  scripts/run_daily_batch.py) if [ "$HARNESS_REAL_BATCH" != 1 ]; then echo "[대기] 2026-10-06 데이터가 아직 배포되지 않았을 수 있습니다(대역: 실제 배치는 incident_repro.py가 확인)"; exit 2; fi;;\nesac\n'
         f'exec {python} "${{args[@]}}"\n'
     )
     (b / "cmd").write_text('#!/bin/bash\n[ "$1" = "/c" ] && shift\nline="$*"\nline="${line//chcp 65001 >nul & /}"\nline="${line//\\\\//}"\nexec bash -c "$line"\n')
