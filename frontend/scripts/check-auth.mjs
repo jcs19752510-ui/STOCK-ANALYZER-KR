@@ -415,6 +415,29 @@ test("증권사 조건검색 경로: 로컬 빌드에서만 열리고 관리자 
   }
 });
 
+test("장중 기준 스크리닝 경로: 로컬 빌드에서만 열리고 관리자 전용(DEC-089)", () => {
+  const SCREEN = ["/api/v1/local/screen", "/api/v1/local/screen/pattern"];
+  for (const p of SCREEN) {
+    assert.equal(isAllowedBffPath(p, {}), false, p);
+    assert.equal(isAllowedBffPath(p, { NEXT_PUBLIC_LOCAL_INTRADAY_ENABLED: "false" }), false, p);
+    assert.equal(isAllowedBffPath(p, { NEXT_PUBLIC_LOCAL_INTRADAY_ENABLED: "1" }), false, p);
+    assert.equal(isAllowedBffPath(p, LOCAL_ON), true, p); // 쿼리(?snapshot_id=)는 경로 판정에 넣지 않는다
+    assert.equal(isAdminOnlyBffPath(p), true, p);
+  }
+  for (const p of [
+    "/api/v1/local/screen/", "/api/v1/local/screen/pattern/", "/api/v1/local/screen/other", "/api/v1/local/screen/pattern/x", "/api/v1/local/screens",
+    "/api/v1/local/screen/../status", "/api/v1/local/screen/%2e%2e/status", "/api/v1/local/Screen", "/api/v1/LOCAL/screen", "/api/v1/local/screenpattern", "/api/v1/local//screen",
+  ]) {
+    assert.equal(isAllowedBffPath(p, LOCAL_ON), false, p);
+    assert.equal(isAdminOnlyBffPath(p), false, p);
+  }
+  // 기존 일봉 경로는 그대로 열려 있고 관리자 전용이 아니다
+  for (const p of ["/api/v1/screen", "/api/v1/screen/pattern"]) {
+    assert.equal(isAllowedBffPath(p, {}), true, p);
+    assert.equal(isAdminOnlyBffPath(p), false, p);
+  }
+});
+
 test("로컬 투자자 수급 경로는 관리자 전용으로 분류(DEC-074와 같은 규칙)", () => {
   assert.equal(isAdminOnlyBffPath("/api/v1/local/stocks/005930/investor"), true);
   for (const p of ["/api/v1/local/stocks/005930/ticks", "/api/v1/local/stocks/005930/orderbook", "/api/v1/screen", "/api/v1/local/stocks/005930/investor/x"]) {
