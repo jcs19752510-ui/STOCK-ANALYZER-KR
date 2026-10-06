@@ -60,3 +60,8 @@
 - 임시 PG: `/var/tmp/pgd2`(포트 5544, 소켓 /tmp/pgsock), 환경변수 `/tmp/claude-0/pgenv.sh`, 파이썬 3.12 venv `/var/tmp/venv312`. 새 컨테이너에서는 다시 만들어야 할 수 있음.
 - 로그인 E2E: `python tests/e2e/login_stack.py [--unified]`(322건), 로컬 모드: `tests/e2e/local_mode_stack.py --mode on|off`.
 - `pkill -f`/`pgrep -f`로 프로세스를 죽이면 도구 셸이 같이 죽는다(사용 금지, PID/프로세스 그룹으로).
+
+## 2026-10-07 DEC-097 (최신 데이터 강화)
+- 구현 완료·테스트 통과: 장중 기준 기본 켜짐, `KIS_MARKET_MIN_INTERVAL`, `kis_daily_bar`(0019) + `collect_kis_daily_bars.py` + 배치 부가 단계 + API 캐시 우선 사용(`base_fill.from_cache`). 결과서: docs/qa/2026-10-07-live-latest-data-test-result.md
+- 사용자 PC 확인 항목(제가 대신 못 함): KIS 실제 응답·한도(`kis_smoke_test.py`, `kis_daily_price_smoke_test.py`), PowerShell 5.1·작업 스케줄러.
+- 알려진 이슈: `test_realtime_stream_api` 1건이 한국 시간 장 시작 전에 실패(시각 의존, 변경 전에도 동일).

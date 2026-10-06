@@ -221,7 +221,7 @@ class DailyPrice(Base):
 
 
 class KisDailyBar(Base):
-    """증권사(KIS) 일봉 보충 캐시(DEC-097, 0019). 소유자 PC 수집 스크립트가 적재. 확정 값이 아니며 발행일 이하 행은 지운다."""
+    """증권사(KIS) 일봉 보충 캐시(DEC-097, 0019). 소유자 PC 수집 스크립트가 적재. 확정 값이 아니며 발행일 이하 행은 지운다."""  # noqa: E501
 
     __tablename__ = "kis_daily_bar"
     __table_args__ = {"schema": "public_serving"}
