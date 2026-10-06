@@ -24,6 +24,7 @@ from services.public_api.api import (
     local_market,
     local_psearch,
     local_realtime,
+    local_screen,
     market_summary,
     metrics,
     owner_investor,
@@ -62,6 +63,7 @@ _AUTH_ENFORCED = internal_token_enforced()
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     yield
+    await local_screen.shutdown_live_screen()  # 일봉 보충 작업 정리(DEC-090)
     await local_market.shutdown_market()  # 전 종목 시세 순환 정리
     await local_realtime.shutdown_realtime()  # 실시간 증권사 연결 정리(DEC-084)
 
@@ -148,6 +150,8 @@ app.include_router(local_realtime.router, prefix="/api/v1")
 app.include_router(local_market.router, prefix="/api/v1")
 # 증권사(HTS) 조건검색 결과(DEC-088): 같은 접근 통제(소유자만), `KIS_HTS_ID`가 있어야 동작.
 app.include_router(local_psearch.router, prefix="/api/v1")
+# 장중 재계산 스크리닝(DEC-089·090): 같은 접근 통제(소유자만), 기존 /screen 함수 재사용.
+app.include_router(local_screen.router, prefix="/api/v1")
 # 로그인 내부 경로(DEC-067): 웹 서버 전용. 회원 DB 주소가 없으면 404로 꺼져 있고,
 # 스위치와 무관하게 항상 내부 토큰을 요구한다.
 app.include_router(internal_auth.router, prefix="/api/v1")
@@ -155,18 +159,23 @@ app.include_router(internal_admin.router, prefix="/api/v1")  # DEC-074 관리자
 app.include_router(owner_investor.router, prefix="/api/v1")  # DEC-074 관리자 전용 투자자 수급
 
 
-def _error_envelope(status_code: int, code: str, message: str) -> JSONResponse:
+def _error_envelope(
+    status_code: int, code: str, message: str, details: dict | None = None
+) -> JSONResponse:
     envelope = Envelope(
         meta=Meta(generated_at=datetime.now(KST)),
         data=None,
         error=ErrorDetail(code=code, message=message),
     )
-    return JSONResponse(status_code=status_code, content=envelope.model_dump(mode="json"))
+    content = envelope.model_dump(mode="json")
+    if details is not None:
+        content["error"]["details"] = details
+    return JSONResponse(status_code=status_code, content=content)
 
 
 @app.exception_handler(ApiError)
 async def handle_api_error(request: Request, exc: ApiError) -> JSONResponse:
-    return _error_envelope(exc.status_code, exc.code, exc.message)
+    return _error_envelope(exc.status_code, exc.code, exc.message, exc.details)
 
 
 _SAFE_FIELD_NAME = re.compile(r"[A-Za-z0-9_]{1,40}")
