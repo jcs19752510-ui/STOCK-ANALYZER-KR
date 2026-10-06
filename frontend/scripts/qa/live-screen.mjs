@@ -622,9 +622,9 @@ async function dev(browser) {
     await turnOnScreener(page);
     const b = await bannerText(page);
     rec("안내: 보충 중 진행(done/total)·progress", /1000\/2800종목/.test(b) && (await countSel(page, ".live-banner progress")) === 1, b.replace(/\n/g, " / ").slice(0, 200));
-    rec("안내: '12종목은 증권사 일봉 보충이 안 되어 결과에서 제외됨'", b.includes("12종목은 증권사 일봉 보충이 안 되어 결과에서 제외됨"));
-    rec("안내: 보충 중(pending) '1800종목은 일봉 보충 중'(제외와 구분)", b.includes("1800종목은 일봉 보충 중") && !b.includes("1800종목은 증권사 일봉 보충이 안 되어"));
-    rec("안내: 불일치 3개(수정주가 불일치 등)", /종가가 달라 계산에서 뺀 종목 3개/.test(b));
+    rec("안내: '12종목은 증권사 일봉을 쓸 수 없어 결과에서 제외됨' + 그중 불일치 3종목을 한 문장으로", b.includes("12종목은 증권사 일봉을 쓸 수 없어 결과에서 제외됨") && b.includes("그중 3종목은 증권사와 발행 일봉의 종가가 달라 뺌") && (await countSel(page, "[data-live-excluded]")) === 1);
+    rec("안내: 보충 중(pending) '1800종목은 일봉 보충 중'(제외와 구분)", b.includes("1800종목은 일봉 보충 중") && !b.includes("1800종목은 증권사 일봉을 쓸 수 없어"));
+    rec("안내: 불일치는 제외의 일부로 표시(별도 문장 없음)", !/뺀 종목 3개/.test(b) && /그중 3종목/.test(b));
     rec("안내: 시세 갱신 지연(stale)", /시세 갱신이 지연되고 있습니다/.test(b));
     rec("안내: 커버율 90% 미만 → 등락률 순위는 일봉 기준", /90% 미만이라 등락률 순위는 일봉 기준/.test(b) && /2000\/2800종목/.test(b));
     await shot(page, "screener-notices-1280");

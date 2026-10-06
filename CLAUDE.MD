@@ -25,6 +25,31 @@ flowchart TD
 3. **모든 작업에는 내부 테스트 결과서를 완전하게 작성한다**(`docs/qa/`): 범위·환경·변경 요약·시험 케이스(기대/실제/결과)·발견·수정한 결함·확인하지 못한 것과 위험·재현 방법. 확인하지 못한 것은 숨기지 않고 정직하게 적는다.
 4. 20년차 개발/기획/설계/보안/디자인 기준으로 일하고, 모르면 묻고, 임의로 결정하지 않는다. 빠르게 처리한다. 작업이 끝날 때마다 작업 브랜치와 `PROD_SCH`에 푸시한다(Render 배포는 하지 않고 테스트는 사용자 로컬 노트북에서만 한다).
 
+5. **"남은 작업"은 에이전트가 끝낼 수 있는 것은 전부 끝까지 한다**: 시험·회귀·성능·보안 점검(`npm audit`, `pip-audit`)·의존성 취약점 업데이트·문구/문서 정리·결과서까지. 사용자에게 남기는 것은 (a) 사용자만 줄 수 있는 결정, (b) 에이전트가 물리적으로 접근할 수 없는 것(사용자 PC 실제 화면·증권사 앱키 응답·KRX 공식 공고)뿐이며, 이것도 목록으로 정직하게 적는다(해결된 척하지 않는다).
+6. **완료 전 체크(작업마다)**: `ruff check` · `pytest tests`(회귀 전체) · 프런트면 `tsc --noEmit`·`eslint`·`lint:copy`·`scripts/check-*.mjs`·`npm run build` · 화면이면 Playwright 브라우저 시험 · `.ps1`이면 `tests/e2e/ps1_scripts_check.py` · 내부 테스트 결과서(`docs/qa/`) · `docs/harness/decisions.md`·`docs/HANDOFF.md` 갱신 · 작업 브랜치와 `PROD_SCH` 푸시.
+
+## 시험 환경 만들기 (새 컨테이너에서 처음 한 번, 에이전트가 직접 한다)
+
+```
+python3.12 -m venv /var/tmp/venv312 && /var/tmp/venv312/bin/pip install -r requirements-dev.txt     # 파이썬 3.12(시스템 기본은 3.13/3.11일 수 있음)
+# 임시 PostgreSQL(포트 5544, 소켓 /tmp/pgsock) — 시험이 임시 DB를 만들고 지운다(개발 DB 미사용)
+mkdir -p /tmp/pgsock /var/tmp/pgd2 && chown postgres /tmp/pgsock /var/tmp/pgd2
+su postgres -c "/usr/lib/postgresql/16/bin/initdb -D /var/tmp/pgd2 -A trust -U postgres"
+su postgres -c "/usr/lib/postgresql/16/bin/pg_ctl -D /var/tmp/pgd2 -o '-p 5544 -k /tmp/pgsock' -l /var/tmp/pgd2.log start"   # 도구 호출 사이에 꺼질 수 있어 시험 전에 psql로 확인하고 꺼졌으면 다시 켠다(postmaster.pid 삭제 후)
+psql -h /tmp/pgsock -p 5544 -U postgres -c "CREATE ROLE migrator LOGIN SUPERUSER PASSWORD 'x'" -c "CREATE ROLE batch_worker LOGIN PASSWORD 'x'" -c "CREATE ROLE api_service LOGIN PASSWORD 'x'" -c "CREATE ROLE auth_service LOGIN PASSWORD 'x'" -c "CREATE DATABASE stock_screener OWNER migrator"
+# /tmp/claude-0/pgenv.sh 에 아래 환경변수를 export
+#   TEST_PG_ADMIN_PSQL="psql -h /tmp/pgsock -p 5544 -U postgres"
+#   ALEMBIC_DATABASE_URL / BATCH_DATABASE_URL / PUBLIC_API_DATABASE_URL / PUBLIC_API_AUTH_DATABASE_URL = postgresql+psycopg://<migrator|batch_worker|api_service|auth_service>:x@localhost:5544/stock_screener
+export PATH=/var/tmp/venv312/bin:/usr/lib/postgresql/16/bin:$PATH
+python -m pytest tests -q            # 전체 회귀(약 6분). 새 시험은 tests/unit, tests/integration
+# 프런트: cd frontend && npm ci && npx tsc --noEmit && npm run lint && npm run lint:copy && for f in scripts/check-*.mjs; do node --experimental-strip-types $f; done
+# 브라우저(Playwright): mkdir -p /tmp/claude-0/pw && cd /tmp/claude-0/pw && npm i playwright-core axe-core ; CHROME=/opt/pw-browsers/chromium-1194/chrome-linux/chrome
+#   node frontend/scripts/qa/live-screen.mjs dev|prod|auth      # 장중 기준 화면(가짜 서버)
+#   python tests/e2e/live_screen_stack.py [--prod]               # 장중 기준 종단(실제 API·모의 증권사·DB)
+#   python tests/e2e/local_mode_stack.py --mode on|off [--dev]   # 로그인 켠/끈 로컬 종단
+# PowerShell(.ps1): https://github.com/PowerShell/PowerShell/releases/download/v7.4.5/powershell-7.4.5-linux-x64.tar.gz 를 풀어 PWSH=<경로>/pwsh python tests/e2e/ps1_scripts_check.py
+```
+
 ## 보류 사항 (사용자 결정, 2026-10-02)
 
 - **일일 배치 스케줄링은 지금 다루지 않는다.** 사용자가 "지금은 제외, 추후 배치 스케줄링 예정"이라고 결정했다. 그래서 `scripts/run_daily_batch.ps1`(Windows 작업 스케줄러 `StockScreenerKR-DailyBatch`, 매일 07:00)의 동작 확인·수정·재설계를 먼저 제안하거나 진행하지 않는다.

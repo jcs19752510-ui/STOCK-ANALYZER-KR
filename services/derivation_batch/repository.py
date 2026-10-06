@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -98,6 +98,22 @@ def raw_ohlcv_has_rows(session: Session, *, market: str, on: date) -> bool:
         .limit(1)
     )
     return session.execute(stmt).first() is not None
+
+
+def raw_ohlcv_count(session: Session, *, market: str, on: date) -> int:
+    """그 거래일의 원본 시세 종목 수(부분 구멍 검사용)."""
+    stmt = select(func.count()).select_from(raw_ohlcv_table).where(
+        raw_ohlcv_table.c.market == market, raw_ohlcv_table.c.trade_date == on
+    )
+    return int(session.execute(stmt).scalar_one())
+
+
+def previous_raw_trade_date(session: Session, *, market: str, before: date) -> date | None:
+    """`before`보다 앞선 가장 최근의 원본 시세 날짜(없으면 None)."""
+    stmt = select(func.max(raw_ohlcv_table.c.trade_date)).where(
+        raw_ohlcv_table.c.market == market, raw_ohlcv_table.c.trade_date < before
+    )
+    return session.execute(stmt).scalar_one_or_none()
 
 
 def raw_ohlcv_has_rows_before(session: Session, *, market: str, before: date) -> bool:
@@ -359,6 +375,8 @@ __all__ = [
     "OhlcvPoint",
     "fetch_active_stocks",
     "fetch_fundamentals_map",
+    "previous_raw_trade_date",
+    "raw_ohlcv_count",
     "raw_ohlcv_has_rows",
     "raw_ohlcv_has_rows_before",
     "fetch_ohlcv_window",

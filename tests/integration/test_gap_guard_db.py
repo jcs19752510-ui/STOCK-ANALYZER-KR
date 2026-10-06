@@ -105,3 +105,34 @@ def test_cli_exit_code_for_gap_blocked_is_3():
     from scripts import run_daily_batch as rdb
 
     assert rdb.EXIT_GAP_BLOCKED == rd.EXIT_GAP_BLOCKED == 3
+
+
+def test_partial_hole_when_previous_day_has_too_few_stocks(db):
+    """직전 거래일에 일부 종목만 있으면(수집이 중간에 끊김) 그다음 날 가공을 보류한다. 절반 이상 있으면 막지 않는다."""
+    mig = create_engine(TempDb.render(db.migrator_url))
+    batch = create_engine(TempDb.render(db.batch_url))
+    try:
+        d1 = _next_weekday(TARGET_DATE)
+        d2 = _next_weekday(d1)
+        _add_day(mig, d1, TARGET_DATE)
+        total = 0
+        with mig.connect() as c:
+            total = c.execute(text("SELECT count(*) FROM raw_internal.raw_ohlcv WHERE trade_date=:d"), {"d": d1}).scalar_one()
+        assert total >= 8
+        with Session(batch) as s:
+            assert find_missing_previous_day(s, SqlCalendarRepository(s), d2) is None  # d1 전체 있음
+        keep = total // 2  # 정확히 절반 → 경계: 50% 미만이 아니므로 막지 않는다
+        with mig.begin() as c:
+            c.execute(text("DELETE FROM raw_internal.raw_ohlcv WHERE trade_date=:d AND stock_code NOT IN (SELECT stock_code FROM raw_internal.raw_ohlcv WHERE trade_date=:d ORDER BY stock_code LIMIT :k)"), {"d": d1, "k": keep})
+        with Session(batch) as s:
+            assert find_missing_previous_day(s, SqlCalendarRepository(s), d2) is None
+        with mig.begin() as c:  # 절반 미만(30%)으로 더 지움
+            c.execute(text("DELETE FROM raw_internal.raw_ohlcv WHERE trade_date=:d AND stock_code NOT IN (SELECT stock_code FROM raw_internal.raw_ohlcv WHERE trade_date=:d ORDER BY stock_code LIMIT :k)"), {"d": d1, "k": max(1, int(total * 0.3))})
+        with Session(batch) as s:
+            assert find_missing_previous_day(s, SqlCalendarRepository(s), d2) == d1
+            status, _, err = run_once(s, trade_date_override=d2)
+            s.commit()
+            assert status == "FAILED" and (err or "").startswith(GAP_BLOCKED_PREFIX) and str(d1) in err
+    finally:
+        mig.dispose()
+        batch.dispose()

@@ -63,7 +63,9 @@ from services.derivation_batch.repository import (  # noqa: E402
     fetch_ohlcv_window,
     fetch_sector_map,
     fetch_trading_values,
+    previous_raw_trade_date,
     publish_current_batch,
+    raw_ohlcv_count,
     raw_ohlcv_has_rows,
     raw_ohlcv_has_rows_before,
     sync_daily_prices,
@@ -81,6 +83,7 @@ KST = ZoneInfo("Asia/Seoul")
 GAP_BLOCKED_PREFIX = "GAP_BLOCKED"  # error_summary 접두 — 따라잡기 시도 상한에 세지 않는다(DEC-093)
 EXIT_GAP_BLOCKED = 3  # 직전 거래일 원본 시세가 비어 이 날짜 가공을 보류함(CLI 종료코드)
 GAP_LOOKBACK_DAYS = 15
+PARTIAL_GAP_MIN_RATIO = 0.5  # 직전 거래일 종목 수가 그 앞 거래일의 이 비율보다 적으면 "일부 종목만 빠진 날"로 본다
 DERIVATION_MARKET = "KRX"  # raw_ohlcv 거래소 세션 구분(§3-1-1). MVP 범위: KRX만(DEC-010)
 MAX_MISSING_RETURN_PCT_RATIO = 0.05  # §5-4 "결측 비율 임계치(예: 5%)"를 이 유닛이 확정한 수치
 
@@ -103,10 +106,12 @@ def resolve_target_trade_date(calendar: CalendarLookup, *, override: date | None
 
 
 def find_missing_previous_day(session: Session, calendar: CalendarLookup, target_date: date) -> date | None:
-    """`target_date`의 직전 거래일이 **DB 이력 한가운데 비어 있으면** 그 날짜를, 아니면 None.
+    """`target_date`의 직전 거래일이 **DB 이력 한가운데 비어 있으면**(또는 일부 종목만 있으면) 그 날짜를, 아니면 None.
 
     전일 종가를 직전 행으로 쓰는 가공(등락률·이동평균·거래량 이상치)은 중간 거래일이 빠져 있으면 이틀 이상의 변화를
     하루 변화로 계산해 **경고 없이 틀린 값**을 만든다(2026-10-02 사례). 그래서 구멍이 있으면 그날 가공을 보류한다.
+    - 전체 구멍: 직전 거래일 원본 시세가 한 줄도 없고 그 앞 이력은 있음.
+    - 부분 구멍: 직전 거래일 종목 수가 그 앞 거래일의 `PARTIAL_GAP_MIN_RATIO`(50%) 미만(수집이 중간에 끊긴 날).
     이력이 아직 시작되기 전(직전 거래일 이전 데이터가 아예 없음)이거나 달력을 알 수 없으면 막지 않는다.
     """
     prev: date | None = None
@@ -118,9 +123,14 @@ def find_missing_previous_day(session: Session, calendar: CalendarLookup, target
             break
     if prev is None:
         return None
-    if raw_ohlcv_has_rows(session, market=DERIVATION_MARKET, on=prev):
+    if not raw_ohlcv_has_rows(session, market=DERIVATION_MARKET, on=prev):
+        return prev if raw_ohlcv_has_rows_before(session, market=DERIVATION_MARKET, before=prev) else None
+    before_prev = previous_raw_trade_date(session, market=DERIVATION_MARKET, before=prev)
+    if before_prev is None:
         return None
-    return prev if raw_ohlcv_has_rows_before(session, market=DERIVATION_MARKET, before=prev) else None
+    n_prev = raw_ohlcv_count(session, market=DERIVATION_MARKET, on=prev)
+    n_before = raw_ohlcv_count(session, market=DERIVATION_MARKET, on=before_prev)
+    return prev if n_before > 0 and n_prev < n_before * PARTIAL_GAP_MIN_RATIO else None
 
 
 @dataclass(frozen=True)

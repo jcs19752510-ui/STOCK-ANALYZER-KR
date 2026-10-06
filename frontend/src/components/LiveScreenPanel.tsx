@@ -166,11 +166,17 @@ export function LiveScreenPanel({ view, hasQuery, onPause, onResume, onRefresh, 
             <p className="live-banner__notice">{fillTemplate(copy.liveScreen.fillUsed, { gap: meta.base_fill.gap_days, filled: meta.base_fill.filled })}</p>
           )}
           {notices?.baseFillFailed && <p className="live-banner__notice live-banner__notice--warn">{copy.liveScreen.fillFailed}</p>}
-          {notices && notices.excluded > 0 && (
-            <p className="live-banner__notice live-banner__notice--warn">{fillTemplate(copy.liveScreen.fillExcluded, { n: notices.excluded })}</p>
-          )}
-          {notices && notices.mismatched > 0 && (
-            <p className="live-banner__notice live-banner__notice--warn">{fillTemplate(copy.liveScreen.fillMismatched, { n: notices.mismatched })}</p>
+          {notices && (notices.excluded > 0 || notices.mismatched > 0) && (
+            <p className="live-banner__notice live-banner__notice--warn" data-live-excluded={notices.excluded} data-live-mismatched={notices.mismatched}>
+              {/* 불일치로 뺀 종목은 제외된 종목의 일부이므로 한 문장으로 알린다(서버: excluded ⊇ mismatched). */}
+              {notices.excluded > 0 ? fillTemplate(copy.liveScreen.fillExcluded, { n: notices.excluded }) : null}
+              {notices.mismatched > 0 && (
+                <>
+                  {notices.excluded > 0 ? " · " : ""}
+                  {fillTemplate(notices.excluded > 0 ? copy.liveScreen.fillExcludedMismatch : copy.liveScreen.fillMismatched, notices.excluded > 0 ? { m: notices.mismatched } : { n: notices.mismatched })}
+                </>
+              )}
+            </p>
           )}
           {view.paused && (
             <p className="live-banner__notice">{fillTemplate(copy.liveScreen.pausedNotice, { time: formatHms(meta.as_of) })}</p>
