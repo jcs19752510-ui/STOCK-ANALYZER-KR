@@ -69,6 +69,23 @@ def set_universe_loader(loader: Callable[[], list[str]] | None) -> None:
     _universe_loader = loader or load_active_codes
 
 
+def _env_number(name: str, default: float, *, minimum: float) -> float:
+    raw = os.environ.get(name, "").strip()
+    try:
+        return max(minimum, float(raw)) if raw else default
+    except ValueError:
+        return default
+
+
+def poller_config_from_env() -> PollerConfig:
+    """우선 순환 설정만 환경변수로 바꿀 수 있다(`KIS_MARKET_PRIORITY_MAX` 기본 200, `KIS_MARKET_PRIORITY_SECONDS` 기본 3초)."""
+    base = PollerConfig()
+    return PollerConfig(
+        priority_max=int(_env_number("KIS_MARKET_PRIORITY_MAX", base.priority_max, minimum=1)),
+        priority_interval=_env_number("KIS_MARKET_PRIORITY_SECONDS", base.priority_interval, minimum=0.5),
+    )
+
+
 def _idle_seconds() -> float:
     raw = os.environ.get("KIS_MARKET_IDLE_SECONDS", "").strip()
     try:
@@ -96,7 +113,7 @@ class MarketRuntime:
         self.idle_seconds = idle_seconds
         self._refresh = universe_refresh
         self._retry = universe_retry
-        self._cfg = config or PollerConfig()
+        self._cfg = config or poller_config_from_env()
         self._clock = clock
         self._wall = wall_clock
         self._is_open = is_market_open
@@ -291,6 +308,7 @@ def _not_configured() -> ApiError:
 async def market_quotes(
     response: Response,
     codes: str = Query("", description="쉼표로 구분한 종목코드(최대 100개)"),
+    priority: int = Query(0, ge=0, le=1, description="1이면 이 종목들을 우선 순환에 올린다(화면이 닫히면 30초 뒤 해제)"),
     settings: cfg.IntradaySettings = Depends(require_owner),
 ) -> dict[str, Any]:
     wanted = parse_codes(codes)
@@ -299,6 +317,8 @@ async def market_quotes(
     response.headers["Cache-Control"] = "no-store"
     runtime = get_runtime(settings)
     await runtime.ensure_started()
+    if priority:
+        runtime.poller.set_priority(wanted)
     return {"data": runtime.view(wanted), "error": None}
 
 

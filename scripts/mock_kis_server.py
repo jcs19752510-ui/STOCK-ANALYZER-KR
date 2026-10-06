@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """모의 KIS Open API 서버 (DEC-052) — 앱키 없이 개인 로컬 모드 화면·연동을 시험하는 개발 도구.
 
-실제 증권사 서버가 아니다. 한국투자증권 시세 조회 엔드포인트(토큰·분봉(당일/과거)·호가·체결·투자자별 순매수·관심종목 멀티종목 시세)와 같은 모양의 응답을
+실제 증권사 서버가 아니다. 한국투자증권 시세 조회 엔드포인트(토큰·분봉(당일/과거)·호가·체결·투자자별 순매수·관심종목 멀티종목 시세·일자별 일봉)와 같은 모양의 응답을
 종목코드·날짜로 결정되는 가짜 값으로 돌려준다. **실제 시세가 아니므로** 화면 동작 확인용으로만 쓴다.
 
 사용:
@@ -144,6 +144,45 @@ def investor_rows(code: str, now: datetime) -> list[dict]:
 
 
 MULTI_PRICE_MAX = 30
+DAILY_PRICE_ROWS = 30
+
+
+def _is_weekday(d) -> bool:
+    return d.weekday() < 5
+
+
+def daily_price_rows(code: str, now: datetime) -> list[dict]:
+    """주식현재가 일자별 모의 행(최근이 앞, 평일만, 최대 30개). 종목·날짜로 결정되는 랜덤워크라 같은 날짜는 항상 같은 값이다.
+
+    - 오늘이 평일이고 장 시작(09:00) 이후이면 오늘 행(진행 중인 봉)을 맨 앞에 둔다.
+    - 종목코드 끝 글자가 `9`이면 수정주가가 어긋난 것처럼 종가를 2배로 돌려준다(교차검증 불일치 시험용).
+    - 종목코드가 `000000`이면 빈 목록(상장 직후·거래정지 시험용).
+    """
+    if code == "000000":
+        return []
+    rows: list[dict] = []
+    day = now.date()
+    if not (_is_weekday(day) and now.hour >= 9):
+        day -= timedelta(days=1)
+    while len(rows) < DAILY_PRICE_ROWS:
+        if _is_weekday(day):
+            ymd = day.strftime("%Y%m%d")
+            rng = _rng(code, ymd, "daily")
+            close = _base_price(code) * (1 + rng.uniform(-0.03, 0.03))
+            close = max(100, round(close / 10) * 10)
+            openp = max(100, round(close * (1 + rng.uniform(-0.01, 0.01)) / 10) * 10)
+            high = max(close, openp) + 10 * rng.randint(0, 3)
+            low = max(10, min(close, openp) - 10 * rng.randint(0, 3))
+            if code.endswith("9"):
+                close, openp, high, low = close * 2, openp * 2, high * 2, low * 2
+            rows.append({
+                "stck_bsop_date": ymd, "stck_oprc": str(int(openp)), "stck_hgpr": str(int(high)),
+                "stck_lwpr": str(int(low)), "stck_clpr": str(int(close)),
+                "acml_vol": str(rng.randint(10_000, 3_000_000)), "prdy_vrss": "0", "prdy_vrss_sign": "3",
+                "prdy_ctrt": "0.00", "acml_tr_pbmn": "0", "flng_cls_code": "00", "prtt_rate": "0.00", "mod_yn": "N",
+            })
+        day -= timedelta(days=1)
+    return rows
 
 
 def multi_price_rows(codes: list[str], now: datetime) -> list[dict]:
@@ -265,6 +304,11 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"rt_cd": "1", "msg_cd": "MOCK400", "msg1": "종목은 1~30개까지 조회할 수 있습니다."})
             else:
                 self._send(200, {**ok, "output": multi_price_rows(codes, now)})
+        elif url.path.endswith("inquire-daily-price"):
+            if not code or q.get("FID_PERIOD_DIV_CODE") != "D":
+                self._send(200, {"rt_cd": "1", "msg_cd": "MOCK400", "msg1": "종목코드와 기간구분(D)이 필요합니다."})
+            else:
+                self._send(200, {**ok, "output": daily_price_rows(code, now)})
         elif url.path.endswith("psearch-title"):
             if not q.get("user_id"):
                 self._send(200, {"rt_cd": "1", "msg_cd": "MOCK400", "msg1": "user_id가 필요합니다."})

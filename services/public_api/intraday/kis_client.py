@@ -51,6 +51,9 @@ PATH_PSEARCH_TITLE = "/uapi/domestic-stock/v1/quotations/psearch-title"
 TR_PSEARCH_TITLE = "HHKST03900300"
 PATH_PSEARCH_RESULT = "/uapi/domestic-stock/v1/quotations/psearch-result"
 TR_PSEARCH_RESULT = "HHKST03900400"
+# 주식현재가 일자별(일봉) — 장중 재계산의 일봉 보충용(DEC-090). 종목당 최근 30거래일(최근 → 과거 순).
+PATH_DAILY_PRICE = "/uapi/domestic-stock/v1/quotations/inquire-daily-price"
+TR_DAILY_PRICE = "FHKST01010400"
 LOW_PRIORITY_YIELD_SECONDS = 0.02  # 낮은 우선순위 호출이 양보하며 기다리는 단위
 LOW_PRIORITY_MAX_YIELDS = 100  # 최대 2초까지만 양보한다
 
@@ -331,6 +334,22 @@ class KisClient:
             params[f"FID_COND_MRKT_DIV_CODE_{i}"] = _MARKET_DIV
             params[f"FID_INPUT_ISCD_{i}"] = code
         return self._get(PATH_MULTI_PRICE, TR_MULTI_PRICE, params, low_priority=True)  # 상세 화면 호출에 양보
+
+    def daily_price(self, code: str, *, low_priority: bool = True) -> dict[str, Any]:
+        """주식현재가 일자별(일봉). `FID_ORG_ADJ_PRC=1`은 수정주가 미반영(원주가) — 발행 일봉과 같은 기준인지는 호출 쪽 교차검증이 확인한다."""
+        if not code:
+            raise ValueError("종목코드가 비어 있습니다.")
+        return self._get(
+            PATH_DAILY_PRICE,
+            TR_DAILY_PRICE,
+            {
+                "FID_COND_MRKT_DIV_CODE": _MARKET_DIV,
+                "FID_INPUT_ISCD": code,
+                "FID_PERIOD_DIV_CODE": "D",
+                "FID_ORG_ADJ_PRC": "1",
+            },
+            low_priority=low_priority,
+        )
 
     def psearch_titles(self, user_id: str, *, low_priority: bool = False) -> dict[str, Any]:
         """HTS에 서버저장한 내 조건검색 목록(`output2`: seq·grp_nm·condition_nm)."""

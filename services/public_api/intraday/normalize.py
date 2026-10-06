@@ -11,9 +11,11 @@ from __future__ import annotations
 
 import time
 from collections.abc import Iterable, Mapping
-from datetime import date
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from services.public_api.live_screen.types import DailyBar
 from services.public_api.realtime.market import MarketQuote
 from services.public_api.schemas.intraday import (
     BookLevel,
@@ -258,3 +260,46 @@ def normalize_multi_price(
             fetched_at=stamp,
         )
     return out
+
+
+# 주식현재가 일자별(일봉) — 공식 샘플 koreainvestment/open-trading-api `inquire_daily_price.py`의 `output` 행 키. 실제 응답은 아직 확인하지 못했다(앱키 필요).
+DAILY_PRICE_FIELDS: dict[str, str] = {
+    "date": "stck_bsop_date",  # 영업일자 YYYYMMDD
+    "open": "stck_oprc",
+    "high": "stck_hgpr",
+    "low": "stck_lwpr",
+    "close": "stck_clpr",
+    "volume": "acml_vol",
+}
+
+
+def _decimal(value: Any) -> Decimal | None:
+    if value is None or value == "":
+        return None
+    try:
+        d = Decimal(str(value).replace(",", "").strip())
+    except InvalidOperation:
+        return None
+    return d if d.is_finite() else None
+
+
+def normalize_daily_price(rows: Iterable[Mapping[str, Any]]) -> list[DailyBar]:
+    """일자별 시세 행 → 일봉 목록(날짜 오름차순, 같은 날짜는 처음 값만). 날짜·종가·거래량이 비었거나 형식이 틀린 행, 종가가 0 이하인 행은 버린다(0으로 채우지 않음).
+
+    시가·고가·저가가 비었으면 종가로 대신하지 않고 그 행을 버린다(신뢰할 수 없는 행을 지표에 쓰지 않는다).
+    """
+    f = DAILY_PRICE_FIELDS
+    seen: dict[date, DailyBar] = {}
+    for r in rows:
+        raw_day = str(r.get(f["date"]) or "").strip()
+        try:
+            day = datetime.strptime(raw_day, "%Y%m%d").date()
+        except ValueError:
+            continue
+        o, h, lo, c = (_decimal(r.get(f[k])) for k in ("open", "high", "low", "close"))
+        v = to_int(r.get(f["volume"]))
+        if None in (o, h, lo, c) or v is None or v < 0 or c <= 0:  # type: ignore[operator]
+            continue
+        if day not in seen:
+            seen[day] = DailyBar(trade_date=day, open=o, high=h, low=lo, close=c, volume=v)  # type: ignore[arg-type]
+    return [seen[d] for d in sorted(seen)]
