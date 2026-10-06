@@ -10,6 +10,8 @@
 - **(2026-10-06 최상위 목표, 사용자 지시 "절대 잊지 마세요")**: 이 프로젝트의 가장 큰 목적은 **실시간 주식 데이터를 보는 것**이고, 사용자는 그 정보를 분석해 **투자 방향을 스스로 정한다**. 모든 설계·우선순위 판단은 "실시간으로 정확하게 보이는가"를 기준으로 한다(지연·불일치는 명확히 표시). 특이사항이 없으면 되묻지 않고 계속 진행한다. 사이트는 정보 표시 도구이며 투자 권유 표현은 쓰지 않는다(`lint:copy`).
 - **운영 반영 방식(DEC-081, 2026-10-06 변경)**: `render.yaml`의 `autoDeployTrigger: commit` — `PROD_SCH`에 푸시하면 Render가 자동 배포한다(수동 클릭 불필요). 단 **DB 구조(alembic 마이그레이션)는 자동 적용되지 않는다** → DB를 바꾸는 커밋은 푸시 전에 사용자 PC에서 `alembic upgrade head`(Neon 소유자 주소)를 먼저 하거나, 에이전트가 사용자에게 먼저 알린다. 보고 맨 위에는 "자동 배포됨(몇 분 뒤 반영)" 또는 "DB 변경 있음 — 먼저 처리 필요"를 적는다. GitHub Secrets `RENDER_DEPLOY_HOOK_WEB`은 **등록하지 않는다**(등록하면 Actions와 Render가 둘 다 배포 요청해 이중 배포).
 
+- **(2026-10-06 사용자 지시, 계속 기억)**: **매번 작업이 끝날 때마다 `PROD_SCH`에도 푸시한다**(작업 브랜치와 함께). 병합이 필요하면 `PROD_SCH`로 fast-forward/병합 후 푸시하고, 푸시하면 Render가 자동 배포하므로(DEC-081) 보고 맨 위에 "자동 배포됨" 또는 "DB 변경 있음 — 먼저 처리 필요"를 적는다.
+
 ## 현재 운영 구조 (2026-10-06 전환 완료)
 - Render 서비스 **1개** `stock-analyzer-web` (https://stock-analyzer-web-q7cx.onrender.com): 컨테이너 안에서 API(내부 127.0.0.1:8000)와 웹(공개 PORT)을 `scripts/run_unified.py`가 함께 기동·감시 (DEC-078). 이미지 `deploy/unified.Dockerfile`, 블루프린트 `render.yaml`.
 - 이전 2개 서비스 구성: `deploy/render/render.two-services.yaml`(롤백용). 기존 `stock-analyzer-api` Render 서비스는 **Suspended**(삭제 전, 롤백 경로). 며칠 안정 확인 뒤 사용자가 삭제.
