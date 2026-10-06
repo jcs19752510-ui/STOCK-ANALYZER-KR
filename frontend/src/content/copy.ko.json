@@ -636,6 +636,7 @@
     "computedAt": "계산 {time}({age}초 전)",
     "quotesReceived": "시세 수신 {covered}/{total}종목",
     "baseDaily": "기준 일봉 {date}",
+    "baseDailyFilled": "기준 일봉 {date} (발행 {published} + 증권사 보충)",
     "volumeWarning": "거래량 계열(거래량·거래량 이상치·거래량비·급등 이력)은 장중 누적 부분값이며 PER·PBR·시가총액 순위는 일봉 기준입니다.",
     "quotesStaleNotice": "시세 갱신이 지연되고 있습니다. 시세를 반영한 값이 최신이 아닐 수 있습니다.",
     "lowCoverageNotice": "시세를 받은 종목이 90% 미만이라 등락률 순위는 일봉 기준입니다.",

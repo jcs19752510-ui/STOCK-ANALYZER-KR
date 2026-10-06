@@ -129,7 +129,11 @@ export function LiveScreenPanel({ view, hasQuery, onPause, onResume, onRefresh, 
             <span className="live-banner__sep"> · </span>
             <span>{fillTemplate(copy.liveScreen.quotesReceived, { covered: meta.quotes_covered, total: meta.quotes_total })}</span>
             <span className="live-banner__sep"> · </span>
-            <span>{fillTemplate(copy.liveScreen.baseDaily, { date: meta.basis_trade_date || "-" })}</span>
+            <span>
+              {notices?.baseFillUsed && meta.expected_trade_date
+                ? fillTemplate(copy.liveScreen.baseDailyFilled, { date: meta.expected_trade_date, published: meta.basis_trade_date || "-" })
+                : fillTemplate(copy.liveScreen.baseDaily, { date: meta.basis_trade_date || "-" })}
+            </span>
             {delayed && <span className="live-badge live-badge--delayed">{copy.liveScreen.delayedBadge}</span>}
             {view.paused && <span className="live-badge live-badge--paused">{copy.liveScreen.pausedState}</span>}
           </p>
