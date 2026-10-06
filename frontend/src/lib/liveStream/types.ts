@@ -40,6 +40,8 @@ export interface LiveQuote {
   strength: number | null;
   halted: boolean;
   vi_price: number | null;
+  /** "rest"이면 첫 실시간 체결 전에 REST로 채운 현재가(`time`은 빈 문자열). 실시간 체결이 오면 사라진다. */
+  source?: "rest";
 }
 
 export interface LiveBookLevel {

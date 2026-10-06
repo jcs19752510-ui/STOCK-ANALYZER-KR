@@ -36,13 +36,28 @@ class CodeState:
     covered: int | None = None  # 이미 봉에 반영한 누적 거래량(기준선)
     seed_total: int | None = None
     business_date: str | None = None
+    live_date: str | None = None  # 실시간 체결로 확인한 거래일(시작 값의 날짜와 구분: 시작 값이 직전 거래일일 수 있다)
     seeded: bool = False
     _seen: set[tuple] = field(default_factory=set)
     _seen_order: deque[tuple] = field(default_factory=deque)
 
     # ── 시작 값(REST) ─────────────────────────────────────────────────────
-    def seed(self, bars: list[dict[str, Any]], ticks: list[dict[str, Any]]) -> None:
-        """오늘 1분봉과 최근 체결(최신이 앞)로 채운다. 실시간 체결이 오기 전에 한 번만 부른다."""
+    def seed(self, bars: list[dict[str, Any]], ticks: list[dict[str, Any]], quote: dict[str, Any] | None = None) -> None:
+        """오늘 1분봉과 최근 체결(최신이 앞), (있으면) REST 현재가로 채운다. 보통 실시간 체결이 오기 전에 한 번 부른다.
+
+        이미 실시간 체결을 받은 뒤(다시 연결·거래일 변경 직후)에 불리면 **실시간 값이 우선**한다: 같은 시각의 봉은 실시간 것을 두고,
+        체결 목록·기준선(covered)은 건드리지 않는다. 호출하는 쪽이 날짜가 다른 시작 값은 미리 버린다(`RealtimeService._seed`).
+        """
+        if quote is not None and self.quote is None:
+            self.quote = dict(quote)  # 첫 실시간 체결 전에도 현재가를 보여 주기 위한 REST 값
+        if self.live_date is not None:
+            merged = {b["time"]: dict(b) for b in bars}
+            merged.update(self.bars)
+            self.bars = dict(sorted(merged.items()))
+            if not self.ticks:
+                self.ticks = deque((dict(t) for t in ticks), maxlen=TICK_KEEP)
+            self.seeded = True
+            return
         self.bars = {b["time"]: dict(b) for b in sorted(bars, key=lambda b: b["time"])}
         self.ticks = deque((dict(t) for t in ticks), maxlen=TICK_KEEP)
         self.seed_total = sum(int(b["volume"]) for b in self.bars.values()) if self.bars else None
@@ -90,10 +105,24 @@ class CodeState:
         return delta
 
     def apply_trade(self, trade: Trade) -> list[tuple[str, dict[str, Any]]]:
+        """체결 하나를 반영하고 구독자에게 보낼 이벤트를 돌려준다.
+
+        새 거래일의 첫 체결이면 어제(또는 시작 값의) 상태를 버리고 **`snapshot` 이벤트 하나**로 알린다(새 날짜·새 상태 전체).
+        화면은 연결이 몇 시간 이어져 날이 바뀌어도 이전 날의 분봉·체결을 끌고 가지 않는다.
+        """
+        rolled = False
         if trade.business_date and self.business_date and trade.business_date != self.business_date:
             self.reset_day()  # 새 거래일: 어제 값을 끌고 가지 않는다
+            rolled = True
         if trade.business_date:
             self.business_date = trade.business_date
+            self.live_date = trade.business_date
+        events = self._apply_trade_events(trade)
+        if rolled:
+            return [("snapshot", self.snapshot())]
+        return events
+
+    def _apply_trade_events(self, trade: Trade) -> list[tuple[str, dict[str, Any]]]:
         if not self._remember((trade.time, trade.price, trade.volume, trade.acml_volume)):
             return []
         delta = self._volume_delta(trade)
@@ -161,12 +190,20 @@ class Subscriber:
         self._latest: dict[str, dict[str, Any]] = {}
         self._bars: dict[str, dict[str, Any]] = {}
         self._ticks: deque[dict[str, Any]] = deque(maxlen=SUBSCRIBER_TICK_BUFFER)
+        self._snapshot: dict[str, Any] | None = None
         self.closed = False
 
     def push(self, event: str, data: dict[str, Any]) -> None:
         if self.closed:
             return
-        if event == "tick":
+        if event == "snapshot":
+            # 거래일이 바뀌어 상태 전체를 다시 보낸다: 아직 못 보낸 이전 날 체결·분봉·시세·호가는 버리고 이 스냅샷부터 보낸다
+            self._ticks.clear()
+            self._bars.clear()
+            self._latest.pop("quote", None)
+            self._latest.pop("book", None)
+            self._snapshot = data
+        elif event == "tick":
             self._ticks.append(data)
         elif event == "bar":
             self._bars[data["time"]] = data
@@ -175,7 +212,11 @@ class Subscriber:
         self.wake.set()
 
     def drain(self) -> list[tuple[str, dict[str, Any]]]:
-        out: list[tuple[str, dict[str, Any]]] = [("tick", t) for t in self._ticks]
+        out: list[tuple[str, dict[str, Any]]] = []
+        if self._snapshot is not None:
+            out.append(("snapshot", self._snapshot))  # 항상 맨 앞(이후 이벤트는 새 날 것)
+            self._snapshot = None
+        out += [("tick", t) for t in self._ticks]
         out += [("bar", self._bars[k]) for k in sorted(self._bars)]
         out += list(self._latest.items())
         self._ticks.clear()

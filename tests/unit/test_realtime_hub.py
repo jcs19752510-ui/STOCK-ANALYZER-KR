@@ -87,8 +87,51 @@ def test_새_거래일이면_어제_값을_버린다() -> None:
     st.seed([bar("15:29", 70000, 70100, 69900, 70050, 600)], [{"time": "15:29:59", "price": 70050, "change": 0, "change_pct": 0, "volume": 1, "strength": 100.0}])
     st.business_date = "20261002"
     events = st.apply_trade(trade("09:00:01", 71000, 10, 10, date="20261006"))
-    assert st.business_date == "20261006" and list(st.bars) == ["09:00"] and len(st.ticks) == 1
-    assert dict(events)["bar"]["volume"] == 10
+    assert st.business_date == "20261006" and st.live_date == "20261006" and list(st.bars) == ["09:00"] and len(st.ticks) == 1
+    # 구독자에게는 개별 이벤트가 아니라 새 날 상태 전체(snapshot) 하나로 알린다
+    assert [e for e, _ in events] == ["snapshot"]
+    snap = dict(events)["snapshot"]
+    assert snap["business_date"] == "20261006" and [b["time"] for b in snap["bars"]] == ["09:00"] and snap["bars"][0]["volume"] == 10 and snap["quote"]["price"] == 71000
+    assert len(snap["ticks"]) == 1
+
+
+def test_거래일_변경_스냅샷은_구독자_버퍼에서_이전_날_이벤트보다_앞서고_이전_날_대기분을_버린다() -> None:
+    async def scenario() -> None:
+        sub = h.Subscriber("005930")
+        sub.push("tick", {"time": "15:29:59"})
+        sub.push("bar", {"time": "15:29"})
+        sub.push("quote", {"price": 1})
+        sub.push("book", {"x": 1})
+        sub.push("status", {"connection": "connected"})
+        sub.push("snapshot", {"business_date": "20261007"})
+        sub.push("tick", {"time": "09:00:01"})  # 새 날 체결은 스냅샷 뒤에 그대로 온다
+        out = sub.drain()
+        assert [e for e, _ in out] == ["snapshot", "tick", "status"]
+        assert out[1][1]["time"] == "09:00:01"
+
+    asyncio.run(scenario())
+
+
+def test_첫_체결로_날짜를_알기_전에는_live_date가_비어_있다() -> None:
+    st = h.CodeState("005930")
+    st.seed([bar("09:00", 1, 2, 1, 2, 7)], [])
+    assert st.live_date is None and st.business_date is None
+    st.apply_trade(trade())
+    assert st.live_date == "20261006"
+
+
+def test_이미_실시간을_받은_뒤_시작_값은_합치고_첫_현재가는_실시간이_없을_때만_쓴다() -> None:
+    st = h.CodeState("005930")
+    st.apply_trade(trade("09:01:05", 70900, 25, 1025))
+    live = dict(st.bars["09:01"])
+    live_quote = dict(st.quote)
+    ticks_before = list(st.ticks)
+    st.seed([bar("09:00", 1, 2, 1, 2, 600), bar("09:01", 1, 2, 1, 2, 999)], [{"time": "09:00:30", "price": 1}], {"price": 123, "time": ""})
+    assert st.bars["09:01"] == live and st.bars["09:00"]["volume"] == 600 and list(st.bars) == ["09:00", "09:01"]
+    assert st.quote == live_quote and list(st.ticks) == ticks_before and st.seeded is True
+    fresh = h.CodeState("005930")
+    fresh.seed([], [], {"price": 123, "time": ""})
+    assert fresh.quote["price"] == 123 and fresh.snapshot()["quote"]["price"] == 123
 
 
 def test_늦게_온_이전_분_체결이_종가를_되돌리지_않는다() -> None:

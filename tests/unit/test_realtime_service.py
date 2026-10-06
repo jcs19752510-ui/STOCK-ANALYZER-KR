@@ -166,9 +166,10 @@ def test_시작_값_함수는_REST_결과를_그대로_옮긴다() -> None:
             return TicksData(stock_code=code, ticks=[TickItem(time="09:00:01", price=2, change=1, change_pct=1.0, volume=3, strength=None)], truncated=False)
 
     fake = FakeIntraday()
-    bars, ticks, d = make_seed_fetcher(fake, lambda: date(2026, 10, 2))("005930")
+    bars, ticks, d, quote = make_seed_fetcher(fake, lambda: date(2026, 10, 2))("005930")
     assert fake.calls == [None, date(2026, 10, 2)]
     assert bars == [{"time": "09:00", "open": 1.0, "high": 2.0, "low": 1.0, "close": 2.0, "volume": 7}] and ticks[0]["price"] == 2 and d == "20261002"
+    assert quote is None  # 현재가 조회기가 없으면(또는 실패하면) 비워 둔다
 
 
 def test_오늘_분봉이_있으면_직전_거래일_조회를_하지_않는다() -> None:
@@ -182,7 +183,7 @@ def test_오늘_분봉이_있으면_직전_거래일_조회를_하지_않는다(
     def never() -> None:
         raise AssertionError("직전 거래일 조회(DB)를 하면 안 된다")
 
-    bars, _, d = make_seed_fetcher(Today(), never)("005930")
+    bars, _, d, _q = make_seed_fetcher(Today(), never)("005930")
     assert len(bars) == 1 and d == "20261006"
 
 
@@ -194,5 +195,122 @@ def test_체결_조회만_실패해도_분봉_시작_값은_쓴다() -> None:
         def ticks(self, code, limit):
             raise KisError("RATE_LIMITED", "한도")
 
-    bars, ticks, _ = make_seed_fetcher(Partial(), lambda: None)("005930")
+    bars, ticks, _d, _q = make_seed_fetcher(Partial(), lambda: None)("005930")
     assert len(bars) == 1 and ticks == []
+
+
+# ── 백엔드 개선 3건(DEC-084 후속): 첫 현재가, 시작 값 날짜 불일치, 거래일 변경 알림 ─────────────────────────────
+
+def test_REST_현재가가_첫_체결_전_스냅샷의_시세를_채운다() -> None:
+    class Client:
+        def multi_price(self, codes):
+            assert codes == ["005930"]
+            return {"output": [{"inter_shrn_iscd": "005930", "inter2_prpr": "70500", "inter2_prdy_vrss": "500", "prdy_vrss_sign": "2", "prdy_ctrt": "0.71",
+                                "acml_vol": "123456", "inter2_oprc": "70000", "inter2_hgpr": "70600", "inter2_lwpr": "69900"}]}
+
+    class Svc:
+        client = Client()
+
+        def minutes(self, code, interval, *, day, fallback_day):
+            return MinutesData(stock_code=code, date=date(2026, 10, 6), interval=1, bars=[MinuteBar(time="09:00", open=1, high=2, low=1, close=2, volume=7)])
+
+        def ticks(self, code, limit):
+            return TicksData(stock_code=code, ticks=[], truncated=False)
+
+    _, _, _, quote = make_seed_fetcher(Svc(), lambda: None)("005930")
+    assert quote["price"] == 70500 and quote["change"] == 500 and quote["change_pct"] == 0.71 and quote["acml_volume"] == 123456
+    assert quote["time"] == "" and quote["source"] == "rest" and quote["open"] == 70000
+
+    async def scenario() -> None:
+        def seeded(code: str):
+            bars, ticks, d = seed_ok(code)
+            return bars, ticks, d, quote
+
+        async with ServiceRig(seed=seeded) as rig:
+            sub, snap = await rig.svc.open("005930")
+            assert snap["quote"]["price"] == 70500 and snap["quote"]["source"] == "rest"
+            await until(lambda: len(rig.server.subscriptions) == 2)
+            await rig.server.emit(p.TR_TRADE, mock.trade_values("005930", "090130", 70300, 30, 1040, prev_close=70000))
+            got = await collect(sub, {"quote"})
+            assert got["quote"]["price"] == 70300 and "source" not in got["quote"]  # 실시간 체결이 REST 값을 대체한다
+            await rig.svc.close(sub)
+
+    run(scenario())
+
+
+def test_REST_현재가_조회가_실패해도_시작_값은_쓴다() -> None:
+    class Client:
+        def multi_price(self, codes):
+            raise KisError("RATE_LIMITED", "한도")
+
+    class Svc:
+        client = Client()
+
+        def minutes(self, code, interval, *, day, fallback_day):
+            return MinutesData(stock_code=code, date=date(2026, 10, 6), interval=1, bars=[MinuteBar(time="09:00", open=1, high=2, low=1, close=2, volume=7)])
+
+        def ticks(self, code, limit):
+            return TicksData(stock_code=code, ticks=[], truncated=False)
+
+    bars, _, d, quote = make_seed_fetcher(Svc(), lambda: None)("005930")
+    assert len(bars) == 1 and d == "20261006" and quote is None
+
+
+def test_실시간_거래일과_다른_시작_값은_버려_어제_분봉이_섞이지_않는다() -> None:
+    async def scenario() -> None:
+        calls: list[str] = []
+
+        def prev_day_seed(code: str):
+            calls.append(code)
+            return [{"time": "15:29", "open": 1, "high": 1, "low": 1, "close": 1, "volume": 999}], [], "20261002", None
+
+        async with ServiceRig(seed=prev_day_seed) as rig:
+            state = rig.svc.hub.state("005930")
+            # 오늘(20261006) 실시간 체결이 먼저 쌓였고, 이후 다시 연결하면서 시작 값을 새로 받으려는 상황
+            from test_realtime_hub import trade as mk_trade  # noqa: PLC0415
+
+            state.apply_trade(mk_trade("09:00:01", 70000, 10, 10, date="20261006"))
+            assert state.seeded is False and state.live_date == "20261006"
+            sub, snap = await rig.svc.open("005930")
+            assert calls == ["005930"]
+            assert [b["time"] for b in snap["bars"]] == ["09:00"], "직전 거래일 분봉(15:29)이 섞이면 안 된다"
+            assert snap["business_date"] == "20261006" and snap["seeded"] is True
+            await rig.svc.close(sub)
+
+    run(scenario())
+
+
+def test_같은_날_시작_값은_실시간_봉과_합쳐지고_실시간이_우선한다() -> None:
+    async def scenario() -> None:
+        async with ServiceRig() as rig:  # seed_ok: 09:00(600)·09:01(400), 20261006
+            state = rig.svc.hub.state("005930")
+            from test_realtime_hub import trade as mk_trade  # noqa: PLC0415
+
+            state.apply_trade(mk_trade("09:01:05", 70900, 25, 1025, date="20261006"))
+            live_bar = dict(state.bars["09:01"])
+            sub, snap = await rig.svc.open("005930")
+            bars = {b["time"]: b for b in snap["bars"]}
+            assert sorted(bars) == ["09:00", "09:01"]
+            assert bars["09:01"] == live_bar, "같은 시각 봉은 실시간 것을 둔다"
+            assert bars["09:00"]["volume"] == 600
+            await rig.svc.close(sub)
+
+    run(scenario())
+
+
+def test_연결이_이어진_채_거래일이_바뀌면_구독자에게_새_스냅샷을_보낸다() -> None:
+    async def scenario() -> None:
+        async with ServiceRig() as rig:
+            sub, snap = await rig.svc.open("005930")
+            await until(lambda: len(rig.server.subscriptions) == 2)
+            await rig.server.emit(p.TR_TRADE, mock.trade_values("005930", "090130", 70300, 30, 1040, prev_close=70000))
+            await collect(sub, {"quote"})
+            # 다음 거래일 첫 체결(날짜 20261007): 이전 날 분봉·체결을 끌고 가지 않는다
+            await rig.server.emit(p.TR_TRADE, mock.trade_values("005930", "090001", 71000, 5, 5, prev_close=70300, date="20261007"))
+            got = await collect(sub, {"snapshot"})
+            ns = got["snapshot"]
+            assert ns["business_date"] == "20261007" and [b["time"] for b in ns["bars"]] == ["09:00"] and len(ns["ticks"]) == 1
+            assert ns["quote"]["price"] == 71000 and ns["connection"] == "connected"
+            await rig.svc.close(sub)
+
+    run(scenario())

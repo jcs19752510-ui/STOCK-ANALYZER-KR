@@ -14,6 +14,7 @@ from typing import Any
 
 from services.public_api.intraday.config import IntradaySettings
 from services.public_api.intraday.kis_client import KisError
+from services.public_api.intraday.normalize import normalize_multi_price
 from services.public_api.realtime import protocol as proto
 from services.public_api.realtime.connection import KisWsManager
 from services.public_api.realtime.hub import RealtimeHub, Subscriber
@@ -27,7 +28,7 @@ class RealtimeService:
     def __init__(
         self,
         settings: IntradaySettings,
-        seed_fetcher: Callable[[str], tuple[list[dict[str, Any]], list[dict[str, Any]], str | None]] | None = None,
+        seed_fetcher: Callable[[str], tuple[Any, ...]] | None = None,
         *,
         manager_factory: Callable[..., KisWsManager] = KisWsManager,
     ) -> None:
@@ -81,7 +82,9 @@ class RealtimeService:
             state.seeded = True
             return
         try:
-            bars, ticks, business_date = await asyncio.to_thread(self._seed_fetcher, code)
+            fetched = await asyncio.to_thread(self._seed_fetcher, code)
+            bars, ticks, business_date = fetched[0], fetched[1], fetched[2]
+            quote = fetched[3] if len(fetched) > 3 else None  # (선택) REST 현재가: 첫 실시간 체결 전에도 현재가를 보여 준다
         except KisError as exc:
             logger.warning("실시간 시작 값을 가져오지 못했습니다(%s). 실시간만 표시합니다.", exc.code)
             state.seeded = False
@@ -90,8 +93,14 @@ class RealtimeService:
             logger.exception("실시간 시작 값 조회 실패")
             state.seeded = False
             return
-        state.seed(bars, ticks)
-        if business_date:
+        if state.live_date and business_date and business_date != state.live_date:
+            # 시작 값이 실시간 체결의 거래일과 다르다(장 시작 직후 오늘 분봉이 아직 비어 직전 거래일로 대체된 경우 등):
+            # 어제 분봉이 오늘 것과 섞이지 않도록 버리고, 실시간으로 쌓은 오늘 상태만 쓴다.
+            logger.info("시작 값의 거래일(%s)이 실시간 거래일(%s)과 달라 버립니다.", business_date, state.live_date)
+            state.seeded = True
+            return
+        state.seed(bars, ticks, quote)
+        if business_date and not state.live_date:
             state.business_date = business_date
 
     # ── 수신 처리 ─────────────────────────────────────────────────────────
@@ -103,6 +112,8 @@ class RealtimeService:
                     continue
                 events = self.hub.state(trade.code).apply_trade(trade)
                 if events:
+                    if events[0][0] == "snapshot":  # 거래일 변경: 연결 직후 스냅샷과 같은 모양으로 보낸다
+                        events[0][1]["connection"] = self.manager.info()["state"]
                     self.hub.publish(trade.code, events)
             elif frame.tr_id == proto.TR_BOOK:
                 book = proto.parse_book(rec)
@@ -121,8 +132,26 @@ class RealtimeService:
         return info
 
 
-def make_seed_fetcher(intraday_service: Any, fallback_day_fn: Callable[[], Any]) -> Callable[[str], tuple[list[dict[str, Any]], list[dict[str, Any]], str | None]]:
-    """REST(분봉 1분·체결 최근 120건)로 시작 값을 만드는 함수를 돌려준다(블로킹 — 스레드에서 실행).
+def _rest_quote(intraday_service: Any, code: str) -> dict[str, Any] | None:
+    """REST 일괄 시세(종목 1개)로 첫 현재가를 만든다. 실패하거나 값이 없으면 None(현재가는 첫 실시간 체결 때 채워진다).
+
+    `time`은 비워 둔다(체결 시각이 아니므로 화면의 시세 순서 판단에 쓰이지 않게 한다). `source`는 값의 출처 표시다.
+    """
+    try:
+        rows = intraday_service.client.multi_price([code]).get("output") or []
+        mq = normalize_multi_price(rows).get(code)
+    except Exception:  # noqa: BLE001 — 현재가 보조 조회 실패가 화면 열기를 막지 않는다
+        return None
+    if mq is None:
+        return None
+    return {
+        "time": "", "price": mq.price, "change": mq.change, "change_pct": mq.change_pct, "open": mq.open, "high": mq.high, "low": mq.low,
+        "ask1": None, "bid1": None, "acml_volume": mq.volume, "acml_value": None, "strength": None, "halted": False, "vi_price": None, "source": "rest",
+    }
+
+
+def make_seed_fetcher(intraday_service: Any, fallback_day_fn: Callable[[], Any]) -> Callable[[str], tuple[Any, ...]]:
+    """REST(분봉 1분·체결 최근 120건·현재가)로 시작 값을 만드는 함수를 돌려준다(블로킹 — 스레드에서 실행).
 
     오늘 분봉이 비어 있을 때(장 시작 전·휴장일)에만 직전 거래일(`fallback_day_fn`, DB 조회)로 다시 조회한다.
     """
@@ -138,6 +167,6 @@ def make_seed_fetcher(intraday_service: Any, fallback_day_fn: Callable[[], Any])
             ticks = [t.model_dump() for t in intraday_service.ticks(code, SEED_TICKS).ticks]
         except KisError:
             ticks = []  # 분봉은 받았으면 체결 목록만 비워 두고 계속한다
-        return bars, ticks, minutes.date.strftime("%Y%m%d")
+        return bars, ticks, minutes.date.strftime("%Y%m%d"), _rest_quote(intraday_service, code)
 
     return fetch
