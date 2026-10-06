@@ -225,8 +225,9 @@ async def live_context(
 
 
 class _LiveScreenRepo(SqlScreenRepository):
-    def __init__(self, session: Session, source: Any) -> None:
+    def __init__(self, session: Session, source: Any, trade_key: date) -> None:
         super().__init__(session, source)
+        self.trade_key = trade_key  # 가상 행의 trade_date 키(발행 거래일)
         self.filters: Any = None
 
     def get_current_published_trade_date(self, market: str) -> date | None:
@@ -238,8 +239,9 @@ class _LiveScreenRepo(SqlScreenRepository):
 
 
 class _LivePatternRepo(SqlPatternScreenRepository):
-    def __init__(self, session: Session, source: Any) -> None:
+    def __init__(self, session: Session, source: Any, trade_key: date) -> None:
         super().__init__(session, source)
+        self.trade_key = trade_key
         self.filters: Any = None
         self.thresholds: PatternThresholds | None = None
 
@@ -257,15 +259,11 @@ def _source_for(live: _Live) -> Any:
 
 
 def get_live_screen_repository(live: _Live = Depends(live_context), db: Session = Depends(get_db)) -> _LiveScreenRepo:
-    repo = _LiveScreenRepo(db, _source_for(live))
-    repo.trade_key = live.snapshot.trade_key  # type: ignore[attr-defined]
-    return repo
+    return _LiveScreenRepo(db, _source_for(live), live.snapshot.trade_key)
 
 
 def get_live_pattern_repository(live: _Live = Depends(live_context), db: Session = Depends(get_db)) -> _LivePatternRepo:
-    repo = _LivePatternRepo(db, _source_for(live))
-    repo.trade_key = live.snapshot.trade_key  # type: ignore[attr-defined]
-    return repo
+    return _LivePatternRepo(db, _source_for(live), live.snapshot.trade_key)
 
 
 # ── 응답 보강 ─────────────────────────────────────────────────────────────────────────
