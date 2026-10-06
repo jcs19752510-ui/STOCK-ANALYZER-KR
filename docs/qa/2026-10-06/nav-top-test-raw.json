@@ -1,0 +1,1427 @@
+[
+ {
+  "name": "[320px /] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px /] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=홈"
+ },
+ {
+  "name": "[320px /] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[320px /] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 162~206 / main 223"
+ },
+ {
+  "name": "[320px /] 첫 화면 안(상단 300px 이내)",
+  "ok": true,
+  "detail": "nav 하단 206px"
+ },
+ {
+  "name": "[320px /] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 320 / 320"
+ },
+ {
+  "name": "[320px /] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "44x44 96x44 70x44 66x44"
+ },
+ {
+  "name": "[320px /] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[320px /] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px /] 선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "6.70"
+ },
+ {
+  "name": "[320px /] 비선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "17.74"
+ },
+ {
+  "name": "[320px /] 선택/비선택 면 대비 ≥3",
+  "ok": true,
+  "detail": "6.70 (선택 rgb(29, 78, 216) / 비선택 rgb(255, 255, 255)), 굵기 700 vs 500"
+ },
+ {
+  "name": "[320px /screener] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px /screener] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=조건 스크리닝"
+ },
+ {
+  "name": "[320px /screener] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[320px /screener] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 162~206 / main 223"
+ },
+ {
+  "name": "[320px /screener] 첫 화면 안(상단 300px 이내)",
+  "ok": true,
+  "detail": "nav 하단 206px"
+ },
+ {
+  "name": "[320px /screener] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 320 / 320"
+ },
+ {
+  "name": "[320px /screener] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "44x44 96x44 70x44 66x44"
+ },
+ {
+  "name": "[320px /screener] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[320px /screener] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px /screener] 선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "6.70"
+ },
+ {
+  "name": "[320px /screener] 비선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "17.74"
+ },
+ {
+  "name": "[320px /screener] 선택/비선택 면 대비 ≥3",
+  "ok": true,
+  "detail": "6.70 (선택 rgb(29, 78, 216) / 비선택 rgb(255, 255, 255)), 굵기 700 vs 500"
+ },
+ {
+  "name": "[320px /stocks] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px /stocks] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=종목 검색"
+ },
+ {
+  "name": "[320px /stocks] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[320px /stocks] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 162~206 / main 223"
+ },
+ {
+  "name": "[320px /stocks] 첫 화면 안(상단 300px 이내)",
+  "ok": true,
+  "detail": "nav 하단 206px"
+ },
+ {
+  "name": "[320px /stocks] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 320 / 320"
+ },
+ {
+  "name": "[320px /stocks] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "44x44 96x44 70x44 66x44"
+ },
+ {
+  "name": "[320px /stocks] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[320px /stocks] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px /stocks] 선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "6.70"
+ },
+ {
+  "name": "[320px /stocks] 비선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "17.74"
+ },
+ {
+  "name": "[320px /stocks] 선택/비선택 면 대비 ≥3",
+  "ok": true,
+  "detail": "6.70 (선택 rgb(29, 78, 216) / 비선택 rgb(255, 255, 255)), 굵기 700 vs 500"
+ },
+ {
+  "name": "[320px /watchlist] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px /watchlist] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=관심종목"
+ },
+ {
+  "name": "[320px /watchlist] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[320px /watchlist] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 162~206 / main 223"
+ },
+ {
+  "name": "[320px /watchlist] 첫 화면 안(상단 300px 이내)",
+  "ok": true,
+  "detail": "nav 하단 206px"
+ },
+ {
+  "name": "[320px /watchlist] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 320 / 320"
+ },
+ {
+  "name": "[320px /watchlist] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "44x44 96x44 70x44 66x44"
+ },
+ {
+  "name": "[320px /watchlist] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[320px /watchlist] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px /watchlist] 선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "6.70"
+ },
+ {
+  "name": "[320px /watchlist] 비선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "17.74"
+ },
+ {
+  "name": "[320px /watchlist] 선택/비선택 면 대비 ≥3",
+  "ok": true,
+  "detail": "6.70 (선택 rgb(29, 78, 216) / 비선택 rgb(255, 255, 255)), 굵기 700 vs 500"
+ },
+ {
+  "name": "[320px /about] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px /about] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=없음"
+ },
+ {
+  "name": "[320px /about] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[320px /about] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 162~206 / main 223"
+ },
+ {
+  "name": "[320px /about] 첫 화면 안(상단 300px 이내)",
+  "ok": true,
+  "detail": "nav 하단 206px"
+ },
+ {
+  "name": "[320px /about] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 320 / 320"
+ },
+ {
+  "name": "[320px /about] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "44x44 96x44 70x44 66x44"
+ },
+ {
+  "name": "[320px /about] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[320px /about] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[320px] 키보드 포커스 윤곽선",
+  "ok": true,
+  "detail": "solid 2px"
+ },
+ {
+  "name": "[320px] 화면 하단 고정 막대 없음",
+  "ok": true,
+  "detail": "없음"
+ },
+ {
+  "name": "[360px /] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px /] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=홈"
+ },
+ {
+  "name": "[360px /] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[360px /] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 152~196 / main 213"
+ },
+ {
+  "name": "[360px /] 첫 화면 안(상단 300px 이내)",
+  "ok": true,
+  "detail": "nav 하단 196px"
+ },
+ {
+  "name": "[360px /] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 360 / 360"
+ },
+ {
+  "name": "[360px /] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "44x44 109x44 83x44 80x44"
+ },
+ {
+  "name": "[360px /] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[360px /] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px /] 선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "6.70"
+ },
+ {
+  "name": "[360px /] 비선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "17.74"
+ },
+ {
+  "name": "[360px /] 선택/비선택 면 대비 ≥3",
+  "ok": true,
+  "detail": "6.70 (선택 rgb(29, 78, 216) / 비선택 rgb(255, 255, 255)), 굵기 700 vs 500"
+ },
+ {
+  "name": "[360px /screener] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px /screener] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=조건 스크리닝"
+ },
+ {
+  "name": "[360px /screener] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[360px /screener] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 152~196 / main 213"
+ },
+ {
+  "name": "[360px /screener] 첫 화면 안(상단 300px 이내)",
+  "ok": true,
+  "detail": "nav 하단 196px"
+ },
+ {
+  "name": "[360px /screener] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 360 / 360"
+ },
+ {
+  "name": "[360px /screener] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "44x44 109x44 83x44 80x44"
+ },
+ {
+  "name": "[360px /screener] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[360px /screener] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px /screener] 선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "6.70"
+ },
+ {
+  "name": "[360px /screener] 비선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "17.74"
+ },
+ {
+  "name": "[360px /screener] 선택/비선택 면 대비 ≥3",
+  "ok": true,
+  "detail": "6.70 (선택 rgb(29, 78, 216) / 비선택 rgb(255, 255, 255)), 굵기 700 vs 500"
+ },
+ {
+  "name": "[360px /stocks] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px /stocks] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=종목 검색"
+ },
+ {
+  "name": "[360px /stocks] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[360px /stocks] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 152~196 / main 213"
+ },
+ {
+  "name": "[360px /stocks] 첫 화면 안(상단 300px 이내)",
+  "ok": true,
+  "detail": "nav 하단 196px"
+ },
+ {
+  "name": "[360px /stocks] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 360 / 360"
+ },
+ {
+  "name": "[360px /stocks] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "44x44 109x44 83x44 80x44"
+ },
+ {
+  "name": "[360px /stocks] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[360px /stocks] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px /stocks] 선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "6.70"
+ },
+ {
+  "name": "[360px /stocks] 비선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "17.74"
+ },
+ {
+  "name": "[360px /stocks] 선택/비선택 면 대비 ≥3",
+  "ok": true,
+  "detail": "6.70 (선택 rgb(29, 78, 216) / 비선택 rgb(255, 255, 255)), 굵기 700 vs 500"
+ },
+ {
+  "name": "[360px /watchlist] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px /watchlist] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=관심종목"
+ },
+ {
+  "name": "[360px /watchlist] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[360px /watchlist] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 152~196 / main 213"
+ },
+ {
+  "name": "[360px /watchlist] 첫 화면 안(상단 300px 이내)",
+  "ok": true,
+  "detail": "nav 하단 196px"
+ },
+ {
+  "name": "[360px /watchlist] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 360 / 360"
+ },
+ {
+  "name": "[360px /watchlist] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "44x44 109x44 83x44 80x44"
+ },
+ {
+  "name": "[360px /watchlist] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[360px /watchlist] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px /watchlist] 선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "6.70"
+ },
+ {
+  "name": "[360px /watchlist] 비선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "17.74"
+ },
+ {
+  "name": "[360px /watchlist] 선택/비선택 면 대비 ≥3",
+  "ok": true,
+  "detail": "6.70 (선택 rgb(29, 78, 216) / 비선택 rgb(255, 255, 255)), 굵기 700 vs 500"
+ },
+ {
+  "name": "[360px /about] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px /about] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=없음"
+ },
+ {
+  "name": "[360px /about] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[360px /about] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 152~196 / main 213"
+ },
+ {
+  "name": "[360px /about] 첫 화면 안(상단 300px 이내)",
+  "ok": true,
+  "detail": "nav 하단 196px"
+ },
+ {
+  "name": "[360px /about] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 360 / 360"
+ },
+ {
+  "name": "[360px /about] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "44x44 109x44 83x44 80x44"
+ },
+ {
+  "name": "[360px /about] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[360px /about] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[360px] 키보드 포커스 윤곽선",
+  "ok": true,
+  "detail": "solid 2px"
+ },
+ {
+  "name": "[360px] 화면 하단 고정 막대 없음",
+  "ok": true,
+  "detail": "없음"
+ },
+ {
+  "name": "[412px /] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px /] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=홈"
+ },
+ {
+  "name": "[412px /] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[412px /] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 152~196 / main 213"
+ },
+ {
+  "name": "[412px /] 첫 화면 안(상단 300px 이내)",
+  "ok": true,
+  "detail": "nav 하단 196px"
+ },
+ {
+  "name": "[412px /] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 412 / 412"
+ },
+ {
+  "name": "[412px /] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "52x44 125x44 97x44 94x44"
+ },
+ {
+  "name": "[412px /] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[412px /] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px /] 선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "6.70"
+ },
+ {
+  "name": "[412px /] 비선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "17.74"
+ },
+ {
+  "name": "[412px /] 선택/비선택 면 대비 ≥3",
+  "ok": true,
+  "detail": "6.70 (선택 rgb(29, 78, 216) / 비선택 rgb(255, 255, 255)), 굵기 700 vs 500"
+ },
+ {
+  "name": "[412px /screener] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px /screener] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=조건 스크리닝"
+ },
+ {
+  "name": "[412px /screener] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[412px /screener] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 152~196 / main 213"
+ },
+ {
+  "name": "[412px /screener] 첫 화면 안(상단 300px 이내)",
+  "ok": true,
+  "detail": "nav 하단 196px"
+ },
+ {
+  "name": "[412px /screener] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 412 / 412"
+ },
+ {
+  "name": "[412px /screener] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "52x44 125x44 97x44 94x44"
+ },
+ {
+  "name": "[412px /screener] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[412px /screener] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px /screener] 선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "6.70"
+ },
+ {
+  "name": "[412px /screener] 비선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "17.74"
+ },
+ {
+  "name": "[412px /screener] 선택/비선택 면 대비 ≥3",
+  "ok": true,
+  "detail": "6.70 (선택 rgb(29, 78, 216) / 비선택 rgb(255, 255, 255)), 굵기 700 vs 500"
+ },
+ {
+  "name": "[412px /stocks] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px /stocks] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=종목 검색"
+ },
+ {
+  "name": "[412px /stocks] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[412px /stocks] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 152~196 / main 213"
+ },
+ {
+  "name": "[412px /stocks] 첫 화면 안(상단 300px 이내)",
+  "ok": true,
+  "detail": "nav 하단 196px"
+ },
+ {
+  "name": "[412px /stocks] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 412 / 412"
+ },
+ {
+  "name": "[412px /stocks] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "52x44 125x44 97x44 94x44"
+ },
+ {
+  "name": "[412px /stocks] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[412px /stocks] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px /stocks] 선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "6.70"
+ },
+ {
+  "name": "[412px /stocks] 비선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "17.74"
+ },
+ {
+  "name": "[412px /stocks] 선택/비선택 면 대비 ≥3",
+  "ok": true,
+  "detail": "6.70 (선택 rgb(29, 78, 216) / 비선택 rgb(255, 255, 255)), 굵기 700 vs 500"
+ },
+ {
+  "name": "[412px /watchlist] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px /watchlist] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=관심종목"
+ },
+ {
+  "name": "[412px /watchlist] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[412px /watchlist] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 152~196 / main 213"
+ },
+ {
+  "name": "[412px /watchlist] 첫 화면 안(상단 300px 이내)",
+  "ok": true,
+  "detail": "nav 하단 196px"
+ },
+ {
+  "name": "[412px /watchlist] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 412 / 412"
+ },
+ {
+  "name": "[412px /watchlist] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "52x44 125x44 97x44 94x44"
+ },
+ {
+  "name": "[412px /watchlist] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[412px /watchlist] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px /watchlist] 선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "6.70"
+ },
+ {
+  "name": "[412px /watchlist] 비선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "17.74"
+ },
+ {
+  "name": "[412px /watchlist] 선택/비선택 면 대비 ≥3",
+  "ok": true,
+  "detail": "6.70 (선택 rgb(29, 78, 216) / 비선택 rgb(255, 255, 255)), 굵기 700 vs 500"
+ },
+ {
+  "name": "[412px /about] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px /about] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=없음"
+ },
+ {
+  "name": "[412px /about] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[412px /about] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 152~196 / main 213"
+ },
+ {
+  "name": "[412px /about] 첫 화면 안(상단 300px 이내)",
+  "ok": true,
+  "detail": "nav 하단 196px"
+ },
+ {
+  "name": "[412px /about] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 412 / 412"
+ },
+ {
+  "name": "[412px /about] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "52x44 125x44 97x44 94x44"
+ },
+ {
+  "name": "[412px /about] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[412px /about] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[412px] 키보드 포커스 윤곽선",
+  "ok": true,
+  "detail": "solid 2px"
+ },
+ {
+  "name": "[412px] 화면 하단 고정 막대 없음",
+  "ok": true,
+  "detail": "없음"
+ },
+ {
+  "name": "[768px /] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px /] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=홈"
+ },
+ {
+  "name": "[768px /] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[768px /] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 72~116 / main 133"
+ },
+ {
+  "name": "[768px /] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 768 / 768"
+ },
+ {
+  "name": "[768px /] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "48x44 122x44 94x44 90x44"
+ },
+ {
+  "name": "[768px /] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[768px /] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px /] 선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "6.70"
+ },
+ {
+  "name": "[768px /] 비선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "17.74"
+ },
+ {
+  "name": "[768px /] 선택/비선택 면 대비 ≥3",
+  "ok": true,
+  "detail": "6.70 (선택 rgb(29, 78, 216) / 비선택 rgb(255, 255, 255)), 굵기 700 vs 500"
+ },
+ {
+  "name": "[768px /screener] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px /screener] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=조건 스크리닝"
+ },
+ {
+  "name": "[768px /screener] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[768px /screener] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 72~116 / main 133"
+ },
+ {
+  "name": "[768px /screener] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 768 / 768"
+ },
+ {
+  "name": "[768px /screener] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "48x44 122x44 94x44 90x44"
+ },
+ {
+  "name": "[768px /screener] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[768px /screener] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px /screener] 선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "6.70"
+ },
+ {
+  "name": "[768px /screener] 비선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "17.74"
+ },
+ {
+  "name": "[768px /screener] 선택/비선택 면 대비 ≥3",
+  "ok": true,
+  "detail": "6.70 (선택 rgb(29, 78, 216) / 비선택 rgb(255, 255, 255)), 굵기 700 vs 500"
+ },
+ {
+  "name": "[768px /stocks] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px /stocks] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=종목 검색"
+ },
+ {
+  "name": "[768px /stocks] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[768px /stocks] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 72~116 / main 133"
+ },
+ {
+  "name": "[768px /stocks] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 768 / 768"
+ },
+ {
+  "name": "[768px /stocks] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "48x44 122x44 94x44 90x44"
+ },
+ {
+  "name": "[768px /stocks] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[768px /stocks] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px /stocks] 선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "6.70"
+ },
+ {
+  "name": "[768px /stocks] 비선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "17.74"
+ },
+ {
+  "name": "[768px /stocks] 선택/비선택 면 대비 ≥3",
+  "ok": true,
+  "detail": "6.70 (선택 rgb(29, 78, 216) / 비선택 rgb(255, 255, 255)), 굵기 700 vs 500"
+ },
+ {
+  "name": "[768px /watchlist] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px /watchlist] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=관심종목"
+ },
+ {
+  "name": "[768px /watchlist] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[768px /watchlist] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 72~116 / main 133"
+ },
+ {
+  "name": "[768px /watchlist] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 768 / 768"
+ },
+ {
+  "name": "[768px /watchlist] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "48x44 122x44 94x44 90x44"
+ },
+ {
+  "name": "[768px /watchlist] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[768px /watchlist] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px /watchlist] 선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "6.70"
+ },
+ {
+  "name": "[768px /watchlist] 비선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "17.74"
+ },
+ {
+  "name": "[768px /watchlist] 선택/비선택 면 대비 ≥3",
+  "ok": true,
+  "detail": "6.70 (선택 rgb(29, 78, 216) / 비선택 rgb(255, 255, 255)), 굵기 700 vs 500"
+ },
+ {
+  "name": "[768px /about] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px /about] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=없음"
+ },
+ {
+  "name": "[768px /about] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[768px /about] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 72~116 / main 133"
+ },
+ {
+  "name": "[768px /about] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 768 / 768"
+ },
+ {
+  "name": "[768px /about] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "48x44 122x44 94x44 90x44"
+ },
+ {
+  "name": "[768px /about] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[768px /about] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[768px] 키보드 포커스 윤곽선",
+  "ok": true,
+  "detail": "solid 2px"
+ },
+ {
+  "name": "[768px] 화면 하단 고정 막대 없음",
+  "ok": true,
+  "detail": "없음"
+ },
+ {
+  "name": "[1280px /] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px /] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=홈"
+ },
+ {
+  "name": "[1280px /] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[1280px /] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 53~97 / main 114"
+ },
+ {
+  "name": "[1280px /] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 1280 / 1280"
+ },
+ {
+  "name": "[1280px /] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "48x44 122x44 94x44 90x44"
+ },
+ {
+  "name": "[1280px /] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[1280px /] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px /] 선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "6.70"
+ },
+ {
+  "name": "[1280px /] 비선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "17.74"
+ },
+ {
+  "name": "[1280px /] 선택/비선택 면 대비 ≥3",
+  "ok": true,
+  "detail": "6.70 (선택 rgb(29, 78, 216) / 비선택 rgb(255, 255, 255)), 굵기 700 vs 500"
+ },
+ {
+  "name": "[1280px /screener] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px /screener] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=조건 스크리닝"
+ },
+ {
+  "name": "[1280px /screener] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[1280px /screener] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 53~97 / main 114"
+ },
+ {
+  "name": "[1280px /screener] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 1280 / 1280"
+ },
+ {
+  "name": "[1280px /screener] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "48x44 122x44 94x44 90x44"
+ },
+ {
+  "name": "[1280px /screener] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[1280px /screener] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px /screener] 선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "6.70"
+ },
+ {
+  "name": "[1280px /screener] 비선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "17.74"
+ },
+ {
+  "name": "[1280px /screener] 선택/비선택 면 대비 ≥3",
+  "ok": true,
+  "detail": "6.70 (선택 rgb(29, 78, 216) / 비선택 rgb(255, 255, 255)), 굵기 700 vs 500"
+ },
+ {
+  "name": "[1280px /stocks] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px /stocks] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=종목 검색"
+ },
+ {
+  "name": "[1280px /stocks] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[1280px /stocks] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 53~97 / main 114"
+ },
+ {
+  "name": "[1280px /stocks] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 1280 / 1280"
+ },
+ {
+  "name": "[1280px /stocks] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "48x44 122x44 94x44 90x44"
+ },
+ {
+  "name": "[1280px /stocks] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[1280px /stocks] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px /stocks] 선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "6.70"
+ },
+ {
+  "name": "[1280px /stocks] 비선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "17.74"
+ },
+ {
+  "name": "[1280px /stocks] 선택/비선택 면 대비 ≥3",
+  "ok": true,
+  "detail": "6.70 (선택 rgb(29, 78, 216) / 비선택 rgb(255, 255, 255)), 굵기 700 vs 500"
+ },
+ {
+  "name": "[1280px /watchlist] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px /watchlist] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=관심종목"
+ },
+ {
+  "name": "[1280px /watchlist] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[1280px /watchlist] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 53~97 / main 114"
+ },
+ {
+  "name": "[1280px /watchlist] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 1280 / 1280"
+ },
+ {
+  "name": "[1280px /watchlist] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "48x44 122x44 94x44 90x44"
+ },
+ {
+  "name": "[1280px /watchlist] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[1280px /watchlist] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px /watchlist] 선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "6.70"
+ },
+ {
+  "name": "[1280px /watchlist] 비선택 글자 대비 ≥4.5",
+  "ok": true,
+  "detail": "17.74"
+ },
+ {
+  "name": "[1280px /watchlist] 선택/비선택 면 대비 ≥3",
+  "ok": true,
+  "detail": "6.70 (선택 rgb(29, 78, 216) / 비선택 rgb(255, 255, 255)), 굵기 700 vs 500"
+ },
+ {
+  "name": "[1280px /about] 4개 메뉴 글자",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px /about] 선택 표시 개수/대상",
+  "ok": true,
+  "detail": "선택=없음"
+ },
+ {
+  "name": "[1280px /about] 고정 위치 아님(position≠fixed)",
+  "ok": true,
+  "detail": "static"
+ },
+ {
+  "name": "[1280px /about] 내비가 본문 위",
+  "ok": true,
+  "detail": "nav 53~97 / main 114"
+ },
+ {
+  "name": "[1280px /about] 가로 넘침 없음",
+  "ok": true,
+  "detail": "scrollWidth 1280 / 1280"
+ },
+ {
+  "name": "[1280px /about] 터치 대상 ≥44px",
+  "ok": true,
+  "detail": "48x44 122x44 94x44 90x44"
+ },
+ {
+  "name": "[1280px /about] 메뉴 글자 한 줄(줄바꿈 없음)",
+  "ok": true,
+  "detail": "44,44,44,44"
+ },
+ {
+  "name": "[1280px /about] 메뉴가 화면 밖으로 안 나감",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "[1280px] 키보드 포커스 윤곽선",
+  "ok": true,
+  "detail": "solid 2px"
+ },
+ {
+  "name": "[1280px] 화면 하단 고정 막대 없음",
+  "ok": true,
+  "detail": "없음"
+ }
+]

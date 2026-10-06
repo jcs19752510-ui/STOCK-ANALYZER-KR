@@ -22,9 +22,10 @@ function isActive(pathname: string, href: string): boolean {
 }
 
 /**
- * 데스크톱 상단 탭 / 모바일 하단 탭바(04-ux-design.md §4 `GlobalNav`, §6).
- * 동일한 DOM을 유지하고 CSS 미디어쿼리로 위치·배치만 전환한다 — 두 개의
+ * 상단 탭(04-ux-design.md §4 `GlobalNav`, §6). 모바일은 머리글 안의 전체 폭 한 줄, 데스크톱은 머리글 한 줄 안(2026-10-06: 모바일 하단 탭바를 상단으로 이동).
+ * 동일한 DOM을 유지하고 CSS 미디어쿼리로 배치만 전환한다 — 두 개의
  * 별도 내비게이션을 렌더링하면 스크린리더/탭 순서가 중복되므로 피한다.
+ * 현재 화면은 `aria-current="page"`로 표시하고 CSS가 면 채움으로 드러낸다.
  */
 export function GlobalNav() {
   const pathname = usePathname();
