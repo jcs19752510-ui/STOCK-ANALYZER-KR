@@ -32,6 +32,7 @@
 - 완료(DEC-089·090·091, 2026-10-06): **장중 재계산** — 로컬 모드 관리자 전용 "장중 기준" 스크리닝. 계약서 `docs/stock-detail/10-intraday-rescreen-contract.md`(§7 = DEC-090 일봉 보충). 백엔드: `services/public_api/live_screen/*`(재계산·일봉 보충·스냅샷·SQL 가상 테이블), `api/local_screen.py`(`/api/v1/local/screen`, `/screen/pattern`), 우선 순환 `MarketSnapshotPoller.set_priority`. 프런트: `frontend/src/lib/liveScreen/*`와 스크리닝 화면 전환(결과서 `docs/qa/2026-10-06-intraday-rescreen-screen-test-result.md`). 백엔드 결과서 `docs/qa/2026-10-06-intraday-rescreen-backend-test-result.md`, 사용 가이드 `docs/ops/local-live-screen-guide.md`.
   - **사용자가 장중에 확인해야 하는 것**: `py -3.12 scripts\kis_daily_price_smoke_test.py`(증권사 일봉 응답·발행 일봉과 종가 일치 확인). 실제 증권사 응답 필드·수정주가 기준은 개발 환경에서 확인할 수 없다. `[확인필요]`가 나오면 그 출력을 그대로 받아 보정한다. 보충 첫 실행은 전 종목 기준 수 분 걸린다.
   - 알려진 한계: 거래량 부분값(보정 없음), PER·PBR·시총 일봉 고정, 정규장 전 시간외 값 부분적, 재계산 2,800종목 약 2초(CPU), 이력 적재 하루 1회 약 2초.
+  - 열린 항목(사용자 판단): ① 사이트 하단 공통 고지 "실시간 시세가 아닙니다"와 로컬 관리자 화면의 "(실시간)" 표시가 어긋남(기존 법적 고지라 바꾸지 않음). ② 배너의 "제외 N종목"과 "불일치 N종목" 문구를 "불일치는 제외의 일부"로 정리할지.
   - 다음 후보: 종목 상세의 장중 값 정합(2단계), 거래량 시간대 보정, 보충 결과 디스크 캐시(재시작 시 재수집 방지).
 - 한계: 증권사 웹소켓 구독 한도 40건(종목 20개)이라 틱 단위 실시간은 동시 20종목. 실제 증권사 응답은 개발 환경에서 시험 불가 → 사용자가 장중에 `kis_ws_smoke_test.py`로 확인.
 - 시험 환경: 임시 PG를 다시 띄우는 법 — `mkdir -p /tmp/pgsock && chown postgres /tmp/pgsock; su postgres -c "/usr/lib/postgresql/16/bin/pg_ctl -D /var/tmp/pgd2 -o '-p 5544 -k /tmp/pgsock' -l /var/tmp/pgd2.log start"`, 그다음 `source /tmp/claude-0/pgenv.sh; export PATH=/var/tmp/venv312/bin:/usr/lib/postgresql/16/bin:$PATH`. 시스템 파이썬은 3.11이라 `/var/tmp/venv312/bin/python`(3.12)을 쓴다.
