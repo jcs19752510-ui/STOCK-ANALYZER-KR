@@ -18,7 +18,7 @@
 - 검증(전환 후): `/auth/status` web ok·api ok, 로그인 401(틀린 비번), 비로그인 차단 확인. 첫 접속(콜드스타트)은 30초대 소요 가능.
 
 ## 결정 이력
-- DEC-074 회원제 로그인(가입→관리자 승인, DB 역할, 투자자 탭 관리자 전용) / DEC-075 로컬 서버에도 로그인 적용(`scripts/setup_local_auth.py`) / DEC-076 "서버를 깨우는 중" 팝업 제거 / DEC-077 로그인 콜드스타트 재시도 / **DEC-078 웹+API 1개 서비스 통합**.
+- DEC-074 회원제 로그인(가입→관리자 승인, DB 역할, 투자자 탭 관리자 전용) / DEC-075 로컬 서버에도 로그인 적용(`scripts/setup_local_auth.py`) / DEC-076 "서버를 깨우는 중" 팝업 제거 / DEC-077 로그인 콜드스타트 재시도 / **DEC-078 웹+API 1개 서비스 통합**. / DEC-085~088 준실시간 시세·조건검색 화면 / **DEC-089 장중 재계산, DEC-090 증권사 일봉 보충(사용자가 A안 승인), DEC-091 구현 세부**(상세는 `docs/harness/decisions.md`).
 - 결과서: `docs/qa/2026-10-05-auth-redesign-test-result.md`, `docs/qa/2026-10-06-unified-service-test-result.md`. 절차서: `docs/ops/unified-service-guide.md`.
 
 ## 진행 중 개발: 본인 전용 실시간 시세 (DEC-084, 2026-10-06 시작)
@@ -29,8 +29,10 @@
 - 완료(DEC-086): 백엔드 개선 3건(거래일 변경 snapshot, 이전 거래일 분봉 혼합 방지, snapshot quote를 REST로 채움). 결과서 `docs/qa/2026-10-06-realtime-backend-fixes-test-result.md`.
 - 진행(DEC-087): HTS 조건검색 연결 확인 도구 `scripts/kis_psearch_smoke_test.py` 완성(가이드 `docs/ops/local-psearch-guide.md`). **사용자가 장중에 실행해 결과(응답 필드·변화 간격·지연) 전달 → 그 결과로 사이트 "증권사 조건검색" 화면 개발 여부 결정(견적 약 4일)**. `.env`에 `KIS_HTS_ID` 필요.
 - 완료(DEC-088): 증권사 조건검색 화면 `/screener/broker`(로컬 모드 관리자만, `.env`에 `KIS_HTS_ID` 필요)와 API `/api/v1/local/psearch/{conditions,results}` — 결과서 `docs/qa/2026-10-06-psearch-integration-test-result.md`. **장중 실제 응답 미확인**: 사용자가 `kis_psearch_smoke_test.py`를 장중에 실행해 결과(응답 필드·변화 간격)를 전달해야 화면 신뢰도 판단·보정 가능. 사용 후 API 서버 재기동 필수.
-- 착수(DEC-089, 2026-10-06 보류 해제): 장중 재계산 — 계약서 `docs/stock-detail/10-intraday-rescreen-contract.md`(확정), 견적 `08-intraday-rescreen-estimate.md`. **현재 상태: 계약서만 있고 코드는 아직 없다.** 구현 대상: `services/public_api/live_screen/*`, `api/local_screen.py`, `MarketSnapshotPoller.set_priority`, 화면 "장중 기준" 전환. 예정: `basis-wording.mjs` 재실행(DB 스택).
-- **선행 조건 미정의(DEC-090)**: 계약서 §0-7이 "데이터 지연 해소(DEC-090)"를 선행으로 두지만 `decisions.md`에 DEC-090 항목이 없다. 일봉 원천이 공공데이터포털(+1영업일 공개, DEC-058)이라 장중에는 발행 일봉이 직전 거래일보다 하루 이상 뒤처지는 날이 많고, 그러면 `LIVE_BASE_STALE`로 재계산이 거부된다. 해소 방법(예: 증권사 일봉으로 직전 거래일 보충)은 사용자 결정이 필요하다.
+- 완료(DEC-089·090·091, 2026-10-06): **장중 재계산** — 로컬 모드 관리자 전용 "장중 기준" 스크리닝. 계약서 `docs/stock-detail/10-intraday-rescreen-contract.md`(§7 = DEC-090 일봉 보충). 백엔드: `services/public_api/live_screen/*`(재계산·일봉 보충·스냅샷·SQL 가상 테이블), `api/local_screen.py`(`/api/v1/local/screen`, `/screen/pattern`), 우선 순환 `MarketSnapshotPoller.set_priority`. 프런트: `frontend/src/lib/liveScreen/*`와 스크리닝 화면 전환(결과서 `docs/qa/2026-10-06-intraday-rescreen-screen-test-result.md`). 백엔드 결과서 `docs/qa/2026-10-06-intraday-rescreen-backend-test-result.md`, 사용 가이드 `docs/ops/local-live-screen-guide.md`.
+  - **사용자가 장중에 확인해야 하는 것**: `py -3.12 scripts\kis_daily_price_smoke_test.py`(증권사 일봉 응답·발행 일봉과 종가 일치 확인). 실제 증권사 응답 필드·수정주가 기준은 개발 환경에서 확인할 수 없다. `[확인필요]`가 나오면 그 출력을 그대로 받아 보정한다. 보충 첫 실행은 전 종목 기준 수 분 걸린다.
+  - 알려진 한계: 거래량 부분값(보정 없음), PER·PBR·시총 일봉 고정, 정규장 전 시간외 값 부분적, 재계산 2,800종목 약 2초(CPU), 이력 적재 하루 1회 약 2초.
+  - 다음 후보: 종목 상세의 장중 값 정합(2단계), 거래량 시간대 보정, 보충 결과 디스크 캐시(재시작 시 재수집 방지).
 - 한계: 증권사 웹소켓 구독 한도 40건(종목 20개)이라 틱 단위 실시간은 동시 20종목. 실제 증권사 응답은 개발 환경에서 시험 불가 → 사용자가 장중에 `kis_ws_smoke_test.py`로 확인.
 - 시험 환경: 임시 PG를 다시 띄우는 법 — `mkdir -p /tmp/pgsock && chown postgres /tmp/pgsock; su postgres -c "/usr/lib/postgresql/16/bin/pg_ctl -D /var/tmp/pgd2 -o '-p 5544 -k /tmp/pgsock' -l /var/tmp/pgd2.log start"`, 그다음 `source /tmp/claude-0/pgenv.sh; export PATH=/var/tmp/venv312/bin:/usr/lib/postgresql/16/bin:$PATH`. 시스템 파이썬은 3.11이라 `/var/tmp/venv312/bin/python`(3.12)을 쓴다.
 

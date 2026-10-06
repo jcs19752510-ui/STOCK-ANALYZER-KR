@@ -74,6 +74,7 @@ interface LiveMeta {
     filled: number;               // 보충에 성공해 재계산에 쓰인 종목 수
     excluded: number;             // 보충 실패·교차검증 불일치로 결과에서 뺀 종목 수(숨기지 않고 표시)
     mismatched: number;           // 겹치는 날짜의 증권사 종가가 발행 일봉과 달라 뺀 수(수정주가 불일치 방어)
+    pending: number;              // 아직 보충 결과가 정해지지 않은 종목 수(보충 중). excluded와 구분해서 표시
     source: "kis_daily_price" | null;
   };
   changes: { entered: string[]; left: string[] } | null; // 직전 스냅샷 대비 이 페이지 조건 결과의 편입·이탈 종목코드(첫 계산이면 null; 최대 100개씩)
@@ -81,7 +82,7 @@ interface LiveMeta {
 ```
 | 상황 | HTTP | error.code |
 |---|---|---|
-| 발행 일봉이 직전 거래일보다 뒤처졌고 증권사 일봉 보충이 90% 미만 | 503 | `LIVE_BASE_FILLING` — "직전 거래일 일봉을 증권사에서 보충하는 중입니다(done/total). 잠시 후 다시 시도" (`meta.live`가 아니라 `error.details`에 진행 상황) |
+| 발행 일봉이 직전 거래일보다 뒤처졌고 증권사 일봉 보충이 90% 미만 | 503 | `LIVE_BASE_FILLING` — "직전 거래일 일봉을 증권사에서 보충하는 중입니다(done/total). 잠시 후 다시 시도" (진행 상황은 `error.details = {done, total, gap_days}` — 이 오류에만 있는 선택 필드) |
 | 발행 일봉이 직전 거래일보다 5거래일 넘게 뒤처짐 | 409 | `LIVE_BASE_STALE` — "일봉 데이터가 직전 거래일(YYYY-MM-DD)보다 5거래일 넘게 뒤처져 장중 재계산을 쓸 수 없습니다. (현재 YYYY-MM-DD)" |
 | 시세를 아직 한 바퀴도 못 모음 | 503 | `LIVE_QUOTES_NOT_READY` |
 | 장 시간 밖(평일 08:00~20:00 KST 밖) | 200 | 거부하지 않는다. 시세가 마지막 값이므로 `stale`로 알린다 |
@@ -117,4 +118,5 @@ poller.priority_cycle_seconds -> float | None   # 우선 순환 최근 한 바�
 - 보충 후 재계산 규칙: ① 이력 = 발행 일봉 + 보충 일봉(날짜 오름차순, 중복은 발행 값 우선) ② E 이력이 없는 종목은 `excluded` ③ 시세(오늘 행)가 있고 오늘이 거래일이며 E < 오늘이면 오늘 행을 붙여 `basis:"live"` ④ 시세가 없으면 E까지의 이력으로 재계산해 `basis:"daily"`(E 기준, 발행 P 값이 아님) ⑤ E ≥ 오늘(마감 뒤·휴장일)이면 오늘 행을 붙이지 않는다 — 시세는 무시하고 `basis:"daily"` ⑥ P == E(뒤처지지 않음)이면 보충 없이 §1과 동일(`gap_days=0`, 시세 없는 종목은 발행 행 그대로).
 - 등락률 순위 백분위(`return_rank_pct`): 보충·재계산 기준일의 전 종목 등락률로 같은 `rank_percentile` 함수를 다시 돌린다(커버율 조건은 §0-3 그대로: 오늘 행 기준 ≥90%일 때 live, 아니면 E 기준 daily).
 - PER·PBR·시가총액·백분위·사유는 발행 행(P) 값 그대로이며 화면에 "일봉(YYYY-MM-DD) 기준"으로 알린다(`fixed_daily`).
+- 구현 메모(DEC-091): 이력은 250종목씩 나눠 읽고, `ApiError.details`는 없으면 응답에 키를 넣지 않는다. 보충 중에도 일봉이 준비된 종목부터 결과에 들어가며(진행 ≥90%), 아직 정해지지 않은 종목은 `pending`, 실패·불일치는 `excluded`로 센다.
 - 시험 한계: 실제 증권사 응답 필드는 이 환경에서 확인할 수 없다(앱키 없음). 모의 서버 + 공식 샘플의 필드명으로 작성하고, 결과서에 "장중 사용자 PC 확인 필요"로 남긴다. `scripts/kis_daily_price_smoke_test.py`로 사용자가 한 번에 확인할 수 있게 한다(교차검증 일치율 표시).
