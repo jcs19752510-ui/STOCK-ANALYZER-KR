@@ -37,6 +37,13 @@ export function intradayErrorMessage(code: string): string {
     case "INTRADAY_RATE_LIMITED":
     case "RATE_LIMITED":
       return "증권사 호출 한도를 초과했습니다. 잠시 후 자동으로 다시 시도합니다.";
+    case "REALTIME_CAPACITY":
+      return "실시간으로 동시에 볼 수 있는 종목(20개)을 넘었습니다. 다른 종목 화면을 닫은 뒤 다시 열어 주세요.";
+    case "FORBIDDEN":
+      return "실시간 시세를 볼 권한이 없습니다. 관리자 계정으로 로그인했는지 확인하세요.";
+    case "NOT_FOUND":
+    case "STREAM_UNAVAILABLE":
+      return "실시간 연결을 사용할 수 없습니다. 개인 로컬 모드 설정(LOCAL_INTRADAY_ENABLED)과 접속 주소를 확인하세요.";
     case "NETWORK_ERROR":
       return "API 서버에 연결하지 못했습니다.";
     default:

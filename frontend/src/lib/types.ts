@@ -268,6 +268,8 @@ export interface IntradayTick {
   change_pct: number | null;
   volume: number;
   strength: number | null;
+  /** 실시간 스트림이 붙여 주는 당일 누적 거래량(REST 체결에는 없다). */
+  acml_volume?: number | null;
 }
 
 export interface IntradayTicksData {

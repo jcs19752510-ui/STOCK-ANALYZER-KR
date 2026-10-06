@@ -1989,6 +1989,65 @@ main {
   font-size: 13px;
 }
 
+/* ── 실시간 연결 상태 배지·현재가 강조(DEC-084) ─────────────────────────────────────── */
+.live-badge {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: var(--space-2) var(--space-3) 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: 8px;
+  background: var(--color-surface-subtle);
+  color: var(--color-text-primary);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.live-badge__dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--color-text-secondary);
+}
+
+.live-badge--ok .live-badge__dot {
+  background: var(--color-brand-primary);
+}
+
+.live-badge--warn .live-badge__dot {
+  background: var(--color-semantic-warning);
+}
+
+.live-badge--down .live-badge__dot {
+  background: var(--color-semantic-error);
+}
+
+.live-badge__time {
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* 글자 대비가 변하지 않도록 배경을 칠하지 않고, 숫자 둘레의 고리만 서서히 지운다 */
+  .quote-flash {
+    border-radius: 4px;
+    animation: quote-flash 0.45s ease-out;
+  }
+
+  @keyframes quote-flash {
+    from {
+      box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 80%, transparent);
+    }
+
+    to {
+      box-shadow: 0 0 0 3px transparent;
+    }
+  }
+}
+
 .orderbook__table {
   width: 100%;
   border-collapse: collapse;
