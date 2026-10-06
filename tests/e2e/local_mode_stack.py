@@ -56,6 +56,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", choices=("on", "off"), default="on")
     parser.add_argument("--no-build", action="store_true")
+    parser.add_argument("--dev", action="store_true", help="웹을 개발 서버(next dev)로 띄운다(사용자 PC와 같은 방식). 빌드는 건너뛰고 QA_SCRIPT 환경변수의 스크립트를 실행")
     args = parser.parse_args()
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     for port in (API_PORT, WEB_PORT, KIS_PORT, WS_PORT):
@@ -130,7 +131,7 @@ def main() -> int:
             assert dotenv.get("UNRELATED_LOCAL_KEY") == "keep-me", "기존 로컬 값이 사라졌습니다"
             web_env["NEXT_PUBLIC_API_BASE_URL"] = f"http://127.0.0.1:{API_PORT}"
 
-            if not args.no_build:
+            if not args.no_build and not args.dev:
                 print(f"[local-e2e] 웹 빌드({args.mode}) …", flush=True)
                 subprocess.run(["npm", "run", "build"], cwd=REPO / "frontend", env=web_env, check=True,
                                stdout=(LOG_DIR / "local-web-build.log").open("w"), stderr=subprocess.STDOUT)
@@ -141,10 +142,10 @@ def main() -> int:
                                           stdout=(LOG_DIR / "local-ws.log").open("w"), stderr=subprocess.STDOUT))
             procs.append(subprocess.Popen([sys.executable, "scripts/run_public_api.py"], cwd=REPO, env=api_env, start_new_session=True,
                                           stdout=(LOG_DIR / "local-api.log").open("w"), stderr=subprocess.STDOUT))
-            procs.append(subprocess.Popen(["npx", "next", "start", "-H", "127.0.0.1", "-p", str(WEB_PORT)], cwd=REPO / "frontend", env=web_env, start_new_session=True,
+            procs.append(subprocess.Popen(["npx", "next", "dev" if args.dev else "start", "-H", "127.0.0.1", "-p", str(WEB_PORT)], cwd=REPO / "frontend", env=web_env, start_new_session=True,
                                           stdout=(LOG_DIR / "local-web.log").open("w"), stderr=subprocess.STDOUT))
             wait_http(f"http://127.0.0.1:{API_PORT}/api/v1/live")
-            wait_http(f"http://127.0.0.1:{WEB_PORT}/screener")
+            wait_http(f"http://127.0.0.1:{WEB_PORT}/login", timeout=180 if args.dev else 90)
             print("[local-e2e] 서버 준비 완료, 브라우저 시험 시작", flush=True)
 
             env = {
@@ -157,7 +158,7 @@ def main() -> int:
                 "QA_PW2": OTHER_PW,
                 "QA_OUT": os.environ.get("QA_OUT", str(REPO / "docs" / "qa" / "2026-10-05")),
             }
-            code = subprocess.run(["node", "scripts/qa/local-login-e2e.mjs"], cwd=REPO / "frontend", env=env).returncode
+            code = subprocess.run(["node", os.environ.get("QA_SCRIPT", "scripts/qa/local-login-e2e.mjs")], cwd=REPO / "frontend", env=env).returncode
     finally:
         for p in procs:
             if p.poll() is None:
