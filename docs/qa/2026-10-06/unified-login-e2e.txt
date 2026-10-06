@@ -1,0 +1,323 @@
+PASS  A 비로그인 /: 로그인 화면으로 이동  → /login
+PASS  A 로그인 화면 응답 헤더: 색인 금지·캐시 금지·프레임 금지·sniff 금지  {"r":"noindex, nofollow","c":"private, no-store"}
+PASS  A 비로그인 /stocks: 로그인 화면으로 이동  → /login?next=%2Fstocks
+PASS  A 비로그인 /screener: 로그인 화면으로 이동  → /login?next=%2Fscreener
+PASS  A 비로그인 /watchlist: 로그인 화면으로 이동  → /login?next=%2Fwatchlist
+PASS  A 비로그인 /about: 로그인 화면으로 이동  → /login?next=%2Fabout
+PASS  A 비로그인 /members: 로그인 화면으로 이동  → /login?next=%2Fmembers
+PASS  A 비로그인 /admin/members: 로그인 화면으로 이동  → /login?next=%2Fadmin%2Fmembers
+PASS  A 비로그인 /stocks/T00001: 로그인 화면으로 이동  → /login?next=%2Fstocks%2FT00001
+PASS  A 비로그인 /screener/pattern: 로그인 화면으로 이동  → /login?next=%2Fscreener%2Fpattern
+PASS  A 로그인 화면 페이지 오류 없음  
+PASS  A 로그인 화면에는 회원 메뉴가 없다  
+PASS  A 비로그인 대행 /api/v1/market-summary: 401 AUTH_REQUIRED  status=401
+PASS  A 비로그인 대행 /api/v1/stocks?query=T0: 401 AUTH_REQUIRED  status=401
+PASS  A 비로그인 대행 /api/v1/screen: 401 AUTH_REQUIRED  status=401
+PASS  A 비로그인 대행 /api/v1/stocks/T00001/metrics: 401 AUTH_REQUIRED  status=401
+PASS  A 비로그인 대행 /api/v1/stocks/quotes?codes=T00001: 401 AUTH_REQUIRED  status=401
+PASS  A /auth/me 비로그인 401  
+PASS  A /healthz: 로그인 없이 200 'ok' (Render 상태 검사용, 리다이렉트 없음)  200
+PASS  A robots.txt는 로그인 없이 읽히고 전체 색인을 막는다  User-Agent: * Disallow: / 
+PASS  A 로그인 요청: 다른 사이트 Origin → 403(CSRF)  
+PASS  A 로그인 요청: Origin 없음 → 403  
+PASS  A 로그인 요청: JSON이 아님 → 415  
+PASS  A 로그인 요청: 깨진 JSON → 400  
+PASS  A 로그인 요청: 비밀번호 없음 → 400  
+PASS  A 로그인 요청: 아이디 65자 → 400  
+PASS  A 로그인 요청: 본문 과대 → 413  
+PASS  A 로그아웃 요청: 다른 사이트 Origin → 403  
+PASS  A 세션 갱신 요청: 다른 사이트 Origin → 403  
+PASS  A 세션 갱신: 쿠키 없음 → 401  
+PASS  A API 직접 호출 /api/v1/market-summary: 토큰 없이 401  
+PASS  A API 직접 호출 /api/v1/market-summary: 틀린 토큰 401  
+PASS  A API 직접 호출 /api/v1/stocks?query=T0: 토큰 없이 401  
+PASS  A API 직접 호출 /api/v1/stocks?query=T0: 틀린 토큰 401  
+PASS  A API 직접 호출 /api/v1/screen: 토큰 없이 401  
+PASS  A API 직접 호출 /api/v1/screen: 틀린 토큰 401  
+PASS  A API 직접 호출 /docs: 토큰 없이 401  
+PASS  A API 직접 호출 /docs: 틀린 토큰 401  
+PASS  A API 직접 호출 /openapi.json: 토큰 없이 401  
+PASS  A API 직접 호출 /openapi.json: 틀린 토큰 401  
+PASS  A API 직접 호출 /redoc: 토큰 없이 401  
+PASS  A API 직접 호출 /redoc: 틀린 토큰 401  
+PASS  A API 직접 호출 /api/v1/internal/admin/members: 토큰 없이 401  
+PASS  A API 직접 호출 /api/v1/internal/admin/members: 틀린 토큰 401  
+PASS  A API 직접 호출 /api/v1/internal/auth/signup: 토큰 없이 401  
+PASS  A API 직접 호출 /api/v1/internal/auth/signup: 틀린 토큰 401  
+PASS  A API 직접 호출 /api/v1/health: 토큰 없이 401  
+PASS  A API 직접 호출 /api/v1/health: 틀린 토큰 401  
+PASS  A API 직접 호출 /api/v1/live: 헬스체크는 열려 있다  
+PASS  A API 직접 호출: 맞는 토큰이면 데이터 응답(웹 서버만 아는 열쇠)  
+PASS  A API: 문서 경로는 토큰이 있어도 존재하지 않는다  
+PASS  B 로그인 화면 360px: 라벨(아이디·비밀번호)  아이디,비밀번호,아이디 저장,로그인 상태 유지(30일)
+PASS  B 로그인 화면 360px: 자동완성 속성  
+PASS  B 로그인 화면 360px: 안내 문구(가입 후 관리자 승인)  
+PASS  B 로그인 화면 360px: 가로 넘침 없음  
+PASS  B 로그인 화면 360px: 입력칸·버튼 높이 44px 이상  44,44,44
+PASS  B 로그인 화면 360px: axe 위반 없음  
+PASS  B 로그인 화면 1280px: 라벨(아이디·비밀번호)  아이디,비밀번호,아이디 저장,로그인 상태 유지(30일)
+PASS  B 로그인 화면 1280px: 자동완성 속성  
+PASS  B 로그인 화면 1280px: 안내 문구(가입 후 관리자 승인)  
+PASS  B 로그인 화면 1280px: 가로 넘침 없음  
+PASS  B 로그인 화면 1280px: 입력칸·버튼 높이 44px 이상  44,44,44
+PASS  B 로그인 화면 1280px: axe 위반 없음  
+PASS  B 틀린 비밀번호: 같은 안내 문구, 이동 없음  아이디 또는 비밀번호가 올바르지 않습니다. 여러 번 틀
+PASS  B 틀린 비밀번호: 비밀번호 칸이 비워지고 그 칸에 포커스  
+PASS  B 없는 아이디도 같은 문구  
+PASS  B 사용 중지 회원은 맞는 비밀번호일 때만 '사용 중지' 안내(DEC-074), 이동 없음  
+PASS  B 실패한 로그인은 쿠키를 만들지 않는다  
+PASS  B 5회 실패 뒤 맞는 비밀번호도 같은 문구로 거부(잠김)  
+PASS  B 잠금이 DB에 기록됨(잠금 단계 1, 해제 시각 있음)  
+PASS  B 로그인 기록: 실패 5건 + 잠김 1건, 비밀번호는 없음  
+PASS  C 비로그인 /stocks → /login?next=%2Fstocks  
+PASS  C 로그인 성공: 원래 가려던 /stocks로 이동  
+PASS  C 세션 쿠키: HttpOnly, Path=/, SameSite=Lax  {"h":true,"s":false,"ss":"Lax","p":"/"}
+PASS  C 세션 쿠키: 수명 8시간 이하  28800.313493013382s
+PASS  C 세션 쿠키: 값에 비밀번호·해시 없음, JS(document.cookie)로 읽을 수 없음  
+PASS  C 세션 내용: 회원 id·아이디·이름·시각만  
+PASS  C 회원 메뉴(관리자): 이름·회원 관리·로그아웃  김철수님 회원 관리 로그아웃 모든 기기에서 로그아웃
+PASS  C 로그인 후 홈(서버가 API 호출): 시장 요약 표시  
+PASS  C 로그인 후 /login 접근: 이미 로그인했으면 홈으로  
+PASS  C 열린 리다이렉트: 로그인 상태에서 next=외부 주소 → 외부로 가지 않는다  
+PASS  C 열린 리다이렉트: next=//외부 → 외부로 가지 않는다  
+PASS  C 브라우저는 API 서버(4321)를 직접 부르지 않는다(웹 서버 경로만)  http://localhost:4322
+PASS  C 대행 /api/v1/market-summary: 200 + 봉투  200
+PASS  C 대행 응답 헤더: no-store, JSON  
+PASS  C 대행 /api/v1/stocks 검색: 200  200
+PASS  C 대행 차단 개인 로컬 모드 경로(/api/v1/local/status): 404  404
+PASS  C 대행 차단 내부 관리자 경로(/api/v1/internal/admin/members): 404  404
+PASS  C 대행 차단 내부 관리자 작업 경로(/api/v1/internal/admin/action): 404  404
+PASS  C 대행 차단 내부 로그인 경로(/api/v1/internal/auth/login): 404  404
+PASS  C 대행 차단 헬스체크(/api/v1/live): 404  404
+PASS  C 대행 차단 헬스(DB)(/api/v1/health): 404  404
+PASS  C 대행 차단 허용 목록 밖 종목 경로(/api/v1/stocks/T00001): 404  404
+PASS  C 대행 차단 경로 탈출 시도(/api/v1/stocks/T00001/../../internal/members): 404  404
+PASS  C 대행 경로는 조회(GET)만: POST → 405  405
+PASS  C 대행: 과도하게 긴 쿼리 → 400  400
+PASS  C 옛 /members 주소는 관리자 회원 관리로 이동  
+PASS  C 회원 관리: 모든 상태(승인 대기·활성·사용 중지) 회원이 보인다  wait 대기자 일반 승인 대기 없음 0 승인 거절 | kim (나) 김철수 관리자 활성 2026. 10. 06. 09:44 1 이름 수정 비밀번호 초기화 모든 기기 로그아웃 | lee 이영희 일반 활성 없음 0 관리자로 이름 수정 비밀번호 초기화 모든 기기 로그아웃 사용 중지 삭제 | off 퇴사자 일반 사용 중지 없음 0 관리자로 이름 수정 비밀번호 초기화 모든 기기 로그아웃 다시 사용 삭제 | evil <script>window.__xss=1</script> 일반 활성 없음 0 관리자로 이름 수정 비밀번호 초기화 모든 기기 로그아웃 사용 중지 삭제 | lock 잠금시험 일반 활성 · 잠김 없음 0 관리자로 이름 수정 비밀번호 초기화 모든 기기 로그아웃 사용 중지 삭제 | park 박민수 일반 활성 없음 0 관리자로 이름 수정 비밀번호 초기화 모든 기기 로그아웃 사용 중지 삭제
+PASS  C 회원 관리: 열 제목(아이디·이름·권한·상태·마지막 로그인·로그인 중·작업), 해시 없음  
+PASS  C 회원 관리: 이름의 스크립트는 글자로만 보이고 실행되지 않는다  
+PASS  C 회원 관리: 본인(kim) 행에는 사용 중지·삭제·권한 변경 버튼이 없다  
+PASS  C 회원 관리 360px: 페이지 가로 넘침 없음(표는 안쪽 스크롤)  
+PASS  C 회원 관리 360px: axe 위반 없음  
+PASS  C 회원 관리 1280px: 페이지 가로 넘침 없음(표는 안쪽 스크롤)  
+PASS  C 회원 관리 1280px: axe 위반 없음  
+PASS  C 로그아웃: 로그인 화면으로 이동, 쿠키 삭제  
+PASS  C 로그아웃 뒤 홈 접근 → 로그인  
+PASS  C 로그아웃 뒤 대행 경로 → 401  
+PASS  C 로그아웃 뒤 '뒤로 가기'로 이전 화면 데이터가 보이지 않는다  
+PASS  C 로그인 흐름 페이지 오류 없음  
+PASS  D 직접 만든 유효한 쿠키(서명 일치)는 통과  /
+PASS  D 쿠키 서명 변조: 로그인 화면으로  /login
+PASS  D 쿠키 다른 비밀 키로 서명: 로그인 화면으로  /login
+PASS  D 쿠키 내용 변조(아이디 바꿈): 로그인 화면으로  /login
+PASS  D 쿠키 만료된 쿠키: 로그인 화면으로  /login
+PASS  D 쿠키 수명이 너무 긴 쿠키: 로그인 화면으로  /login
+PASS  D 쿠키 쓰레기 값: 로그인 화면으로  /login
+PASS  D 원시 쿠키 빈 값: 화면 요청은 로그인으로 보낸다(307)  307
+PASS  D 원시 쿠키 빈 값: 대행 경로는 401  401
+PASS  D 원시 쿠키 아주 긴 값(6000자): 화면 요청은 로그인으로 보낸다(307)  307
+PASS  D 원시 쿠키 아주 긴 값(6000자): 대행 경로는 401  401
+PASS  D 원시 쿠키 점이 많은 값: 화면 요청은 로그인으로 보낸다(307)  307
+PASS  D 원시 쿠키 점이 많은 값: 대행 경로는 401  401
+PASS  D 원시 쿠키 base64 아닌 값: 화면 요청은 로그인으로 보낸다(307)  307
+PASS  D 원시 쿠키 base64 아닌 값: 대행 경로는 401  401
+PASS  D 대행 경로 + 쿠키 서명 변조: 401  401
+PASS  D 대행 경로 + 쿠키 다른 비밀 키로 서명: 401  401
+PASS  D 대행 경로 + 쿠키 내용 변조(아이디 바꿈): 401  401
+PASS  D 대행 경로 + 쿠키 만료된 쿠키: 401  401
+PASS  D 대행 경로 + 쿠키 수명이 너무 긴 쿠키: 401  401
+PASS  D 5분 지난 쿠키: 갱신 화면(/auth/renew)을 거쳐 원래 화면으로  /auth/renew>/auth/renew>/stocks>/stocks
+PASS  D 갱신 뒤 쿠키: 확인 시각만 새로워지고 만료 시각은 그대로(8시간 상한 불변)  chk 경과 1s
+PASS  D 비활성 회원의 쿠키(5분 경과): 갱신 단계에서 로그인 화면으로, '로그인이 만료' 안내  
+PASS  D 비활성 회원: 쿠키가 지워짐  
+PASS  D 비활성 회원의 낡은 쿠키로 대행 경로 호출: 401 + 쿠키 삭제  401
+PASS  D 낡은(5분 경과) 활성 회원 쿠키로 대행 호출: 200 + 갱신된 쿠키  200
+PASS  D 로그인한 회원을 관리자가 비활성화하면 다음 확인(5분 이내)에서 차단된다  
+PASS  D 로그인 뒤 이동: next=https://evil.example.com → 같은 사이트의 홈  http://localhost:4322/
+PASS  D 로그인 뒤 이동: next=//evil.example.com → 같은 사이트의 홈  http://localhost:4322/
+PASS  D 로그인 뒤 이동: next=/login → 같은 사이트의 홈  http://localhost:4322/
+PASS  D 로그인 뒤 이동: next=/auth/session → 같은 사이트의 홈  http://localhost:4322/
+PASS  D 로그인 뒤 이동: next=javascript:alert(1) → 같은 사이트의 홈  http://localhost:4322/
+PASS  D 로그인 뒤 이동: next=/\evil.example.com → 같은 사이트의 홈  http://localhost:4322/
+PASS  E 로그인 요청이 4.5초 넘게 걸려도 '서버를 깨우는 중' 팝업이 뜨지 않음  dialog=0 text=0
+PASS  E 느린 로그인이 끝나면 정상 로그인  
+PASS  G 관리자: 투자자 탭에 수집 값 표(▼1,234 / ▲4,321)  일별 투자자별 순매수 일자 개인 외국인 기관 2026-10-01 ▲4,321 ▲400 – – ▼765 ▼70 2026-09-30 ▼1,234 ▼100 ▲567 ▲50 ▲890 ▲60 순매수(수량 주 · 대금 백만원)
+PASS  G 관리자: 결측 값은 0이 아니라 '–'  
+PASS  G 관리자: 최근 날짜가 위(2026-10-01 → 2026-09-30)  
+PASS  G 관리자: 수집 안내 문구 표시  
+PASS  G 관리자 대행 호출: 200 + no-store + 2행  200
+PASS  G 일반 사용자: 투자자 탭은 '준비 중', 값 없음  
+PASS  G 일반 사용자가 주소를 직접 호출: 403, 값 없음  403
+PASS  G 비로그인 대행 호출: 401  401
+PASS  G API 직접 호출(토큰 없음): 401  401
+PASS  G API 직접 호출(토큰만, 로그인 정보 없음): 403  403
+PASS  G API 직접 호출(일반 사용자의 유효한 세션): 403  403
+PASS  G API 직접 호출(관리자의 유효한 세션): 200  200
+PASS  G 일반 사용자 세션에 관리자 id를 섞어도 403(세션 소유자와 id가 다름)  403
+PASS  G 옛 방식 헤더(아이디·권한)는 아무 효과가 없다(관리자 세션이면 200, 헤더만으로는 403)  
+PASS  G 일반 사용자가 관리자 세션 헤더를 위조해도 403(대행 경로가 브라우저 헤더를 무시)  403
+PASS  H 360px: '아이디 저장' 체크박스 + 라벨 연결 + 안내 문구(비밀번호 미저장·공용 PC 주의)  
+PASS  H 360px: 체크박스 기본값 해제  
+PASS  H 360px: 체크박스 줄 높이 44px 이상(터치)  44
+PASS  H 360px: 가로 넘침 없음  
+PASS  H 360px: 키보드 Tab 순서 아이디 → 비밀번호 → 아이디 저장  
+PASS  H 360px: 스페이스로 체크 전환  
+PASS  H 360px: axe 위반 없음  
+PASS  H 1280px: '아이디 저장' 체크박스 + 라벨 연결 + 안내 문구(비밀번호 미저장·공용 PC 주의)  
+PASS  H 1280px: 체크박스 기본값 해제  
+PASS  H 1280px: 체크박스 줄 높이 44px 이상(터치)  44
+PASS  H 1280px: 가로 넘침 없음  
+PASS  H 1280px: 키보드 Tab 순서 아이디 → 비밀번호 → 아이디 저장  
+PASS  H 1280px: 스페이스로 체크 전환  
+PASS  H 1280px: axe 위반 없음  
+PASS  H 성공 로그인: 비밀번호 관리자 저장 제안 호출(아이디·비밀번호 전달)  ["park"]
+PASS  H 저장 제안이 응답하지 않아도 로그인은 최대 약 1초 지연만으로 완료  
+PASS  H 체크 후 로그인: localStorage에 아이디만 저장  
+PASS  H 비밀번호는 localStorage·sessionStorage·document.cookie 어디에도 없다  [{"login.savedUsername":"park"},{},""]
+PASS  H 재방문: 아이디가 채워지고 '아이디 저장' 체크  
+PASS  H 재방문: 비밀번호 칸은 비어 있고 포커스(비밀번호 관리자가 채움)  
+PASS  H 체크 해제 후 로그인: 저장된 아이디 삭제  
+PASS  H 해제 후 재방문: 아이디 칸 비어 있음  
+PASS  H 틀린 비밀번호: 아이디를 저장하지 않는다  
+PASS  H 틀린 비밀번호: 비밀번호 관리자에 저장 제안하지 않는다  2→2
+PASS  H 변조된 저장값: 채우지 않고 삭제, 스크립트 실행 없음  
+PASS  H 저장소 접근 불가: 오류 없이 로그인 성공  
+PASS  H PasswordCredential 미지원 브라우저: 정상 로그인  
+PASS  I 360px: '로그인 상태 유지(30일)' 체크박스 + 라벨 연결, 기본 해제  
+PASS  I 360px: 안내(30일·공용 PC 금지·로그아웃하면 해제) + aria-describedby 연결  
+PASS  I 360px: 가로 넘침 없음·체크박스 줄 44px 이상  
+PASS  I 360px: Tab 순서 아이디 저장 → 로그인 상태 유지  
+PASS  I 360px: axe 위반 없음  
+PASS  I 1280px: '로그인 상태 유지(30일)' 체크박스 + 라벨 연결, 기본 해제  
+PASS  I 1280px: 안내(30일·공용 PC 금지·로그아웃하면 해제) + aria-describedby 연결  
+PASS  I 1280px: 가로 넘침 없음·체크박스 줄 44px 이상  
+PASS  I 1280px: Tab 순서 아이디 저장 → 로그인 상태 유지  
+PASS  I 1280px: axe 위반 없음  
+PASS  I /auth/login remember="true": 400  400
+PASS  I /auth/login remember=1: 400  400
+PASS  I /auth/login remember=null: 400  400
+PASS  I /auth/login remember=[true]: 400  400
+PASS  I /auth/login remember="yes": 400  400
+PASS  I 유지 미체크: 쿠키 수명 8시간 이하, rm=0, 서버 세션 remember=false/8시간  28800.571223974228s f|28800|f
+PASS  I 유지 체크: 쿠키 수명 약 30일(29.9~30일), rm=1  30일
+PASS  I 유지 체크: 쿠키 속성 HttpOnly·Path=/·SameSite=Lax  
+PASS  I 유지 체크: 서버 세션 remember=true, 수명 정확히 30일(2592000초), 취소 안 됨  t|2592000|f
+PASS  I 유지 체크: 비밀번호·해시는 쿠키에 없다  
+PASS  I 유지 쿠키로 페이지·대행 호출 정상  
+PASS  I 3일 지난 30일 쿠키: 서버 확인 후 통과, 만료 시각은 그대로(연장 없음)  exp 불변=true
+PASS  I 로그아웃: ok + 서버 세션 취소(revoked=true)  {"ok":true,"revoked":true}
+PASS  I 로그아웃: DB 세션 revoked_at 기록  t|2592000|t
+PASS  I 로그아웃: 쿠키 삭제  
+PASS  I [알려진 한계] 로그아웃 직후 5분 안의 쿠키 복사본은 아직 통과(확인 주기 5분)  200
+PASS  I 로그아웃한 세션의 복사본은 확인 주기(5분)가 지나면 거부(401)  401
+PASS  I [시험 대조군] 같은 방식으로 만든 5분 지난 쿠키도 살아 있는 세션이면 통과(위 거부가 형식 오류 때문이 아님을 보장)  
+PASS  I 로그아웃한 세션의 복사본으로 화면 접근: 로그인 화면으로 + '만료' 안내  
+PASS  I 기기마다 서로 다른 세션 id  
+PASS  I 한 기기 로그아웃 후에도 다른 기기 세션은 서버 확인 통과(200)  
+PASS  I 관리자가 세션을 취소하면 다음 서버 확인에서 거부(401)  
+PASS  I 위조/무효 쿠키 서버에서 만료된 30일 세션: 서버 확인에서 거부(401)  
+PASS  I 위조/무효 쿠키 없는 세션 id(서명은 맞음): 서버 확인에서 거부(401)  
+PASS  I 위조/무효 쿠키 다른 회원(kim)의 세션 id를 park 쿠키에 넣음: 서버 확인에서 거부(401)  
+PASS  I 로그아웃: 다른 사이트에서 온 요청은 403(남이 몰래 로그아웃시키지 못함)  403
+PASS  I 쿠키 없는 로그아웃: 200, revoked=false(상태를 알려 주지 않음)  
+PASS  I 회원 비활성화: 30일 세션도 다음 서버 확인에서 거부  
+PASS  J 360px: 회원 메뉴에 '로그아웃'과 '모든 기기에서 로그아웃' 버튼  로그아웃|모든 기기에서 로그아웃
+PASS  J 360px: 버튼 높이 44px 이상·가로 넘침 없음  44,44
+PASS  J 360px: axe 위반 없음  
+PASS  J 1280px: 회원 메뉴에 '로그아웃'과 '모든 기기에서 로그아웃' 버튼  로그아웃|모든 기기에서 로그아웃
+PASS  J 1280px: 버튼 높이 44px 이상·가로 넘침 없음  44,44
+PASS  J 1280px: axe 위반 없음  
+PASS  J 준비: park 두 기기·lee 한 기기 로그인  2/1
+PASS  J 확인창 문구(모든 기기·30일 유지 해제 안내) + 취소하면 아무것도 바뀌지 않는다  이 계정으로 로그인된 모든 기기(이 기기 포함)에서 로그아웃합니다. 30
+PASS  J 서버 취소 실패(503): 오류 안내(role=alert)·로그인 유지·세션 그대로  모든 기기에서 로그아웃하지 못했습니다. 로그인은 그대로 유지됩니다. 잠시 후 다시 시도해 
+PASS  J 실패 뒤 버튼이 다시 활성화(재시도 가능)  
+PASS  J 실행: 이 기기는 로그인 화면으로, 쿠키 삭제  
+PASS  J 실행: park의 모든 서버 세션 취소(0건 남음), lee는 그대로(1건)  0/1
+PASS  J 다른 기기(park)는 서버 확인(5분 주기)에서 거부(401)  
+PASS  J 다른 회원(lee)의 세션은 영향 없음(200)  
+PASS  J 취소 뒤 새로 로그인하면 정상 이용  
+PASS  J 로그인 없이 호출: 401  401
+PASS  J 다른 사이트에서 온 요청: 403이고 세션은 그대로(남이 몰래 전체 로그아웃시키지 못함)  403
+PASS  J 정상 호출: 200·ok·revoked_count=1, 쿠키 삭제 응답  {"ok":true,"revoked_count":1}
+PASS  J 이미 취소된 세션 쿠키(5분 안의 복사본)로는 전체 로그아웃도 못 한다(401, 서버가 거부)  401
+PASS  K 360px: 로그인 화면에 '회원가입' 링크  
+PASS  K 360px: 가입 화면 라벨(아이디·이름·비밀번호·비밀번호 확인)  아이디,이름,비밀번호,비밀번호 확인,Website
+PASS  K 360px: 승인 후 로그인 안내 문구  
+PASS  K 360px: 숨긴 봇 칸은 화면 밖·키보드 불가·aria-hidden  
+PASS  K 360px: 가로 넘침 없음·입력칸 44px 이상  
+PASS  K 360px: axe 위반 없음  
+PASS  K 1280px: 로그인 화면에 '회원가입' 링크  
+PASS  K 1280px: 가입 화면 라벨(아이디·이름·비밀번호·비밀번호 확인)  아이디,이름,비밀번호,비밀번호 확인,Website
+PASS  K 1280px: 승인 후 로그인 안내 문구  
+PASS  K 1280px: 숨긴 봇 칸은 화면 밖·키보드 불가·aria-hidden  
+PASS  K 1280px: 가로 넘침 없음·입력칸 44px 이상  
+PASS  K 1280px: axe 위반 없음  
+PASS  K 비밀번호 확인이 다르면 서버에 보내지 않고 안내  
+PASS  K 약한 비밀번호: 서버 문구 표시, 계정 만들어지지 않음  
+PASS  K 아이디 형식 오류: 서버 문구 표시, 계정 없음  
+PASS  K 가입 신청 성공: 접수 안내(로그인되지 않음)  
+PASS  K DB: 일반 권한·비활성·미승인(승인 대기)  user|f|f
+PASS  K DB: 비밀번호는 argon2id 해시(원문 아님)  
+PASS  K 승인 전 로그인(비밀번호 맞음): '관리자 승인 대기' 안내, 로그인 안 됨  
+PASS  K 승인 전 로그인(비밀번호 틀림): 평범한 실패 문구(승인 대기 여부를 알려 주지 않음)  
+PASS  K 승인 전에는 서버 세션이 만들어지지 않는다  
+PASS  K 아이디 중복(대소문자 무관): 안내, 처음 신청은 그대로  
+PASS  K 가입 요청에 role/is_active/approved_at을 넣어도 무시: 승인 대기 일반 계정으로만 생성  200 user|f|f
+PASS  K 다른 사이트에서 온 가입 요청: 403, 계정 없음  
+PASS  K JSON이 아닌 가입 요청: 415  
+PASS  K 너무 긴 아이디: 400  
+PASS  K 숨긴 칸을 채운 요청(봇): 성공처럼 응답하지만 계정은 만들지 않는다  
+PASS  K 로그인한 회원이 /signup을 열면 홈으로  
+PASS  K 같은 접속 주소의 가입 신청이 10분에 30회를 넘으면 429  첫 429 위치 30
+PASS  K 다른 접속 주소는 영향 없음  
+PASS  L 관리자 메뉴의 '회원 관리' 링크로 이동  
+PASS  L 승인 대기 신청이 있으면 '승인 대기' 탭이 먼저 열린다  
+PASS  L 확인창에서 취소하면 아무 변화 없음  
+PASS  L 가입 신청 거절: 안내 + 계정 삭제  
+PASS  L 가입 신청 승인: 안내 + DB 활성·승인됨  user|t|t|신입사원
+PASS  L 승인된 사용자는 로그인되고 일반 권한(회원 관리 링크 없음)  
+PASS  L 일반 사용자가 /admin/members를 열면 홈으로  
+PASS  L 일반 사용자가 옛 /members를 열어도 홈으로  
+PASS  L 회원 추가: 약한 비밀번호는 서버 문구로 거부  
+PASS  L 회원 추가: 성공 안내 + 활성·승인된 일반 회원  user|t|t|추가회원
+PASS  L 회원 추가: 아이디 중복은 거부  
+PASS  L 추가한 회원은 바로 로그인 가능  
+PASS  L 이름 수정: 안내 + DB 반영  
+PASS  L 비밀번호 초기화: 약한 비밀번호 거부(상태 불변)  
+PASS  L 비밀번호 초기화: 안내 + 그 회원의 기존 로그인 세션 취소  
+PASS  L 초기화 뒤 옛 비밀번호는 거부  
+PASS  L 권한 변경(일반→관리자): 안내 + DB 반영  admin|t|t|이영희
+PASS  L 5분 확인 뒤 새 권한 반영: 쿠키 rl=a, 회원 관리 링크, 투자자 탭 표  
+PASS  L 새 관리자(lee)는 투자자 탭에 값이 보인다  
+PASS  L 권한 변경(관리자→일반): DB 반영  
+PASS  L 강등된 사용자의 옛 쿠키(rl=a)로도 투자자 값 요청은 403(서버가 DB로 확인)  403
+PASS  L 강등된 사용자의 옛 쿠키로 관리 작업 요청도 403, 아무것도 바뀌지 않음  403
+PASS  L 사용 중지: 안내 + DB 비활성 + 그 회원의 로그인 세션 취소  
+PASS  L 사용 중지된 회원의 쿠키는 서버 확인에서 거부(401)  
+PASS  L 사용 중지된 회원이 로그인(비밀번호 맞음): '사용 중지' 안내  
+PASS  L 다시 사용: DB 활성(이전 로그인은 되살아나지 않음)  
+PASS  L 다시 사용 뒤 로그인 가능  
+PASS  L 회원의 모든 기기 로그아웃: 안내 + 그 회원 유효 세션 0  
+PASS  L 회원 삭제: 안내 + 계정·세션 삭제  
+PASS  L 본인 비활성화 요청(우회 호출)은 서버가 거부(409)  409 SELF_PROTECTED
+PASS  L 본인 강등 요청(우회 호출)도 409  
+PASS  L 로그인 없이 관리 작업: 401  
+PASS  L 다른 사이트에서 온 관리 작업: 403, 변화 없음  
+PASS  L 잘못된 관리 작업 요청 {"action":"explode","username":"evil"}: 400  400
+PASS  L 잘못된 관리 작업 요청 {"action":"delete"}: 400  400
+PASS  L 잘못된 관리 작업 요청 {"username":"evil"}: 400  400
+PASS  L 잘못된 관리 작업 요청 {"action":"set_role","username":"evil",": 400  400
+PASS  L 잘못된 관리 작업 요청 {"action":"delete","username":"xxxxxxxxx: 400  400
+PASS  L 깨진 JSON 관리 작업: 400  
+PASS  L 관리 작업 기록이 남는다(비밀번호·해시는 기록 안 됨)  기록 11건
+PASS  M 정상 설정: /auth/status → 200 {ok, web:ok, api:ok}, 값·비밀 없음  {"ok":true,"web":"ok","api":"ok"}
+PASS  M 내부 토큰 불일치: /auth/status → 503 api=token_mismatch  {"ok":false,"web":"ok","api":"token_mismatch"}
+PASS  M 내부 토큰 불일치 + 올바른 비밀번호: '비밀번호 오류'가 아니라 '서버에 연결하지 못했습니다'로 표시  서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.
+PASS  M 내부 토큰 불일치: 로그인 쿠키가 만들어지지 않는다  
+PASS  M 내부 토큰 불일치: DB에 로그인 기록이 늘지 않는다(API 확인 단계에 도달하지 못함 — 운영 진단 단서)  기록 51→51
+PASS  F 같은 접속 주소에서 분당 40회를 넘으면 429(맞는 비밀번호여도 인증 전에 거부)  첫 429 위치=40
+PASS  F 다른 접속 주소는 영향 없음  
+PASS  F 429 응답은 계정 정보를 드러내지 않는다  
+ALL PASS (322/322)

@@ -1,7 +1,8 @@
 # Render + Neon 베타 배포 (DEC-063). PROD_SCH에 코드가 푸시되면:
-#   1) Neon DB 백업(R2) → 2) 스키마 마이그레이션(alembic) → 3) Render에 배포 요청(API, 웹)
+#   1) Neon DB 백업(R2) → 2) 스키마 마이그레이션(alembic) → 3) Render에 배포 요청(웹; API 서비스가 따로 있으면 API도)
 # 문서/테스트만 바뀐 푸시는 건너뛴다. 실패하면 Render 배포를 요청하지 않으므로 기존 버전이 그대로 유지된다.
-# 필요한 Secrets: NEON_OWNER_URL, RENDER_DEPLOY_HOOK_API, RENDER_DEPLOY_HOOK_WEB
+# 필요한 Secrets: NEON_OWNER_URL, RENDER_DEPLOY_HOOK_WEB
+#   (선택) RENDER_DEPLOY_HOOK_API — 통합 서비스(DEC-078)에서는 API 서비스가 없으므로 비워 둔다
 #   (선택, 백업용 5종) AGE_RECIPIENT, R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT
 # Secrets가 아직 없으면 실패하지 않고 "건너뜀"으로 끝난다(설정 전 푸시가 빨간 불을 만들지 않게).
 name: render-deploy
@@ -49,7 +50,7 @@ jobs:
         id: gate
         run: |
           missing=""
-          for v in NEON_OWNER_URL RENDER_DEPLOY_HOOK_API RENDER_DEPLOY_HOOK_WEB; do
+          for v in NEON_OWNER_URL RENDER_DEPLOY_HOOK_WEB; do
             [ -n "${!v}" ] || missing="$missing $v"
           done
           if [ -n "$missing" ]; then
@@ -81,8 +82,10 @@ jobs:
         if: steps.gate.outputs.ready == 'true'
         run: bash deploy/render/pre-deploy.sh
 
-      - name: Ask Render to deploy (API, then web)
+      - name: Ask Render to deploy (API if separate, then web)
         if: steps.gate.outputs.ready == 'true'
         run: |
-          curl -fsS -m 30 -X POST "$RENDER_DEPLOY_HOOK_API" >/dev/null && echo "API deploy requested"
+          if [ -n "$RENDER_DEPLOY_HOOK_API" ]; then
+            curl -fsS -m 30 -X POST "$RENDER_DEPLOY_HOOK_API" >/dev/null && echo "API deploy requested"
+          fi
           curl -fsS -m 30 -X POST "$RENDER_DEPLOY_HOOK_WEB" >/dev/null && echo "web deploy requested"

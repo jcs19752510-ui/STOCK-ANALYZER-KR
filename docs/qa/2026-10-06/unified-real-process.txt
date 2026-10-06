@@ -1,0 +1,23 @@
+== 1) 기동
+healthz OK (2s)
+API pid=3490 WEB pid=3496 sup=3486
+healthz: 200
+API 외부 노출 확인(0.0.0.0 바인딩 아님): 127.0.0.1:4321
+웹 바인딩: 0.0.0.0:4322
+== 2) 메모리(유휴)  API=73MB WEB=96MB SUP=21MB
+   로그인 화면·API 호출 30회 후:
+   API=87MB WEB=137MB SUP=21MB  합계=245MB
+== 3) API를 강제 종료(kill -9) → 전체 종료·종료코드
+supervisor 종료코드=247
+웹 남아 있음? no
+(Background on this error at: https://sqlalche.me/e/21/f405)
+INFO:     127.0.0.1:39650 - "POST /api/v1/internal/auth/session-check HTTP/1.1" 503 Service Unavailable
+[unified] API가 종료됨(코드 -9) → 서비스 전체를 종료해 재시작시킵니다
+[unified] 웹 종료 요청
+== 4) 웹을 강제 종료 → 전체 종료
+supervisor 종료코드=247
+API 남아 있음? no
+== 5) SIGTERM(배포 종료) → 정상 종료 0
+supervisor 종료코드=0 (0.3초)
+API 남아 있음? no / 웹 남아 있음? no
+== 6) 포트 정리 확인: 0 개 열림

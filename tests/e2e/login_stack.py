@@ -5,6 +5,7 @@ pytest가 자동으로 모으지 않는다(파일명이 test_로 시작하지 �
     source <PG 접속 환경변수>   # TEST_PG_ADMIN_PSQL, ALEMBIC/BATCH/PUBLIC_API_DATABASE_URL, PUBLIC_API_AUTH_DATABASE_URL
     python tests/e2e/login_stack.py            # 웹 빌드(로그인용 공개 변수) → 서버 3개 기동 → 브라우저 시험 → 정리
     python tests/e2e/login_stack.py --no-build # 이미 같은 설정으로 빌드해 두었을 때
+    python tests/e2e/login_stack.py --unified  # 통합 서비스(DEC-078): API+웹을 scripts/run_unified.py 하나로 띄운 구성으로 같은 시험
 
 임시 DB에 시험 데이터(픽스처 종목 + 배치 발행)와 회원 5명을 만든 뒤 API(포트 4321)와 웹(포트 4322)을 띄우고
 `frontend/scripts/qa/login-e2e.mjs`를 실행한다. 종료 시 서버를 끄고 임시 DB를 지운다. 개발 DB에는 아무것도 쓰지 않는다.
@@ -60,6 +61,7 @@ def wait_http(url: str, timeout: float = 90) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--no-build", action="store_true")
+    parser.add_argument("--unified", action="store_true", help="API+웹을 scripts/run_unified.py 한 프로세스로 띄운다(운영 통합 서비스와 같은 구성)")
     parser.add_argument("--only", default="", help="브라우저 시험에서 이름에 이 문자열이 든 장면만(디버깅용)")
     args = parser.parse_args()
     LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -124,11 +126,17 @@ def main() -> int:
                 "PYTHONPATH": str(REPO),
             }
             # 자식 프로세스까지 한꺼번에 끌 수 있게 새 프로세스 그룹으로 띄운다(npx가 만든 next-server가 남아 포트를 붙잡는 것을 막는다).
-            procs.append(subprocess.Popen([sys.executable, "scripts/run_public_api.py"], cwd=REPO, env=api_env, start_new_session=True,
-                                          stdout=(LOG_DIR / "api.log").open("w"), stderr=subprocess.STDOUT))
-            procs.append(subprocess.Popen(["npx", "next", "start", "-H", "127.0.0.1", "-p", str(WEB_PORT)], cwd=REPO / "frontend", start_new_session=True,
-                                          env={**os.environ, **web_env, "AUTH_COOKIE_INSECURE": os.environ.get("E2E_COOKIE_INSECURE", "")},
-                                          stdout=(LOG_DIR / "web.log").open("w"), stderr=subprocess.STDOUT))
+            web_run_env = {**os.environ, **web_env, "AUTH_COOKIE_INSECURE": os.environ.get("E2E_COOKIE_INSECURE", "")}
+            if args.unified:
+                # 운영 컨테이너와 같다: 한 진입점이 API(내부 포트)를 먼저 띄운 뒤 웹을 띄운다. 웹은 node 로 next 를 직접 실행(npx 없음).
+                unified_env = {**web_run_env, **api_env, "PORT": str(WEB_PORT), "UNIFIED_API_PORT": str(API_PORT), "UNIFIED_WEB_DIR": str(REPO / "frontend")}
+                procs.append(subprocess.Popen([sys.executable, "scripts/run_unified.py"], cwd=REPO, env=unified_env, start_new_session=True,
+                                              stdout=(LOG_DIR / "unified.log").open("w"), stderr=subprocess.STDOUT))
+            else:
+                procs.append(subprocess.Popen([sys.executable, "scripts/run_public_api.py"], cwd=REPO, env=api_env, start_new_session=True,
+                                              stdout=(LOG_DIR / "api.log").open("w"), stderr=subprocess.STDOUT))
+                procs.append(subprocess.Popen(["npx", "next", "start", "-H", "127.0.0.1", "-p", str(WEB_PORT)], cwd=REPO / "frontend", start_new_session=True,
+                                              env=web_run_env, stdout=(LOG_DIR / "web.log").open("w"), stderr=subprocess.STDOUT))
             wait_http(f"http://127.0.0.1:{API_PORT}/api/v1/live")
             wait_http(f"http://127.0.0.1:{WEB_PORT}/login")
             bad_env = {**os.environ, **web_env, "PUBLIC_API_INTERNAL_TOKEN": "x" * 48, "AUTH_COOKIE_INSECURE": os.environ.get("E2E_COOKIE_INSECURE", "")}
