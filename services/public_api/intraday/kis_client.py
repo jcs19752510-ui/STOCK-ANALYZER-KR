@@ -45,6 +45,8 @@ TR_INVESTOR = "FHKST01010900"
 PATH_MULTI_PRICE = "/uapi/domestic-stock/v1/quotations/intstock-multprice"
 TR_MULTI_PRICE = "FHKST11300006"
 MULTI_PRICE_MAX_CODES = 30
+LOW_PRIORITY_YIELD_SECONDS = 0.02  # 낮은 우선순위 호출이 양보하며 기다리는 단위
+LOW_PRIORITY_MAX_YIELDS = 100  # 최대 2초까지만 양보한다
 
 _TOKEN_PATH = "/oauth2/tokenP"
 _TOKEN_SAFETY_SECONDS = 600
@@ -91,6 +93,8 @@ class KisClient:
         self._sleep = sleep
         self._min_interval = min_interval
         self._lock = threading.Lock()
+        self._prio_lock = threading.Lock()  # `_lock`은 호출 간격 대기 중에도 잡혀 있어, 우선순위 카운터는 별도 잠금으로 보호한다
+        self._priority_pending = 0  # 지금 진행 중인(대기 포함) 일반(상세 화면) 호출 수
         self._last_call = 0.0
         self._token: str | None = None
         self._token_expires_at = 0.0
@@ -176,7 +180,31 @@ class KisClient:
                 self._sleep(wait)
             self._last_call = self._clock()
 
-    def _get(self, path: str, tr_id: str, params: dict[str, str]) -> dict[str, Any]:
+    def _yield_to_priority(self) -> None:
+        """낮은 우선순위 호출(전 종목 순환)이 상세 화면 호출에 양보한다: 일반 호출이 진행 중이면 잠시 기다린다.
+
+        최대 `LOW_PRIORITY_MAX_YIELDS × LOW_PRIORITY_YIELD_SECONDS`(기본 2초)만 기다리고 그 뒤에는 그냥 진행해 굶지 않는다.
+        호출 간격(`_throttle`)은 두 종류가 같은 인스턴스에서 공유하므로 합산 호출률은 양보와 무관하게 `1/min_interval` 이하다.
+        """
+        for _ in range(LOW_PRIORITY_MAX_YIELDS):
+            with self._prio_lock:
+                if self._priority_pending <= 0:
+                    return
+            self._sleep(LOW_PRIORITY_YIELD_SECONDS)
+
+    def _get(self, path: str, tr_id: str, params: dict[str, str], *, low_priority: bool = False) -> dict[str, Any]:
+        if low_priority:
+            self._yield_to_priority()
+            return self._request(path, tr_id, params)
+        with self._prio_lock:
+            self._priority_pending += 1
+        try:
+            return self._request(path, tr_id, params)
+        finally:
+            with self._prio_lock:
+                self._priority_pending -= 1
+
+    def _request(self, path: str, tr_id: str, params: dict[str, str]) -> dict[str, Any]:
         for attempt in (1, 2):
             token = self._ensure_token(force=attempt == 2 and self._token is None)
             self._throttle()
@@ -295,7 +323,7 @@ class KisClient:
         for i, code in enumerate(codes, start=1):
             params[f"FID_COND_MRKT_DIV_CODE_{i}"] = _MARKET_DIV
             params[f"FID_INPUT_ISCD_{i}"] = code
-        return self._get(PATH_MULTI_PRICE, TR_MULTI_PRICE, params)
+        return self._get(PATH_MULTI_PRICE, TR_MULTI_PRICE, params, low_priority=True)  # 상세 화면 호출에 양보
 
 
 def kst_now(clock: Callable[[], float] = time.time) -> datetime:

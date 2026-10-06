@@ -77,3 +77,13 @@ class SqlStockSearchRepository:
             StockSearchResultRow(stock_code=row.stock_code, name=row.name, market=row.market)
             for row in rows
         ]
+
+
+def list_active_stock_codes(session: Session) -> list[str]:
+    """활성(상장) 종목 코드 전체(오름차순). 전 종목 시세 순환(DEC-084)의 유니버스, 읽기 전용."""
+    stmt = (
+        select(StockMaster.stock_code)
+        .where(StockMaster.is_active.is_(True))
+        .order_by(StockMaster.stock_code.asc())
+    )
+    return [str(code) for code in session.execute(stmt).scalars().all()]

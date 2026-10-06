@@ -68,6 +68,11 @@ class IntradayService:
         self._cache: dict[tuple, tuple[float, Any]] = {}
         self._lock = threading.Lock()
 
+    @property
+    def client(self) -> KisLike:
+        """이 서비스가 쓰는 증권사 클라이언트(읽기 전용). 같은 토큰·호출 간격을 공유해야 하는 다른 모듈(전 종목 순환)이 꺼내 쓴다."""
+        return self._client
+
     def _cached(self, key: tuple, ttl: float, build: Callable[[], T]) -> T:
         now = time.monotonic()
         with self._lock:

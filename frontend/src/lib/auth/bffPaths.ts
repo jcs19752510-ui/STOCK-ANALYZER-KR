@@ -19,6 +19,7 @@ const ALLOWED: readonly RegExp[] = [
 const LOCAL_ALLOWED: readonly RegExp[] = [
   /^\/api\/v1\/local\/status$/,
   /^\/api\/v1\/local\/realtime\/status$/, // 실시간 연결 상태(관리자 전용, DEC-084)
+  /^\/api\/v1\/local\/market\/(quotes|status)$/, // 전 종목 준실시간 시세(관리자 전용, DEC-084)
   /^\/api\/v1\/local\/stocks\/[0-9A-Za-z]{6}\/(minutes|ticks|orderbook|investor)$/,
 ];
 
@@ -26,6 +27,7 @@ const LOCAL_ALLOWED: readonly RegExp[] = [
 const LOCAL_ADMIN_ONLY: readonly RegExp[] = [
   /^\/api\/v1\/local\/stocks\/[0-9A-Za-z]{6}\/investor$/,
   /^\/api\/v1\/local\/realtime\/status$/,
+  /^\/api\/v1\/local\/market\/(quotes|status)$/,
 ];
 
 type Env = Record<string, string | undefined>;

@@ -387,6 +387,20 @@ test("개인 로컬 모드 경로: 로컬 빌드(true)에서만 정확한 형식
   assert.equal(isAllowedBffPath("/api/v1/screen", LOCAL_ON), true);
 });
 
+test("전 종목 준실시간 시세 경로: 로컬 빌드에서만 열리고 관리자 전용(DEC-084)", () => {
+  const MARKET = ["/api/v1/local/market/quotes", "/api/v1/local/market/status"];
+  for (const p of MARKET) {
+    assert.equal(isAllowedBffPath(p, {}), false, p);
+    assert.equal(isAllowedBffPath(p, { NEXT_PUBLIC_LOCAL_INTRADAY_ENABLED: "false" }), false, p);
+    assert.equal(isAllowedBffPath(p, LOCAL_ON), true, p);
+    assert.equal(isAdminOnlyBffPath(p), true, p);
+  }
+  for (const p of ["/api/v1/local/market", "/api/v1/local/market/", "/api/v1/local/market/quotes/", "/api/v1/local/market/other", "/api/v1/local/market/quotes/x", "/api/v1/local/market/../status"]) {
+    assert.equal(isAllowedBffPath(p, LOCAL_ON), false, p);
+    assert.equal(isAdminOnlyBffPath(p), false, p);
+  }
+});
+
 test("로컬 투자자 수급 경로는 관리자 전용으로 분류(DEC-074와 같은 규칙)", () => {
   assert.equal(isAdminOnlyBffPath("/api/v1/local/stocks/005930/investor"), true);
   for (const p of ["/api/v1/local/stocks/005930/ticks", "/api/v1/local/stocks/005930/orderbook", "/api/v1/screen", "/api/v1/local/stocks/005930/investor/x"]) {

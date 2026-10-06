@@ -21,6 +21,7 @@ from services.public_api.api import (
     internal_admin,
     internal_auth,
     local_intraday,
+    local_market,
     local_realtime,
     market_summary,
     metrics,
@@ -60,6 +61,7 @@ _AUTH_ENFORCED = internal_token_enforced()
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     yield
+    await local_market.shutdown_market()  # 전 종목 시세 순환 정리
     await local_realtime.shutdown_realtime()  # 실시간 증권사 연결 정리(DEC-084)
 
 
@@ -141,6 +143,8 @@ app.include_router(market_summary.router, prefix="/api/v1")
 app.include_router(local_intraday.router, prefix="/api/v1")
 # 본인 전용 실시간 시세 스트림(DEC-084): 같은 4중 통제 + 소유자(관리자) 확인, 기본 꺼짐.
 app.include_router(local_realtime.router, prefix="/api/v1")
+# 전 종목 준실시간 시세(DEC-084): 같은 접근 통제.
+app.include_router(local_market.router, prefix="/api/v1")
 # 로그인 내부 경로(DEC-067): 웹 서버 전용. 회원 DB 주소가 없으면 404로 꺼져 있고,
 # 스위치와 무관하게 항상 내부 토큰을 요구한다.
 app.include_router(internal_auth.router, prefix="/api/v1")
