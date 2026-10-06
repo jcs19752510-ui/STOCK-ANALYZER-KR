@@ -29,7 +29,8 @@
 - 완료(DEC-086): 백엔드 개선 3건(거래일 변경 snapshot, 이전 거래일 분봉 혼합 방지, snapshot quote를 REST로 채움). 결과서 `docs/qa/2026-10-06-realtime-backend-fixes-test-result.md`.
 - 진행(DEC-087): HTS 조건검색 연결 확인 도구 `scripts/kis_psearch_smoke_test.py` 완성(가이드 `docs/ops/local-psearch-guide.md`). **사용자가 장중에 실행해 결과(응답 필드·변화 간격·지연) 전달 → 그 결과로 사이트 "증권사 조건검색" 화면 개발 여부 결정(견적 약 4일)**. `.env`에 `KIS_HTS_ID` 필요.
 - 완료(DEC-088): 증권사 조건검색 화면 `/screener/broker`(로컬 모드 관리자만, `.env`에 `KIS_HTS_ID` 필요)와 API `/api/v1/local/psearch/{conditions,results}` — 결과서 `docs/qa/2026-10-06-psearch-integration-test-result.md`. **장중 실제 응답 미확인**: 사용자가 `kis_psearch_smoke_test.py`를 장중에 실행해 결과(응답 필드·변화 간격)를 전달해야 화면 신뢰도 판단·보정 가능. 사용 후 API 서버 재기동 필수.
-- 보류(사용자 결정 대기): 장중 재계산 — 견적·영향 화면 `docs/stock-detail/08-intraday-rescreen-estimate.md`. 예정: `basis-wording.mjs` 재실행(DB 스택).
+- 착수(DEC-089, 2026-10-06 보류 해제): 장중 재계산 — 계약서 `docs/stock-detail/10-intraday-rescreen-contract.md`(확정), 견적 `08-intraday-rescreen-estimate.md`. **현재 상태: 계약서만 있고 코드는 아직 없다.** 구현 대상: `services/public_api/live_screen/*`, `api/local_screen.py`, `MarketSnapshotPoller.set_priority`, 화면 "장중 기준" 전환. 예정: `basis-wording.mjs` 재실행(DB 스택).
+- **선행 조건 미정의(DEC-090)**: 계약서 §0-7이 "데이터 지연 해소(DEC-090)"를 선행으로 두지만 `decisions.md`에 DEC-090 항목이 없다. 일봉 원천이 공공데이터포털(+1영업일 공개, DEC-058)이라 장중에는 발행 일봉이 직전 거래일보다 하루 이상 뒤처지는 날이 많고, 그러면 `LIVE_BASE_STALE`로 재계산이 거부된다. 해소 방법(예: 증권사 일봉으로 직전 거래일 보충)은 사용자 결정이 필요하다.
 - 한계: 증권사 웹소켓 구독 한도 40건(종목 20개)이라 틱 단위 실시간은 동시 20종목. 실제 증권사 응답은 개발 환경에서 시험 불가 → 사용자가 장중에 `kis_ws_smoke_test.py`로 확인.
 - 시험 환경: 임시 PG를 다시 띄우는 법 — `mkdir -p /tmp/pgsock && chown postgres /tmp/pgsock; su postgres -c "/usr/lib/postgresql/16/bin/pg_ctl -D /var/tmp/pgd2 -o '-p 5544 -k /tmp/pgsock' -l /var/tmp/pgd2.log start"`, 그다음 `source /tmp/claude-0/pgenv.sh; export PATH=/var/tmp/venv312/bin:/usr/lib/postgresql/16/bin:$PATH`. 시스템 파이썬은 3.11이라 `/var/tmp/venv312/bin/python`(3.12)을 쓴다.
 
