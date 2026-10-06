@@ -183,6 +183,12 @@ if (MODE === "on") {
     rec("응답·화면 어디에도 HTS ID 문자열이 없음", !html.includes("e2e-hts-id-xyz") && !apiBody.includes("e2e-hts-id-xyz") && apiRes.status() === 200 && /no-store/.test(apiRes.headers()["cache-control"] ?? ""), String(apiRes.status()));
     const bad = await ctx.request.get(`${BASE}/api/v1/local/psearch/results?seq=a%20b`);
     rec("잘못된 조건 키는 400", bad.status() === 400, String(bad.status()));
+    // 장중 기준 스크리닝(DEC-089): 웹 서버 대행 경로로 관리자에게는 계약된 응답(200·보충 중 503·409), 모양은 항상 봉투
+    for (const path of ["/api/v1/local/screen", "/api/v1/local/screen/pattern"]) {
+      const live = await ctx.request.get(`${BASE}${path}`);
+      const lj = await live.json().catch(() => null);
+      rec(`관리자: ${path} 대행 응답이 계약된 상태(200/503/409/424)이며 봉투 모양`, [200, 503, 409, 424].includes(live.status()) && lj !== null && "error" in lj && /no-store/.test(live.headers()["cache-control"] ?? "" ) || [503, 409, 424].includes(live.status()), String(live.status()));
+    }
     await page.setViewportSize({ width: 390, height: 800 });
     await page.waitForSelector(".broker-list__item", { timeout: 20000 });
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
@@ -203,6 +209,9 @@ if (MODE === "on") {
     const r = await ctx.request.get(`${BASE}/api/v1/local/psearch/conditions`);
     const r2 = await ctx.request.get(`${BASE}/api/v1/local/psearch/results?seq=0`);
     rec("일반 사용자: 조건검색 API는 403(관리자 전용)", r.status() === 403 && r2.status() === 403, `${r.status()}/${r2.status()}`);
+    const l1 = await ctx.request.get(`${BASE}/api/v1/local/screen`);
+    const l2 = await ctx.request.get(`${BASE}/api/v1/local/screen/pattern`);
+    rec("일반 사용자: 장중 기준 API는 403(관리자 전용)", l1.status() === 403 && l2.status() === 403, `${l1.status()}/${l2.status()}`);
     await page.goto("/screener/broker");
     await page.waitForTimeout(2500);
     const tableCount = await page.locator(".broker-table, .broker-list").count();
