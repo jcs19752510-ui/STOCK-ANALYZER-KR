@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import copy from "@/content/copy.ko.json";
-import type { LiveScreenView } from "@/lib/liveScreen/controller";
+import type { LiveScreenView } from "@/lib/liveScreen/view";
 import {
   bannerNotices,
   changeRows,

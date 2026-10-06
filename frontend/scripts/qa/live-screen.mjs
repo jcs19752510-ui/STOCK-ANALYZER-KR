@@ -821,7 +821,7 @@ async function prod(browser) {
   for (const n of needles) hits[n] = files.filter((f) => fs.readFileSync(f, "utf8").includes(n)).length;
   const html = await (await fetch(`${WEB}/screener`)).text();
   console.log("번들 문자열 검사(운영 빌드, 파일 수):", JSON.stringify(hits), `정적 파일 ${files.length}개`);
-  rec("prod 번들: 장중 기준 요청 경로·오류 코드·저장 키 문자열이 JS에 없음", ["api/v1/local/screen", "SNAPSHOT_EXPIRED", "LIVE_BASE_STALE", "LIVE_BASE_FILLING", "LIVE_QUOTES_NOT_READY", "stock.liveScreen.on", "kis_daily_price"].every((n) => hits[n] === 0), JSON.stringify(hits));
+  rec("prod 번들: 장중 기준 요청 경로·오류 코드·저장 키·증권사 일봉 문자열이 JS에 없음(snapshot_id는 조건 정리 함수의 파라미터 이름으로만 남음)", ["api/v1/local/screen", "SNAPSHOT_EXPIRED", "LIVE_BASE_STALE", "LIVE_BASE_FILLING", "LIVE_QUOTES_NOT_READY", "stock.liveScreen.on", "kis_daily_price"].every((n) => hits[n] === 0), JSON.stringify(hits));
   void html;
 }
 
@@ -886,7 +886,8 @@ async function auth(browser) {
     rec("BFF: 409 LIVE_BASE_STALE 그대로 전달", st.status() === 409 && (await st.json()).error?.code === "LIVE_BASE_STALE");
     await setCtl("err=");
     // 허용되지 않는 변형 경로
-    for (const p of ["/api/v1/local/screen/", "/api/v1/local/screen/other", "/api/v1/local/screens", "/api/v1/local/screen/pattern/x"]) {
+    // 끝 슬래시는 Next가 경로를 정리해 핸들러에 넘기므로(기존 /api/v1/screen/도 같음) 허용 목록의 정규식 단위 시험(check-auth.mjs)으로 확인한다.
+    for (const p of ["/api/v1/local/screen/other", "/api/v1/local/screens", "/api/v1/local/screen/pattern/x"]) {
       const r = await ctx.request.get(`${WEB}${p}?market=ALL`);
       rec(`BFF: 허용되지 않은 경로 ${p} → 404`, r.status() === 404, String(r.status()));
     }

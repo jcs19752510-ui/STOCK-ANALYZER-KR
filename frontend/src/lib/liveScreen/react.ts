@@ -6,12 +6,15 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { browserApiBase } from "@/lib/apiBase";
-import { LOCAL_INTRADAY_FLAG } from "@/lib/localIntraday";
 import { useLocalMode } from "@/lib/psearch/react";
-import { LiveScreenController, EMPTY_LIVE_VIEW, type LiveHttp, type LiveQuery, type LiveScreenView } from "./controller.ts";
-import { newCodes, nextNewExpiryMs, readStoredToggle, writeStoredToggle } from "./logic.ts";
+import { LiveScreenController } from "./controller.ts";
+import { newCodes, nextNewExpiryMs } from "./logic.ts";
+import { readStoredToggle, writeStoredToggle } from "./protocol.ts";
+import { EMPTY_LIVE_VIEW, type LiveHttp, type LiveQuery, type LiveScreenView } from "./view.ts";
 
 const AUTH_BUILD = process.env.NEXT_PUBLIC_AUTH_ENABLED === "true";
+/** 로컬 빌드 스위치. 같은 모듈 안의 상수라 운영 빌드(값 없음)에서는 거짓으로 접혀 이 값에 묶인 요청 코드가 번들에서 제거된다. */
+const LIVE_BUILD = process.env.NEXT_PUBLIC_LOCAL_INTRADAY_ENABLED === "true";
 
 let adminMemo: boolean | null = null;
 let adminInflight: Promise<boolean> | null = null;
@@ -38,7 +41,7 @@ export function useLiveScreenAccess(): boolean {
   const local = useLocalMode();
   const [admin, setAdmin] = useState<boolean>(adminMemo ?? false);
   useEffect(() => {
-    if (!LOCAL_INTRADAY_FLAG || local !== "yes") return;
+    if (!LIVE_BUILD || local !== "yes") return;
     let alive = true;
     void loadIsAdmin().then((v) => {
       if (alive) setAdmin(v);
@@ -71,12 +74,13 @@ function subscribeToggle(cb: () => void): () => void {
   };
 }
 
-const toggleSnapshot = (): boolean => memoryOn ?? readStoredToggle(storage());
+const toggleSnapshot = (): boolean => LIVE_BUILD && (memoryOn ?? readStoredToggle(storage()));
 
 /** 켜짐 상태(이 브라우저에만 기억). 접근이 확인되기 전에는 항상 꺼짐이고, 접근이 있으면 기억해 둔 값을 쓴다. 서버 렌더에서는 항상 꺼짐. */
 export function useLiveToggle(access: boolean): [boolean, (on: boolean) => void] {
   const stored = useSyncExternalStore(subscribeToggle, toggleSnapshot, () => false);
   const set = useCallback((next: boolean) => {
+    if (!LIVE_BUILD) return;
     memoryOn = next;
     writeStoredToggle(storage(), next);
     toggleListeners.forEach((fn) => fn());
@@ -115,7 +119,7 @@ export function useLiveScreen<T extends { items: unknown[]; page: number }>(enab
 
   useEffect(() => {
     // 운영 빌드에서는 이 상수가 빌드 때 거짓으로 박혀 아래 요청 코드가 번들에서 제거된다(운영 빌드 비노출, 번들 검사로 확인).
-    if (!LOCAL_INTRADAY_FLAG || !enabled) return;
+    if (!LIVE_BUILD || !enabled) return;
     const base = browserApiBase();
     if (!base) return;
     const ctl = new LiveScreenController<T>({
