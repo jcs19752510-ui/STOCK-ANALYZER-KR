@@ -115,6 +115,8 @@ python -m alembic upgrade head # 이미 최신이면 아무 일도 안 함
 
    서비스 이름이 이미 쓰이고 있으면 주소 뒤에 숫자가 붙을 수 있습니다. 만든 뒤 실제 주소를 보고 위 값을 고치세요.
    ⚠ 확인 필요: Render가 화면에 입력한 `NEXT_PUBLIC_API_BASE_URL`을 Docker **빌드 때** 전달하는지(전달돼야 브라우저 코드에 들어갑니다). 안 되면 알려주세요 — 빌드 인자 방식으로 바꿉니다.
+> **갱신(2026-10-06, DEC-081)**: 현재 운영은 통합 서비스 1개이고 Render 자체 자동 배포(`autoDeployTrigger: commit`)를 쓴다. 아래 Deploy Hook/GitHub Secrets 절차는 옛 2개 서비스 구성 기준이며 지금은 필요 없다(`docs/ops/unified-service-guide.md` §7).
+
 3. 두 서비스 모두 **Settings → Deploy Hook** 주소를 복사해 GitHub Secrets `RENDER_DEPLOY_HOOK_API/WEB`에 넣습니다. `render.yaml`에서 코드 푸시 자동 배포는 꺼 두었으므로(`autoDeployTrigger: off`), 배포는 항상 "백업 → DB 변경 → 배포 요청" 순서로만 일어납니다.
 4. 첫 배포가 끝나면 API 로그에 `PEER-DIAG` 줄이 보이기 시작합니다(§7).
 

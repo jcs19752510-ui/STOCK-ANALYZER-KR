@@ -50,3 +50,14 @@
 - `render.yaml`의 `plan`을 `starter`로 맞췄다(Blueprint가 관리하는 서비스는 대시보드에서만 바꾸면 다음 동기화 때 되돌아갈 수 있다).
 - 유료 인스턴스는 15분 유휴 후 잠들지 않으므로 콜드스타트(첫 접속 30초대)가 사라진다. 메모리 한도는 실측 약 245MB 대비 충분한지 Render Metrics로 확인한다.
 - 프로젝트("My project")로의 이동은 유료 전환과 무관하다(분류용).
+
+## 7. 자동 배포 (DEC-081, 2026-10-06)
+
+- `render.yaml`에 `autoDeployTrigger: "commit"`을 켰다. **`PROD_SCH`에 푸시하면 Render가 자동으로 빌드·배포한다.** 사용자가 Deploy latest commit을 누를 필요가 없다.
+- 안전장치: 새 버전이 `/healthz`를 통과하지 못하면 Render가 기존 버전을 유지한다(`healthCheckPath: /healthz`). 빌드가 실패해도 기존 버전이 그대로다.
+- 반영 시간: 푸시 후 보통 몇 분(빌드+기동). 진행은 Render → `stock-analyzer-web` → Events/Logs에서 본다.
+- **DB 구조 변경(마이그레이션)은 자동 적용되지 않는다.** 이 컨테이너는 기동할 때 `alembic`을 돌리지 않는다. 마이그레이션이 들어 있는 커밋은 푸시 **전에** Neon 소유자 주소로 `alembic upgrade head`를 먼저 적용해야 한다(새 코드가 새 컬럼을 읽는데 DB에 없으면 오류). 이번 변경 이전까지 적용된 마이그레이션은 0018이다.
+- **문서·시험 파일만 바꾼 푸시도 재배포된다**(경로 필터를 쓰지 않았다). 불필요한 재배포를 줄이려면 `render.yaml`에 `buildFilter.ignoredPaths`를 추가할 수 있다(별도 결정).
+- **GitHub Secrets `RENDER_DEPLOY_HOOK_WEB`은 등록하지 않는다.** 등록하면 `.github/workflows/render-deploy.yml`도 배포를 요청해 이중 배포가 된다. 현재는 Secrets가 없어 그 워크플로가 "건너뜀"으로 끝나므로 충돌이 없다.
+- 끄기: `render.yaml`의 값을 `"off"`로 되돌리고 푸시한다.
+

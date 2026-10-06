@@ -67,7 +67,7 @@ def test_블루프린트는_서비스_1개이고_웹_이름과_주소를_유지�
     svc = BLUEPRINT["services"][0]
     assert svc["name"] == "stock-analyzer-web" and svc["name"] in {s["name"] for s in LIVE_BLUEPRINT["services"]}
     assert svc["dockerfilePath"] == "./deploy/unified.Dockerfile" and svc["healthCheckPath"] == "/healthz"
-    assert svc["branch"] == "PROD_SCH" and svc["autoDeployTrigger"] == "off" and svc["plan"] == "starter"
+    assert svc["branch"] == "PROD_SCH" and svc["autoDeployTrigger"] == "commit" and svc["plan"] == "starter"
 
 
 def test_블루프린트가_기존_두_서비스의_환경변수를_빠짐없이_포함한다() -> None:

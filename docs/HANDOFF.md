@@ -7,7 +7,7 @@
 - 보안 이야기는 하지 않는다("보안은 나중에").
 - 운영 변경은 사용자가 요청했을 때만. 응답은 짧고 결과 중심으로.
 - (2026-10-06 재확인) 사용자는 **빠른 응답**을 원한다(느리면 질책). 길게 돌아가지 말고, 오래 걸리는 작업은 시작 때 이유를 한 줄로 말한다. 추측으로 원인을 늘어놓지 않는다(에러 문구를 확인한 뒤에만 원인을 말한다). 사용자 PC·Render·Neon 화면은 볼 수 없으므로 필요한 출력은 **한 번에 한 번만** 요청한다.
-- **운영 반영(Render 배포)이 필요한 변경은 보고 맨 위에 "배포 필요"를 먼저 적는다.** 자동 배포는 꺼져 있다(`autoDeployTrigger: off`, GitHub Secrets 미등록) — 사용자가 Render에서 Deploy latest commit을 눌러야 반영된다.
+- **운영 반영 방식(DEC-081, 2026-10-06 변경)**: `render.yaml`의 `autoDeployTrigger: commit` — `PROD_SCH`에 푸시하면 Render가 자동 배포한다(수동 클릭 불필요). 단 **DB 구조(alembic 마이그레이션)는 자동 적용되지 않는다** → DB를 바꾸는 커밋은 푸시 전에 사용자 PC에서 `alembic upgrade head`(Neon 소유자 주소)를 먼저 하거나, 에이전트가 사용자에게 먼저 알린다. 보고 맨 위에는 "자동 배포됨(몇 분 뒤 반영)" 또는 "DB 변경 있음 — 먼저 처리 필요"를 적는다. GitHub Secrets `RENDER_DEPLOY_HOOK_WEB`은 **등록하지 않는다**(등록하면 Actions와 Render가 둘 다 배포 요청해 이중 배포).
 
 ## 현재 운영 구조 (2026-10-06 전환 완료)
 - Render 서비스 **1개** `stock-analyzer-web` (https://stock-analyzer-web-q7cx.onrender.com): 컨테이너 안에서 API(내부 127.0.0.1:8000)와 웹(공개 PORT)을 `scripts/run_unified.py`가 함께 기동·감시 (DEC-078). 이미지 `deploy/unified.Dockerfile`, 블루프린트 `render.yaml`.
@@ -23,7 +23,7 @@
 ## 사용자가 아직 해야 하는 것
 1. 며칠 사용해 이상 없으면 Render의 `stock-analyzer-api`(Suspended) 삭제.
 2. 내 PC 로컬 로그인: `git pull` → `py -3.12 scripts\setup_local_auth.py` → `scripts\start_local_api.ps1`, `npx next dev -p 4000` 재기동 (DEC-075, 아직 확인 못 받음).
-3. (선택) GitHub Secrets `NEON_OWNER_URL`, `RENDER_DEPLOY_HOOK_WEB` 등록 시 푸시 자동 배포(현재는 Secrets 없어 건너뜀).
+3. (해결됨 DEC-081) 푸시 자동 배포는 Render 자체 기능(`autoDeployTrigger: commit`)으로 켰다. GitHub Secrets 등록은 필요 없다(`RENDER_DEPLOY_HOOK_WEB`은 등록하지 말 것).
 
 ## 열린 항목
 - (유료 전환으로 콜드스타트 이슈는 사라짐. DEC-077의 재시도는 Neon DB 자동 정지 대비로 유지.)
