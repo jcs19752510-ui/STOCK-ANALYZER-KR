@@ -36,7 +36,7 @@ py -3.12 scripts\kis_daily_price_smoke_test.py --out daily-report.json
 - 화면에서 "제외" 종목이 많거나 "보충이 끝나지 않음"이 오래가면 알려 주세요(호출 한도·지연 조정이 필요할 수 있습니다).
 
 ## 6. 설정값 (선택 — 기본값이면 충분합니다)
-`scripts\start_local_api.ps1`은 `.env`의 일부 키만 읽으므로, 바꾸려면 API를 시작하기 전에 같은 PowerShell 창에서 `$env:LIVE_SCREEN_MIN_INTERVAL = "3"` 처럼 지정합니다.
+`scripts\start_local_api.ps1`은 `.env`의 정해진 키만 읽습니다. 속도 관련 5개(`KIS_MARKET_MIN_INTERVAL`, `KIS_MARKET_PRIORITY_MAX`, `KIS_MARKET_PRIORITY_SECONDS`, `LIVE_SCREEN_MIN_INTERVAL`, `LIVE_SCREEN_REFRESH_SECONDS`)는 `.env`에 적으면 적용됩니다(2026-10-07~). 그 밖의 값은 API 시작 전에 같은 PowerShell 창에서 `$env:이름 = "값"`으로 지정합니다.
 
 | 이름 | 기본 | 뜻 |
 |---|---|---|

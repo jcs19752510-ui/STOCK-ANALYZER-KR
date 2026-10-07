@@ -117,3 +117,7 @@
 - ① 장중 기준 기본 켜짐(저장값 없을 때만). ② `KIS_MARKET_MIN_INTERVAL` 기본 0.125초. ③ 증권사 일봉을 `kis_daily_bar`에 임시 캐시(확정 데이터 불변, 발행일 이하 행은 삭제, API 읽기 전용). 캐시는 교차검증 후에만 사용하고 실패하면 KIS 조회로 폴백.
 - 대안: 증권사 일봉을 raw_ohlcv/daily_prices에 직접 적재하는 안은 확정 데이터 오염·덮어쓰기 규칙 때문에 배제.
 - 결과서: docs/qa/2026-10-07-live-latest-data-test-result.md
+
+## DEC-098 속도 설정이 .env에서 적용되도록 수정 + 로컬 실시간 가이드 (2026-10-07)
+- 발견: `start_local_api.ps1`이 `.env`의 정해진 키만 읽어, `KIS_MARKET_MIN_INTERVAL` 등 속도 설정을 `.env`에 적어도 적용되지 않았음. 5개 키를 허용 목록에 추가.
+- 가이드: docs/ops/local-fast-realtime-guide.md (사용자 요구에 따라 계속 갱신, CLAUDE.MD 규칙 7).

@@ -28,6 +28,8 @@ flowchart TD
 5. **"남은 작업"은 에이전트가 끝낼 수 있는 것은 전부 끝까지 한다**: 시험·회귀·성능·보안 점검(`npm audit`, `pip-audit`)·의존성 취약점 업데이트·문구/문서 정리·결과서까지. 사용자에게 남기는 것은 (a) 사용자만 줄 수 있는 결정, (b) 에이전트가 물리적으로 접근할 수 없는 것(사용자 PC 실제 화면·증권사 앱키 응답·KRX 공식 공고)뿐이며, 이것도 목록으로 정직하게 적는다(해결된 척하지 않는다).
 6. **완료 전 체크(작업마다)**: `ruff check` · `pytest tests`(회귀 전체) · 프런트면 `tsc --noEmit`·`eslint`·`lint:copy`·`scripts/check-*.mjs`·`npm run build` · 화면이면 Playwright 브라우저 시험 · `.ps1`이면 `tests/e2e/ps1_scripts_check.py` · 내부 테스트 결과서(`docs/qa/`) · `docs/harness/decisions.md`·`docs/HANDOFF.md` 갱신 · 작업 브랜치와 `PROD_SCH` 푸시.
 
+7. **로컬 노트북 실시간 가이드는 계속 갱신한다(사용자 요구 "절대 잊지 말 것")**: 속도·설정·점검 방법이 바뀌면 `docs/ops/local-fast-realtime-guide.md`를 같이 고치고, 사용자에게는 그 문서 기준으로 "최대한 빠르게 실시간 주식정보를 보는 방법"을 안내한다. 수치는 계산값/확인값을 구분해 적고 사용자 PC에서만 확인되는 것은 정직하게 표시한다.
+
 ## 시험 환경 만들기 (새 컨테이너에서 처음 한 번, 에이전트가 직접 한다)
 
 ```
