@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { browserApiBase } from "@/lib/apiBase";
 import { useLocalMode } from "@/lib/psearch/react";
 import { LiveScreenController } from "./controller.ts";
-import { newCodes, nextNewExpiryMs } from "./logic.ts";
+import { newCodes, nextNewExpiryMs, shouldAutoApply } from "./logic.ts";
 import { readStoredToggle, writeStoredToggle } from "./protocol.ts";
 import { EMPTY_LIVE_VIEW, type LiveHttp, type LiveQuery, type LiveScreenView } from "./view.ts";
 
@@ -185,4 +185,34 @@ export function useNowSeconds(active: boolean): number {
     };
   }, [active]);
   return now;
+}
+
+/**
+ * 자동 갱신이 한 번 끝날 때마다, 왼쪽에서 바꾼 조건이 있으면 "조건 적용"을 대신 실행한다(`shouldAutoApply`).
+ * - `refreshStamp`: 응답을 받을 때마다 바뀌는 값(`view.receivedAt`). 이 값이 바뀔 때만 확인한다(별도 타이머 없음).
+ * - `editKey`: 입력 상태 객체. 바뀔 때마다 "마지막 입력 시각"을 새로 잡는다.
+ * - `isPending`: 입력값이 유효하고 마지막 적용 조건과 다른가. `apply`: 적용(요청은 컨트롤러가 보낸다).
+ */
+export function useAutoApplyPending(o: {
+  enabled: boolean;
+  paused: boolean;
+  refreshStamp: number | null;
+  editKey: unknown;
+  isPending: () => boolean;
+  apply: () => void;
+}): void {
+  const lastEdit = useRef(0); // 0 = 아직 입력 없음(아주 오래전으로 본다). 첫 렌더 뒤 아래 효과가 현재 시각으로 잡는다
+  const latest = useRef(o);
+  useEffect(() => {
+    latest.current = o;
+  });
+  useEffect(() => {
+    lastEdit.current = Date.now();
+  }, [o.editKey]);
+  useEffect(() => {
+    const c = latest.current;
+    if (!c.enabled || c.refreshStamp === null) return;
+    if (!shouldAutoApply({ paused: c.paused, pending: c.isPending(), msSinceEdit: Date.now() - lastEdit.current })) return;
+    c.apply();
+  }, [o.refreshStamp]);
 }

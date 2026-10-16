@@ -15,7 +15,7 @@ import { ResultsTable } from "@/components/ResultsTable";
 import { mapApiErrorCodeToDisplay } from "@/lib/errorMapping";
 import { buildSearchParams, fetchScreenResults, type ScreenQuery, type ScreenSortBy, type ScreenSortDir } from "@/lib/screenApi";
 import { stripLiveParams } from "@/lib/liveScreen/logic";
-import { useLiveScreen, useLiveScreenAccess, useLiveToggle, useNewCodes } from "@/lib/liveScreen/react";
+import { useAutoApplyPending, useLiveScreen, useLiveScreenAccess, useLiveToggle, useNewCodes } from "@/lib/liveScreen/react";
 import { SCREEN_FIELD_IDS } from "@/lib/screenFieldIds";
 import { orderMatchedMetricKeys } from "@/lib/screenMetricFormat";
 import { useIsDesktopViewport } from "@/lib/useIsDesktopViewport";
@@ -171,13 +171,31 @@ export function ScreenerClient() {
     setFieldErrors([]);
     setMobileFilterOpen(false);
     if (liveOn) {
-      const query = toScreenQuery(formValues, 1);
-      setAppliedQuery(query);
-      live.setQuery({ kind: "screen", params: stripLiveParams(buildSearchParams(query)) }, 1);
+      applyLive();
       return;
     }
     void runQuery(toScreenQuery(formValues, 1));
   }
+
+  function applyLive() {
+    const query = toScreenQuery(formValues, 1);
+    setAppliedQuery(query);
+    live.setQuery({ kind: "screen", params: stripLiveParams(buildSearchParams(query)) }, 1);
+  }
+
+  // 자동 갱신이 끝날 때마다, 왼쪽에서 바꾼(그리고 유효한) 조건이 있으면 "조건 적용"을 대신 실행한다(오류 표시·포커스 이동 없이).
+  // 아직 한 번도 적용하지 않았다면(appliedQuery 없음) 하지 않는다.
+  useAutoApplyPending({
+    enabled: liveOn && appliedQuery !== null,
+    paused: live.view.paused,
+    refreshStamp: live.view.receivedAt,
+    editKey: formValues,
+    isPending: () =>
+      appliedQuery !== null &&
+      validateScreenForm(formValues).length === 0 &&
+      stripLiveParams(buildSearchParams(toScreenQuery(formValues, 1))) !== stripLiveParams(buildSearchParams({ ...appliedQuery, page: 1 })),
+    apply: applyLive,
+  });
 
   function handlePageChange(page: number) {
     if (!appliedQuery) return;

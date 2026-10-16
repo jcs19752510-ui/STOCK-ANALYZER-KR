@@ -35,6 +35,19 @@ export function stripLiveParams(search: string | URLSearchParams): string {
 // ── 간격·지연 ────────────────────────────────────────────────────────────
 
 /** 서버가 알려 준 `refresh_seconds`를 5~60초로 보정. 숫자가 아니면 기본 10초. */
+
+/** 입력이 이 시간(ms) 동안 없어야 자동 적용한다(입력하는 도중의 값이 적용되는 것을 막는다). */
+export const AUTO_APPLY_IDLE_MS = 2000;
+
+/**
+ * 자동 갱신이 끝날 때마다 "왼쪽 입력값을 조건으로 적용"할지 정한다(사용자 요청: 10초마다 조건 적용과 같은 효과).
+ * 입력값이 마지막 적용 조건과 다르고(`pending`), 일시정지가 아니며, 마지막 입력 후 `AUTO_APPLY_IDLE_MS`가 지났을 때만 참이다.
+ * 같은 조건이면 적용하지 않는다 — 적용하면 보던 쪽이 1쪽으로 돌아가므로, 바뀐 입력이 있을 때만 적용한다.
+ */
+export function shouldAutoApply(s: { paused: boolean; pending: boolean; msSinceEdit: number }): boolean {
+  return !s.paused && s.pending && s.msSinceEdit >= AUTO_APPLY_IDLE_MS;
+}
+
 export function clampRefreshSeconds(v: unknown): number {
   if (!finite(v)) return DEFAULT_REFRESH_SECONDS;
   return Math.min(MAX_REFRESH_SECONDS, Math.max(MIN_REFRESH_SECONDS, Math.round(v)));

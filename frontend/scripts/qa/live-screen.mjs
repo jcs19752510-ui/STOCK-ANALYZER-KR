@@ -118,8 +118,10 @@ function track(page) {
   });
   return t;
 }
-async function newPage(browser, { width = 1280, height = 900, ...opts } = {}) {
+async function newPage(browser, { width = 1280, height = 900, defaultOn = false, ...opts } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height }, ...opts });
+  // DEC-097부터 저장값이 없으면 "장중 기준"이 켜짐이다. 이 시험의 기존 흐름은 "꺼짐에서 켜기"를 전제로 하므로 꺼짐을 명시로 저장해 둔다(defaultOn=true면 저장하지 않음).
+  if (!defaultOn) await ctx.addInitScript(() => { try { if (localStorage.getItem("stock.liveScreen.on") === null) localStorage.setItem("stock.liveScreen.on", "0"); } catch { /* 저장소 차단 */ } });
   const page = await ctx.newPage();
   return { ctx, page, t: track(page) };
 }
@@ -210,7 +212,7 @@ async function dev(browser) {
     await openScreen(page, "/screener");
     const shown = await page.waitForSelector(SWITCH, { timeout: 20000 }).then(() => true, () => false);
     rec("전환: 로컬 모드(내 PC)에서 '장중 기준' 스위치가 나타남", shown);
-    rec("전환: 기본 꺼짐(aria-checked=false)·이름 '장중 기준'", !(await switchOn(page)) && /장중 기준/.test(await page.textContent(SWITCH)));
+    rec("전환: 저장값이 꺼짐이면 꺼진 상태(aria-checked=false)·이름 '장중 기준'", !(await switchOn(page)) && /장중 기준/.test(await page.textContent(SWITCH)));
     await applyScreener(page);
     await waitRows(page, 5);
     await sleep(7000);
@@ -310,6 +312,47 @@ async function dev(browser) {
     rec("자동 갱신: 페이지 오류·콘솔 오류 0", t.pageErrors.length === 0 && t.consoleErrors.length === 0, [...t.pageErrors, ...t.consoleErrors].join("; ").slice(0, 200));
     await ctx.close();
     void start;
+  }
+
+  // ── D-2. 자동 적용: 왼쪽에서 바꾼 조건을 "조건 적용"을 누르지 않아도 다음 자동 갱신 때 적용(사용자 요청, DEC-108) ──
+  {
+    await resetCtl();
+    await setCtl("refresh=5&minInterval=3");
+    const { ctx, page, t } = await newPage(browser);
+    await turnOnScreener(page);
+    await waitRows(page, 5);
+    const CAP = "#screen-market-cap-min";
+    const want = String(1234 * 1e8); // 억원 → 원
+    const capOf = (r) => r.q.get("market_cap_min");
+    const n0 = liveCount(t);
+    // (1) 입력만 바꾼다(조건 적용 클릭 없음)
+    await page.fill(CAP, "1234");
+    await sleep(1200);
+    rec("자동 적용: 입력 직후(2초 이내)에는 적용하지 않음(입력 중 보호)", !t.live.slice(n0).some((r) => capOf(r) === want), `새 요청 ${t.live.length - n0}건`);
+    // (2) 다음 자동 갱신에서 새 조건으로 요청이 나간다
+    const applied = await until(() => t.live.slice(n0).some((r) => capOf(r) === want), 14000);
+    rec("자동 적용: '조건 적용'을 누르지 않아도 다음 자동 갱신에서 새 시가총액 조건(1234억)으로 요청", applied, t.live.slice(n0).map(capOf).join(","));
+    const appliedReq = t.live.slice(n0).find((r) => capOf(r) === want);
+    rec("자동 적용: 새 조건 요청은 1쪽부터", !!appliedReq && appliedReq.q.get("page") === "1", appliedReq?.q.get("page"));
+    // (3) 이후 갱신도 새 조건을 유지(되돌아가지 않음)
+    const n1 = liveCount(t);
+    await until(() => liveCount(t) >= n1 + 2, 15000);
+    rec("자동 적용: 그 뒤 갱신도 새 조건 유지", t.live.slice(n1).length >= 2 && t.live.slice(n1).every((r) => capOf(r) === want), t.live.slice(n1).map(capOf).join(","));
+    // (4) 잘못된 값은 적용하지 않고, 오류 문구도 띄우지 않는다
+    await page.fill("#screen-market-cap-max", "1"); // 최소(1234) > 최대(1) → 검증 오류인 입력
+    const n2 = liveCount(t);
+    await until(() => liveCount(t) >= n2 + 2, 15000);
+    rec("자동 적용: 잘못된 입력(최소>최대)은 적용하지 않음(이전 조건으로 계속 갱신)", t.live.slice(n2).length >= 2 && t.live.slice(n2).every((r) => capOf(r) === want && !r.q.has("market_cap_max")), t.live.slice(n2).map((r) => `${capOf(r)}/${r.q.get("market_cap_max")}`).join(","));
+    rec("자동 적용: 자동 적용은 오류 문구를 띄우지 않음", (await countSel(page, ".field-error, [role=\"alert\"]")) === 0);
+    // (5) 일시정지 중에는 적용하지 않는다
+    await page.fill("#screen-market-cap-max", "");
+    await page.fill(CAP, "777");
+    await clickLive(page, "일시정지");
+    const n3 = liveCount(t);
+    await sleep(8000);
+    rec("자동 적용: 일시정지 중에는 적용하지 않음", !t.live.slice(n3).some((r) => capOf(r) === String(777 * 1e8)), `새 요청 ${t.live.length - n3}건`);
+    rec("자동 적용: 페이지 오류·콘솔 오류 0", t.pageErrors.length === 0 && t.consoleErrors.length === 0, [...t.pageErrors, ...t.consoleErrors].join("; ").slice(0, 200));
+    await ctx.close();
   }
 
   // ── E. 신규 표지·최근 변화(편입/이탈) ──
