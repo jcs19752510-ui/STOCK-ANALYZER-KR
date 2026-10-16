@@ -160,6 +160,38 @@ def main() -> int:
             r_remote = run_ps1("reset_password.ps1", shim, base, "-ListOnly")
             rec("reset_password: 대상이 localhost가 아니면(원격 DB) 중단하고 종료코드 2", r_remote.returncode == 2 and "not this computer" in r_remote.stdout and "setup_local_auth.py" in r_remote.stdout)
 
+            # 5-2) enable_realtime.ps1 — 임시 폴더를 저장소 루트처럼 써서 .env·frontend/.env.local 갱신을 시험(재기동·증권사 확인은 건너뜀)
+            def er(root: Path, stdin: str = "") -> subprocess.CompletedProcess:
+                return run_ps1("enable_realtime.ps1", shim, base, "-RepoRoot", str(root), "-NoRestart", "-SkipSmoke", "-FromStdin", stdin=stdin)
+
+            def kv(path: Path) -> dict[str, str]:
+                return dict(line.split("=", 1) for line in path.read_text(encoding="utf-8").splitlines() if "=" in line and not line.startswith("#"))
+
+            r1root = work / "rt1"
+            (r1root / "frontend").mkdir(parents=True)
+            (r1root / ".env").write_bytes(b"# keep\r\nUNRELATED=keep-me\r\nLOCAL_INTRADAY_ENABLED=false\r\n")
+            (r1root / "frontend" / ".env.local").write_text("NEXT_PUBLIC_API_BASE_URL=http://localhost:4001\nNEXT_PUBLIC_LOCAL_INTRADAY_ENABLED=false\n", encoding="utf-8")
+            e1 = er(r1root, "APPKEY-secretvalue-1\nAPPSECRET-secretvalue-2\n")
+            kv1, raw1 = kv(r1root / ".env"), (r1root / ".env").read_bytes()
+            rec("enable_realtime: 키가 없으면 입력받아 .env에 3개 설정(기존 줄·주석·CRLF 보존, 값은 출력 안 함, 백업 생성)", e1.returncode == 0 and kv1["LOCAL_INTRADAY_ENABLED"] == "true" and kv1["KIS_APP_KEY"] == "APPKEY-secretvalue-1" and kv1["KIS_APP_SECRET"] == "APPSECRET-secretvalue-2" and kv1["UNRELATED"] == "keep-me" and b"# keep" in raw1 and b"\r\n" in raw1 and "secretvalue" not in e1.stdout + e1.stderr and len(list(r1root.glob(".env.bak-realtime-*"))) == 1, (e1.stdout + e1.stderr)[-300:])
+            wv = kv(r1root / "frontend" / ".env.local")
+            rec("enable_realtime: frontend/.env.local의 NEXT_PUBLIC_LOCAL_INTRADAY_ENABLED를 true로(다른 줄 보존)", wv["NEXT_PUBLIC_LOCAL_INTRADAY_ENABLED"] == "true" and wv["NEXT_PUBLIC_API_BASE_URL"] == "http://localhost:4001")
+            e2 = er(r1root, "")
+            lines2 = (r1root / ".env").read_text(encoding="utf-8").splitlines()
+            rec("enable_realtime: 다시 실행해도 입력을 묻지 않고 줄이 중복되지 않음", e2.returncode == 0 and sum(1 for ln in lines2 if ln.startswith("KIS_APP_KEY=")) == 1 and sum(1 for ln in lines2 if ln.startswith("LOCAL_INTRADAY_ENABLED=")) == 1)
+            r2root = work / "rt2"
+            (r2root / "frontend").mkdir(parents=True)
+            (r2root / ".env").write_text("OTHER=1\n", encoding="utf-8")
+            (r2root / ".env.bak-20261001-000000").write_text("KIS_APP_KEY=OLDKEY-zzz\nKIS_APP_SECRET=OLDSECRET-zzz\n", encoding="utf-8")
+            e3 = er(r2root, "")
+            kv3 = kv(r2root / ".env")
+            rec("enable_realtime: 키가 없고 예전 .env 백업에 있으면 그것을 복원(값 출력 안 함)", e3.returncode == 0 and kv3.get("KIS_APP_KEY") == "OLDKEY-zzz" and "restored from .env.bak-20261001-000000" in e3.stdout and "zzz" not in e3.stdout + e3.stderr, (e3.stdout + e3.stderr)[-300:])
+            r3root = work / "rt3"
+            (r3root / "frontend").mkdir(parents=True)
+            (r3root / ".env").write_text("OTHER=1\n", encoding="utf-8")
+            e4 = er(r3root, "\n\n")
+            rec("enable_realtime: 키가 비어 있으면 아무것도 바꾸지 않고 종료코드 1", e4.returncode == 1 and (r3root / ".env").read_text(encoding="utf-8") == "OTHER=1\n" and not list(r3root.glob(".env.bak-realtime-*")))
+
             # 4) restart_local.ps1
             log.write_text("", encoding="utf-8")
             r4 = run_ps1("restart_local.ps1", shim, {**base, "HARNESS_PORTS_BUSY": "1"}, "-NoBrowser")

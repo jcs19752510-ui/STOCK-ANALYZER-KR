@@ -164,3 +164,9 @@
 - 변경: `setup_local_auth.py`를 로컬 DB 전용으로 재작성(`ALEMBIC_DATABASE_URL`의 localhost 소유자 주소로 `auth_service` 계정·권한 생성, `PUBLIC_API_AUTH_DATABASE_URL`을 로컬 주소로, 원격 `AUTH_ADMIN_DATABASE_URL` 제거, 관리자 없으면 생성, localhost가 아닌 주소 거부). 권한 SQL은 `deploy/local/auth-service-setup.sql`로 이동(한 곳에서 관리). `reset_password.ps1`은 로컬 DB만 허용. `manage_users.py`는 접속 오류의 원인(비밀값 제거)을 표시.
 - 삭제: `deploy/render/*`(원격 DB 설정·pg 클라이언트·사전 배포 스크립트), `deploy/tests/test-pre-deploy.sh`, `.github/workflows/scheduled-batch.yml`(원격 DB 정기 배치·백업), `docs/ops/login-rollout-runbook.md`, 원격 DB·Render 전용 QA 보고서 4건. 코드 주석·시험·현행 문서·과거 QA/설계 기록의 원격 DB 표현은 모두 중립화했다. 이 로그의 과거 항목은 append-only 규칙에 따라 그대로 둔다.
 - 사용자가 해야 할 일: 로컬 DB에는 예전 회원이 없다. `setup_local_auth.py`가 관리자 계정을 새로 만든다(아이디 기본 jcw1973, 비밀번호는 새로 정함).
+
+## DEC-106 투자자 탭이 비어 보이는 원인 분석과 실시간 켜기 스크립트 (2026-10-16)
+- 사용자 질문: 투자자 탭이 안 나온다, 기존에는 나왔나, 실시간 조회인가 저장값인가.
+- 이력(기록 근거): ① DEC-054(10/03) 개인 로컬 모드의 `InvestorPanel` — 증권사 `주식현재가 투자자` 직접 조회, 30초 갱신. 10/02~03 사용자 PC 실제 증권사 응답으로 30일 수신·단위 검산 통과(`docs/qa/2026-10-03-investor-flow-test-result.md` §7), 사용자가 10/04까지 "정상"이라고 보고. ② DEC-068·074(10/05) 운영 서버용 `OwnerInvestorPanel` — PC가 수집해 DB에 적재한 일별값을 관리자에게만 표시(실시간 아님). ③ 10/05 사용자 보고: 로컬에서 "개인 로컬 모드가 꺼져 있습니다"(F-10), 원인 미확정으로 기록.
+- 현재 원인: 투자자 탭은 `localMode`(웹의 `NEXT_PUBLIC_LOCAL_INTRADAY_ENABLED=true` + 사설/로컬 주소)일 때만 직접 조회 패널, 아니면 관리자에게 저장값 패널을 보인다. 사용자 화면은 저장값 패널이었고(= 이 PC 웹이 로컬 모드 꺼진 상태), 수집 시도 로그에서 `.env`에 `KIS_APP_KEY`·`KIS_APP_SECRET`이 없음이 확인됐다. 저장값 테이블(`investor_flow_daily`)은 원격 DB 폐기(DEC-105)로 로컬 DB에 비어 있을 가능성이 크다(미확인).
+- 조치: 설정 4개를 맞추고 연동 확인·재기동까지 한 번에 하는 `scripts/enable_realtime.ps1` 추가(키가 없으면 `.env.bak-*`에서 복원 또는 숨김 입력, 값 비출력). PowerShell 7 하네스 5건 포함 40/40, 5.1 호환 정적 시험 통과. 실제 증권사 응답·Windows 5.1 실행은 미확인.
