@@ -56,10 +56,10 @@ def make_shims(root: Path, python: str) -> Path:
     return b
 
 
-def run_ps1(script: str, shim: Path, env_extra: dict[str, str], *args: str) -> subprocess.CompletedProcess:
+def run_ps1(script: str, shim: Path, env_extra: dict[str, str], *args: str, stdin: str | None = None) -> subprocess.CompletedProcess:
     env = {**os.environ, "PATH": f"{shim}:{os.environ['PATH']}", "PYTHONPATH": str(REPO), **env_extra}
     cmd = f". {REPO}/tests/e2e/ps1/stubs.ps1; & '{REPO}/scripts/{script}' {' '.join(args)}; exit $LASTEXITCODE"
-    return subprocess.run([PWSH, "-NoProfile", "-Command", cmd], capture_output=True, text=True, env=env, cwd=REPO, timeout=300)
+    return subprocess.run([PWSH, "-NoProfile", "-Command", cmd], capture_output=True, text=True, env=env, cwd=REPO, timeout=300, input=stdin)
 
 
 def main() -> int:
@@ -122,6 +122,39 @@ def main() -> int:
             wl = logf.read_text(encoding="utf-8", errors="replace") if logf.exists() else ""
             rec("run_daily_batch.ps1 래퍼: 로그에 시작·끝 표시와 실행 결과(.env의 DB 주소를 읽어 진단 출력) 기록", "run start" in wl and "run end (exit=2)" in wl and "화면에 쓰이는 발행 거래일" in wl, f"rc={r6.returncode}")
             logf.unlink(missing_ok=True)
+
+            # 5) reset_password.ps1 — 임시 회원 DB(마이그레이션 적용됨)에 대고 진짜 manage_users.py로 비밀번호 재설정(auth_service 계정 = API가 쓰는 계정)
+            from sqlalchemy.engine import make_url
+
+            auth_url = make_url(os.environ["PUBLIC_API_AUTH_DATABASE_URL"]).set(database=tdb.migrator_url.database)
+            mig = TempDb.render(tdb.migrator_url)
+            env_file.write_text(f"ALEMBIC_DATABASE_URL={mig}\nPUBLIC_API_AUTH_DATABASE_URL={TempDb.render(auth_url)}\n", encoding="utf-8")
+            pyenv = {**os.environ, "PYTHONPATH": str(REPO), "AUTH_ADMIN_DATABASE_URL": mig}
+            subprocess.run([sys.executable, "scripts/manage_users.py", "add", "jcw1973", "--name", "tester", "--role", "admin", "--password-stdin"], input="OldPassw0rd!x\n", text=True, capture_output=True, env=pyenv, cwd=REPO, check=True)
+            ok_in = "NewPassw0rd!y\nNewPassw0rd!y\n"
+            rl = run_ps1("reset_password.ps1", shim, base, "-ListOnly")
+            rec("reset_password -ListOnly: 대상 DB(host:port/db)와 회원 목록 출력, 비밀번호 비출력", rl.returncode == 0 and "jcw1973" in rl.stdout and "Target DB (from PUBLIC_API_AUTH_DATABASE_URL)" in rl.stdout and "OldPassw0rd" not in rl.stdout + rl.stderr and ":x@" not in rl.stdout, rl.stdout[-300:])
+            r_ok = run_ps1("reset_password.ps1", shim, base, "-FromStdin", stdin=ok_in)
+            rec("reset_password: 새 비밀번호 설정 성공(종료코드 0)과 확인 문구", r_ok.returncode == 0 and "Done." in r_ok.stdout and "NewPassw0rd" not in r_ok.stdout + r_ok.stderr, (r_ok.stdout + r_ok.stderr)[-400:])
+            vp = subprocess.run([sys.executable, "scripts/manage_users.py", "verify-password", "jcw1973", "--password-stdin"], input="NewPassw0rd!y\n", text=True, capture_output=True, env=pyenv, cwd=REPO)
+            vo = subprocess.run([sys.executable, "scripts/manage_users.py", "verify-password", "jcw1973", "--password-stdin"], input="OldPassw0rd!x\n", text=True, capture_output=True, env=pyenv, cwd=REPO)
+            rec("reset_password: DB에서 새 비밀번호는 일치, 옛 비밀번호는 불일치", vp.returncode == 0 and vo.returncode == 1)
+            r_diff = run_ps1("reset_password.ps1", shim, base, "-FromStdin", stdin="AaaaBbbb1234\nDifferent9999\n")
+            rec("reset_password: 두 입력이 다르면 변경 없이 종료코드 1", r_diff.returncode == 1 and "different" in r_diff.stdout)
+            r_short = run_ps1("reset_password.ps1", shim, base, "-FromStdin", stdin="short\nshort\n")
+            rec("reset_password: 비밀번호 규칙 위반(짧음)이면 변경 없이 종료코드 1", r_short.returncode == 1 and "NOT changed" in r_short.stdout)
+            r_nouser = run_ps1("reset_password.ps1", shim, base, "-Username", "nobody99", "-FromStdin", stdin=ok_in)
+            rec("reset_password: 목록에 없는 아이디는 변경 없이 종료코드 1", r_nouser.returncode == 1 and "is not in the list" in r_nouser.stdout)
+            env_file.write_text(f"ALEMBIC_DATABASE_URL={mig}\nPUBLIC_API_AUTH_DATABASE_URL={TempDb.render(auth_url.set(database='no_such_db_zz'))}\n", encoding="utf-8")
+            r_down = run_ps1("reset_password.ps1", shim, base, "-ListOnly")
+            rec("reset_password: DB에 접속하지 못하면 안내와 함께 종료코드 1", r_down.returncode == 1 and "could not read the user list" in r_down.stdout)
+            env_file.write_text(f"ALEMBIC_DATABASE_URL={mig}\nPUBLIC_API_AUTH_DATABASE_URL={TempDb.render(auth_url)}\n", encoding="utf-8")
+            env_file.write_text(f"ALEMBIC_DATABASE_URL={mig}\n", encoding="utf-8")
+            r_noapi = run_ps1("reset_password.ps1", shim, {**base, "PUBLIC_API_AUTH_DATABASE_URL": ""}, "-ListOnly")
+            rec("reset_password: API 회원 DB 주소가 없으면 그 경고(로그인 확인 불가의 원인)를 출력", "PUBLIC_API_AUTH_DATABASE_URL is not set" in r_noapi.stdout and r_noapi.returncode == 0)
+            env_file.write_text(f"AUTH_ADMIN_DATABASE_URL={mig}\nPUBLIC_API_AUTH_DATABASE_URL={TempDb.render(make_url(mig).set(database='postgres'))}\n", encoding="utf-8")
+            r_mis = run_ps1("reset_password.ps1", shim, base, "-FromStdin", stdin="n\n")
+            rec("reset_password: 대상 DB와 API 로그인 DB가 다르면 경고하고 확인을 묻는다(n이면 변경 없음)", "These are different databases" in r_mis.stdout and r_mis.returncode == 1)
 
             # 4) restart_local.ps1
             log.write_text("", encoding="utf-8")

@@ -152,3 +152,8 @@
 - 사용자 지시: 실제 KIS 응답 지연·한도 / PowerShell 5.1·작업 스케줄러 / 증권사 약관을 "개발 테스트 진행".
 - 결과: ① KIS 서버는 이 환경 프록시가 막아 접속 불가(앱키도 없음) → 측정 도구(DEC-102)로 사용자 PC에서 확인. ② 5.1은 실행 불가 → 정적 점검(6+ 전용 구성요소 0건, 비ASCII 스크립트 BOM 확인, 오독 시뮬레이션)을 `tests/unit/test_ps1_windows_compat.py` 16건으로 고정. ③ 약관 원문은 찾지 못함, 공개 안내(제3자 제공은 제휴 대상, 시세 API는 거래소 정보이용계약 확인)만 확인.
 - 결과서: docs/qa/2026-10-16-unverified-items-test-result.md. 3건 모두 "미확인"을 해결된 척하지 않고 남은 확인 방법을 적었다.
+
+## DEC-104 비밀번호 재설정 스크립트 reset_password.ps1 (2026-10-16)
+- 사용자 요청: 아이디 jcw1973의 비밀번호를 몰라 로그인 불가 → 재설정 스크립트.
+- 구현: 기존 `manage_users.py set-password`를 노트북에서 쓰기 쉽게 감싼 `scripts/reset_password.ps1`. 대상 DB는 `AUTH_ADMIN_DATABASE_URL` → `PUBLIC_API_AUTH_DATABASE_URL`(API가 로그인에 쓰는 DB) → `ALEMBIC_DATABASE_URL` 순. `auth_service` 계정이 `password_hash`·`failed_attempts`·`locked_until`을 UPDATE할 수 있음을 마이그레이션(0015·0017) GRANT로 확인해, 소유자 주소 없이도 API와 같은 DB를 바꾼다. 다른 DB를 바꾸려 하면 경고·확인. 비밀번호는 숨김 입력 → 파이프(stdin)로만 전달, 출력 없음.
+- 시험: PowerShell 7 하네스 10건(목록, 성공·DB 반영 확인, 불일치, 규칙 위반, 없는 아이디, DB 접속 실패, API DB 주소 없음 경고, DB 불일치 경고) 통과(하네스 33/33). Windows PowerShell 5.1 실행은 미확인(정적 호환 시험 통과, ASCII 전용).
