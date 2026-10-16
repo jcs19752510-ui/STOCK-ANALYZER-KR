@@ -129,3 +129,10 @@
 - 수정 후 실측: 지연 0.25초에서 기본 12.4초, 0.1 설정 10.0초, 0.06 설정 6.1초(수정 전 23.7·23.7·23.7초). 통제 실험(동시 1)은 23.7초 그대로.
 - 개발 중 발견·수정한 결함: 처음 구현에서 운영 코드가 `KisClient(settings, min_interval=...)`로 인자를 넘겨, 시험이 `functools.partial(KisClient, min_interval=0.0)`·`lambda settings:`로 바꿔 둔 대역과 충돌해 전체 회귀 6건 실패 → 운영 호출을 `KisClient(settings)`로 되돌리고 기본값을 클라이언트 안에서 환경설정으로 정함.
 - 한계(정직): 실제 KIS 응답 지연·한도는 이 환경에서 측정 불가. 우선 순환·공휴일 처리는 이번에 바꾸지 않음. 결과서 `docs/qa/2026-10-16-market-poller-speed-test-result.md`.
+
+## DEC-100 Render 서버 미사용: 자동 배포 제거 (2026-10-16)
+- 사용자 지시: "Render 자동 배포 관련된 내용은 모두 제거. Render 서버 사용하지 않습니다. CLAUDE.MD에 모두 작성." "로컬 컴퓨터에서 작업하고 확인합니다."
+- DEC-081(푸시 자동 배포)을 **폐기**한다(이 로그는 append-only라 DEC-081 본문은 그대로 두고 여기서 대체한다).
+- 변경: `.github/workflows/render-deploy.yml` 삭제 / `render.yaml`의 `autoDeployTrigger`를 `"off"`로(키 자체를 지우면 Render 기본값이 자동 배포일 수 있어 명시) / `tests/unit/test_unified_deploy_files.py`를 새 상태에 맞춤(워크플로 부재 확인 추가) / `docs/ops/unified-service-guide.md` §7, `docs/HANDOFF.md`의 자동 배포 규칙, `docs/ops/login-rollout-runbook.md`의 확인 단계를 폐기 표기 / `docs/ops/render-neon-guide.md` 상단에 미사용 표기 / `CLAUDE.MD` 상시 규칙 8.
+- 남겨 둔 것(삭제 여부는 사용자 결정): `render.yaml` 본문, `deploy/render/*`, `docs/ops/render-neon-guide.md`, `tests/unit/test_render_neon_support.py`, 과거 `docs/qa/*` 결과서(역사 기록). 코드 주석 속 "Render" 언급.
+- 확인하지 못한 것: Render 쪽(대시보드)에 서비스가 아직 살아 있고 자동 배포가 켜져 있는지는 이 환경에서 볼 수 없다. 서비스가 있다면 사용자가 Render 화면에서 직접 끄거나 삭제해야 한다.

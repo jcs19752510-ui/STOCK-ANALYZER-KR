@@ -13,7 +13,6 @@ REPO = Path(__file__).resolve().parents[2]
 DOCKERFILE = (REPO / "deploy" / "unified.Dockerfile").read_text(encoding="utf-8")
 BLUEPRINT = yaml.safe_load((REPO / "render.yaml").read_text(encoding="utf-8"))  # 전환 후 운영 블루프린트(통합)
 LIVE_BLUEPRINT = yaml.safe_load((REPO / "deploy" / "render" / "render.two-services.yaml").read_text(encoding="utf-8"))  # 이전 2개 서비스(롤백용)
-WORKFLOW = (REPO / ".github" / "workflows" / "render-deploy.yml").read_text(encoding="utf-8")
 
 
 def final_stage() -> str:
@@ -67,7 +66,7 @@ def test_블루프린트는_서비스_1개이고_웹_이름과_주소를_유지�
     svc = BLUEPRINT["services"][0]
     assert svc["name"] == "stock-analyzer-web" and svc["name"] in {s["name"] for s in LIVE_BLUEPRINT["services"]}
     assert svc["dockerfilePath"] == "./deploy/unified.Dockerfile" and svc["healthCheckPath"] == "/healthz"
-    assert svc["branch"] == "PROD_SCH" and svc["autoDeployTrigger"] == "commit" and svc["plan"] == "starter"
+    assert svc["branch"] == "PROD_SCH" and svc["autoDeployTrigger"] == "off"  # Render 미사용(DEC-100): 자동 배포 금지 and svc["plan"] == "starter"
 
 
 def test_블루프린트가_기존_두_서비스의_환경변수를_빠짐없이_포함한다() -> None:
@@ -94,8 +93,5 @@ def test_통합_구성의_고정값() -> None:
     assert env["PORT"] == "3000"
 
 
-def test_워크플로는_API_배포_훅_없이도_배포한다() -> None:
-    gate = re.search(r"for v in ([A-Z_ ]+); do", WORKFLOW).group(1).split()
-    assert "RENDER_DEPLOY_HOOK_WEB" in gate and "RENDER_DEPLOY_HOOK_API" not in gate
-    assert 'if [ -n "$RENDER_DEPLOY_HOOK_API" ]' in WORKFLOW
-    assert "deploy/**" not in WORKFLOW.split("paths-ignore:")[1].split("workflow_dispatch")[0].replace("deploy/tests/**", "")  # 배포 파일 변경은 배포를 일으킨다
+def test_자동_배포_워크플로는_없다() -> None:
+    assert not (REPO / ".github" / "workflows" / "render-deploy.yml").exists()  # Render 미사용(DEC-100)

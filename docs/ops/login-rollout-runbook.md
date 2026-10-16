@@ -19,7 +19,7 @@
 | 8 | 되돌리기 | — |
 
 ## 0. 점검
-1. **GitHub 자동 배포 여부 확인.** 저장소 → **Actions → render-deploy**. `Secrets not set … deploy skipped`이면 자동 배포 없음. 성공 기록이 있으면 **PROD_SCH 푸시마다 이미 Neon 마이그레이션이 적용되고 Render 배포 요청이 나갔을 수 있다**(그 경우 2단계 `alembic current`가 이미 `0017`이고, 4단계 배포도 이미 끝났을 수 있다 — 그대로 확인만 하면 된다).
+1. (폐기 DEC-100) Render 자동 배포와 `render-deploy` 워크플로는 없다. 이 단계는 하지 않는다.
 2. 최신 코드 받기와 도구 설치(내 PC에 로컬 변경이 있으면 `git status` 결과를 먼저 알려 줄 것 — **`git push`는 하지 않는다**):
    ```powershell
    git status --short
