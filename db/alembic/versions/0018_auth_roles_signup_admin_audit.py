@@ -34,7 +34,7 @@ BEGIN
     GRANT INSERT ON auth.admin_audit TO auth_service;
     GRANT USAGE ON SEQUENCE auth.admin_audit_audit_id_seq TO auth_service;
   ELSE
-    RAISE NOTICE 'auth_service 역할이 없어 GRANT를 건너뜁니다. 역할을 만든 뒤 deploy/render/neon-auth-setup.sql을 실행하세요.';
+    RAISE NOTICE 'auth_service 역할이 없어 GRANT를 건너뜁니다. py -3.12 scripts\\setup_local_auth.py 를 실행하세요.';
   END IF;
 END
 $do$;

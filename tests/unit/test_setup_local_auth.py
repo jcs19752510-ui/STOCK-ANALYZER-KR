@@ -11,14 +11,16 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from scripts import setup_local_auth as sla  # noqa: E402
 
-AUTH_URL = "postgresql://auth_service:pw%21x@ep-abc.neon.tech/neondb?sslmode=require"
+OWNER_URL = "postgresql://migrator:pw%21x@localhost:5432/stock_screener"
 
 
-def _run(tmp_path: Path, *extra: str, monkeypatch: pytest.MonkeyPatch, auth_url: str | None = AUTH_URL) -> int:
+def _run(tmp_path: Path, *extra: str, monkeypatch: pytest.MonkeyPatch, owner: str | None = None) -> int:
+    """`owner`가 있으면 환경변수로 로컬 DB 소유자 주소를 준다(없으면 .env 의 값을 쓴다). DB 준비·관리자 만들기는 건너뛴다(--no-db)."""
+    monkeypatch.delenv(sla.OWNER_KEY, raising=False)
     monkeypatch.delenv(sla.AUTH_DB_KEY, raising=False)
-    if auth_url is not None:
-        monkeypatch.setenv(sla.AUTH_DB_KEY, auth_url)
-    return sla.main(["--root", str(tmp_path), "--no-check", *extra])
+    if owner is not None:
+        monkeypatch.setenv(sla.OWNER_KEY, owner)
+    return sla.main(["--root", str(tmp_path), "--no-db", *extra])
 
 
 def _read(path: Path) -> dict[str, str]:
@@ -30,7 +32,7 @@ def repo(tmp_path: Path) -> Path:
     (tmp_path / "frontend").mkdir()
     # 윈도우(CRLF + BOM) 기존 파일, 로컬 전용 설정과 주석이 들어 있다.
     (tmp_path / ".env").write_bytes(
-        "﻿# 로컬 DB\r\nPUBLIC_API_DATABASE_URL=postgresql+psycopg://api_service:x@localhost:5432/stock_screener\r\nLOCAL_INTRADAY_ENABLED=true\r\nKIS_APP_KEY=abc\r\n".encode()
+        "﻿# 로컬 DB\r\nPUBLIC_API_DATABASE_URL=postgresql+psycopg://api_service:x@localhost:5432/stock_screener\r\nALEMBIC_DATABASE_URL=postgresql+psycopg://migrator:pw%21x@localhost:5432/stock_screener\r\nLOCAL_INTRADAY_ENABLED=true\r\nKIS_APP_KEY=abc\r\n".encode()
     )
     (tmp_path / "frontend" / ".env.local").write_text(
         "NEXT_PUBLIC_API_BASE_URL=http://localhost:4001\nNEXT_PUBLIC_LOCAL_INTRADAY_ENABLED=true\n", encoding="utf-8"
@@ -70,13 +72,13 @@ def test_윈도우_줄바꿈과_BOM_처리(repo: Path, monkeypatch: pytest.Monke
 def test_다시_실행해도_값이_바뀌지_않는다(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _run(repo, monkeypatch=monkeypatch)
     first = (_read(repo / ".env"), _read(repo / "frontend" / ".env.local"))
-    assert _run(repo, monkeypatch=monkeypatch, auth_url=None) == 0  # 주소는 .env에서 다시 읽는다
+    assert _run(repo, monkeypatch=monkeypatch) == 0  # 주소는 .env에서 다시 읽는다
     assert first == (_read(repo / ".env"), _read(repo / "frontend" / ".env.local"))
     assert len(list(repo.glob(".env.bak-*"))) >= 1  # 바꾸기 전 파일 보관
 
 
 def test_파일이_없어도_새로_만든다(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    assert _run(tmp_path, monkeypatch=monkeypatch) == 0
+    assert _run(tmp_path, monkeypatch=monkeypatch, owner=OWNER_URL) == 0
     assert _read(tmp_path / ".env")[sla.REQUIRE_KEY] == "true"
     assert _read(tmp_path / "frontend" / ".env.local")["AUTH_REQUIRED"] == "true"
 
@@ -96,7 +98,7 @@ def test_끈_뒤_다시_켜면_같은_토큰을_재사용(repo: Path, monkeypatc
     _run(repo, monkeypatch=monkeypatch)
     token = _read(repo / ".env")[sla.TOKEN_KEY]
     sla.main(["--root", str(repo), "--off"])
-    assert _run(repo, monkeypatch=monkeypatch, auth_url=None) == 0
+    assert _run(repo, monkeypatch=monkeypatch) == 0
     assert _read(repo / ".env")[sla.TOKEN_KEY] == token
 
 
@@ -111,7 +113,7 @@ def test_주소_형식_정규화(raw: str, expected: str) -> None:
 
 def test_잘못된_주소는_거부하고_파일을_건드리지_않는다(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     before = (repo / ".env").read_bytes()
-    assert _run(repo, monkeypatch=monkeypatch, auth_url="mysql://x") == 2
+    assert _run(repo, monkeypatch=monkeypatch, owner="mysql://x") == 2
     assert (repo / ".env").read_bytes() == before
     assert not (repo / "frontend" / ".env.local").read_text(encoding="utf-8").count("AUTH_REQUIRED")
 
@@ -120,4 +122,42 @@ def test_화면_출력에_비밀값이_없다(repo: Path, monkeypatch: pytest.Mo
     _run(repo, monkeypatch=monkeypatch)
     out = capsys.readouterr().out
     api = _read(repo / ".env")
-    assert api[sla.TOKEN_KEY] not in out and "pw%21x" not in out and _read(repo / "frontend" / ".env.local")[sla.SECRET_KEY] not in out
+    assert api[sla.TOKEN_KEY] not in out and "pw%21x" not in out and "pw!x" not in out and api[sla.AUTH_DB_KEY] not in out and _read(repo / "frontend" / ".env.local")[sla.SECRET_KEY] not in out
+
+
+def test_로컬이_아닌_DB_주소는_거부하고_파일을_건드리지_않는다(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    before = (repo / ".env").read_bytes()
+    assert _run(repo, monkeypatch=monkeypatch, owner="postgresql://o:p@ep-abc.example.com:5432/db") == 2
+    assert (repo / ".env").read_bytes() == before
+
+
+def test_원격_AUTH_ADMIN_주소는_지우고_로컬_것은_둔다(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    env = repo / ".env"
+    env.write_text(env.read_text(encoding="utf-8").replace("\r\n", "\n") + "AUTH_ADMIN_DATABASE_URL=postgresql+psycopg://o:p@ep-abc.example.com:5432/db\n", encoding="utf-8")
+    assert _run(repo, monkeypatch=monkeypatch) == 0
+    assert sla.ADMIN_URL_KEY not in _read(env)
+    env.write_text(env.read_text(encoding="utf-8") + "AUTH_ADMIN_DATABASE_URL=postgresql+psycopg://o:p@localhost:5432/db\n", encoding="utf-8")
+    assert _run(repo, monkeypatch=monkeypatch) == 0
+    assert _read(env)[sla.ADMIN_URL_KEY].endswith("@localhost:5432/db")
+
+
+def test_예전_로컬_회원_DB_비밀번호는_재사용(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _run(repo, monkeypatch=monkeypatch)
+    url = _read(repo / ".env")[sla.AUTH_DB_KEY]
+    assert url.startswith("postgresql+psycopg://auth_service:") and "@localhost:5432/stock_screener" in url
+    assert _run(repo, monkeypatch=monkeypatch) == 0 and _read(repo / ".env")[sla.AUTH_DB_KEY] == url
+
+
+def test_예전_원격_회원_DB_주소는_새_로컬_주소로_바뀐다(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    env = repo / ".env"
+    env.write_text(env.read_text(encoding="utf-8").replace("\r\n", "\n") + "PUBLIC_API_AUTH_DATABASE_URL=postgresql+psycopg://auth_service:old@ep-abc.example.com:5432/remotedb\n", encoding="utf-8")
+    assert _run(repo, monkeypatch=monkeypatch) == 0
+    url = _read(env)[sla.AUTH_DB_KEY]
+    assert "ep-abc" not in url and "@localhost:5432/stock_screener" in url and ":old@" not in url
+
+
+def test_GRANT_문은_SQL_파일에서_12개를_뽑고_psql_전용_줄은_제외한다() -> None:
+    stmts = sla.grant_statements()
+    assert len(stmts) == 12 and all(s.upper().startswith("GRANT") and s.endswith(";") for s in stmts)
+    assert not any("gexec" in s or "format(" in s for s in stmts)
+    assert any("UPDATE (password_hash" in s for s in stmts) and any("auth.user_sessions" in s for s in stmts)

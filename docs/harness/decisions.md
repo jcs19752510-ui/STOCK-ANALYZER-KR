@@ -157,3 +157,10 @@
 - 사용자 요청: 아이디 jcw1973의 비밀번호를 몰라 로그인 불가 → 재설정 스크립트.
 - 구현: 기존 `manage_users.py set-password`를 노트북에서 쓰기 쉽게 감싼 `scripts/reset_password.ps1`. 대상 DB는 `AUTH_ADMIN_DATABASE_URL` → `PUBLIC_API_AUTH_DATABASE_URL`(API가 로그인에 쓰는 DB) → `ALEMBIC_DATABASE_URL` 순. `auth_service` 계정이 `password_hash`·`failed_attempts`·`locked_until`을 UPDATE할 수 있음을 마이그레이션(0015·0017) GRANT로 확인해, 소유자 주소 없이도 API와 같은 DB를 바꾼다. 다른 DB를 바꾸려 하면 경고·확인. 비밀번호는 숨김 입력 → 파이프(stdin)로만 전달, 출력 없음.
 - 시험: PowerShell 7 하네스 10건(목록, 성공·DB 반영 확인, 불일치, 규칙 위반, 없는 아이디, DB 접속 실패, API DB 주소 없음 경고, DB 불일치 경고) 통과(하네스 33/33). Windows PowerShell 5.1 실행은 미확인(정적 호환 시험 통과, ASCII 전용).
+
+## DEC-105 원격 DB 미사용: 모든 DB는 로컬 (2026-10-16)
+- 사용자 지시: "로컬 DB인데 왜 원격 DB를 보나? 원격 DB 자체를 사용하지 않는다. 로컬 컴퓨터에서만 작업. 관련 내용 모두 제거. CLAUDE.MD에 기록."
+- 원인(사용자 질문에 대한 답): 노트북 `.env`에 `AUTH_ADMIN_DATABASE_URL`·`PUBLIC_API_AUTH_DATABASE_URL`이 원격 DB를 가리키고 있었다. DEC-075의 `setup_local_auth.py`가 "회원 DB는 운영의 것을 그대로 쓴다"로 설계돼 그 주소를 입력받았기 때문. 이 때문에 로그인 상태 확인이 원격 DB 접속 실패(OperationalError)로 막혔다.
+- 변경: `setup_local_auth.py`를 로컬 DB 전용으로 재작성(`ALEMBIC_DATABASE_URL`의 localhost 소유자 주소로 `auth_service` 계정·권한 생성, `PUBLIC_API_AUTH_DATABASE_URL`을 로컬 주소로, 원격 `AUTH_ADMIN_DATABASE_URL` 제거, 관리자 없으면 생성, localhost가 아닌 주소 거부). 권한 SQL은 `deploy/local/auth-service-setup.sql`로 이동(한 곳에서 관리). `reset_password.ps1`은 로컬 DB만 허용. `manage_users.py`는 접속 오류의 원인(비밀값 제거)을 표시.
+- 삭제: `deploy/render/*`(원격 DB 설정·pg 클라이언트·사전 배포 스크립트), `deploy/tests/test-pre-deploy.sh`, `.github/workflows/scheduled-batch.yml`(원격 DB 정기 배치·백업), `docs/ops/login-rollout-runbook.md`, 원격 DB·Render 전용 QA 보고서 4건. 코드 주석·시험·현행 문서·과거 QA/설계 기록의 원격 DB 표현은 모두 중립화했다. 이 로그의 과거 항목은 append-only 규칙에 따라 그대로 둔다.
+- 사용자가 해야 할 일: 로컬 DB에는 예전 회원이 없다. `setup_local_auth.py`가 관리자 계정을 새로 만든다(아이디 기본 jcw1973, 비밀번호는 새로 정함).

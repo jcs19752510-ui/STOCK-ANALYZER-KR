@@ -11,7 +11,7 @@ Create Date: 2026-10-05
   `login_audit` INSERT만. 회원 추가·삭제·비활성화·비밀번호 변경은 관리자 스크립트(소유자/마이그레이터 연결)만 한다.
 - **`auth_service` 역할이 아직 없어도 마이그레이션은 실패하지 않는다**(PC 로컬 DB는 로그인을 쓰지 않고, `start_local_api.ps1`이 시작할 때마다
   `alembic upgrade head`를 실행하므로 여기서 실패하면 로컬 API가 못 뜬다). 이 경우 GRANT는 건너뛰며, 역할을 만든 뒤
-  `deploy/render/neon-auth-setup.sql`(같은 GRANT를 다시 적용)을 실행하면 된다.
+  `py -3.12 scripts/setup_local_auth.py`(같은 GRANT를 다시 적용)를 실행하면 된다.
 - 아이디는 소문자 3~32자(영문·숫자·`.`·`_`·`-`) CHECK. 비밀번호는 해시(argon2id)만 저장한다.
 downgrade: 테이블과 스키마를 제거한다(회원 데이터가 사라지므로 주의).
 """
@@ -39,7 +39,7 @@ BEGIN
     GRANT INSERT ON auth.login_audit TO auth_service;
     GRANT USAGE ON SEQUENCE auth.login_audit_audit_id_seq TO auth_service;
   ELSE
-    RAISE NOTICE 'auth_service 역할이 없어 GRANT를 건너뜁니다. 역할을 만든 뒤 deploy/render/neon-auth-setup.sql을 실행하세요.';
+    RAISE NOTICE 'auth_service 역할이 없어 GRANT를 건너뜁니다. py -3.12 scripts\\setup_local_auth.py 를 실행하세요.';
   END IF;
 END
 $do$;

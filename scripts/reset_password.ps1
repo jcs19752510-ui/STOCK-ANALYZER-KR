@@ -10,6 +10,7 @@
 # What it does:
 #   1) reads .env and picks the DB to change: AUTH_ADMIN_DATABASE_URL, else PUBLIC_API_AUTH_DATABASE_URL (the DB the API
 #      reads for logins), else ALEMBIC_DATABASE_URL. Only host:port/database is printed, never a password.
+#      Only a local DB (localhost) is accepted; a remote address stops the script (-AllowRemote overrides).
 #   2) lists the users in that DB (so you can see the exact id) and stops if the id is not there
 #   3) asks for the new password twice (hidden), sets it (scripts\manage_users.py set-password), which also clears the
 #      failed-attempt counter and the lock and signs the user out of every device
@@ -19,7 +20,8 @@ param(
     [string]$Username = "jcw1973",
     [switch]$ListOnly,
     [switch]$Yes,
-    [switch]$FromStdin
+    [switch]$FromStdin,
+    [switch]$AllowRemote
 )
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -60,6 +62,12 @@ if (-not $target) {
 }
 $apiAuth = $env:PUBLIC_API_AUTH_DATABASE_URL
 $targetDesc = Describe-Db $target
+$targetHost = ($targetDesc -split ":")[0]
+if (($targetHost -notin @("localhost", "127.0.0.1", "[::1]", "::1", "host.docker.internal")) -and -not $AllowRemote) {
+    Write-Host "[STOP] $targetName points to '$targetHost', which is not this computer. Only the local DB is used for logins." -ForegroundColor Red
+    Write-Host "       Run  py -3.12 scripts\setup_local_auth.py  (it removes the old remote address and prepares the local DB)." -ForegroundColor Red
+    exit 2
+}
 Write-Host "Target DB (from $targetName): $targetDesc"
 if ($apiAuth) {
     $apiDesc = Describe-Db $apiAuth
@@ -78,11 +86,11 @@ if ($apiAuth) {
 $env:AUTH_ADMIN_DATABASE_URL = $target
 
 Write-Host "=== users in this DB ===" -ForegroundColor Cyan
-$listOut = & py -3.12 scripts\manage_users.py list 2>&1 | Out-String
+$listOut = & py -3.12 scripts\manage_users.py list 2>&1 | ForEach-Object { "$_" } | Out-String
 $listCode = $LASTEXITCODE
 Write-Host $listOut
 if ($listCode -ne 0) {
-    Write-Host "[ERROR] could not read the user list (exit $listCode). Check that the database is running and the address in .env is right." -ForegroundColor Red
+    Write-Host "[ERROR] could not read the user list (exit $listCode). Read the [DB error] line above for the reason." -ForegroundColor Red
     exit 1
 }
 if ($ListOnly) { exit 0 }
@@ -105,14 +113,14 @@ if ([string]::IsNullOrEmpty($p1) -or $p1 -ne $p2) {
     exit 1
 }
 
-$setOut = $p1 | & py -3.12 scripts\manage_users.py set-password $Username --password-stdin 2>&1 | Out-String
+$setOut = $p1 | & py -3.12 scripts\manage_users.py set-password $Username --password-stdin 2>&1 | ForEach-Object { "$_" } | Out-String
 $setCode = $LASTEXITCODE
 Write-Host $setOut
 if ($setCode -ne 0) {
     Write-Host "[ERROR] password was NOT changed (exit $setCode). Read the message above (for example the password rules)." -ForegroundColor Red
     exit 1
 }
-$chk = $p1 | & py -3.12 scripts\manage_users.py verify-password $Username --password-stdin 2>&1 | Out-String
+$chk = $p1 | & py -3.12 scripts\manage_users.py verify-password $Username --password-stdin 2>&1 | ForEach-Object { "$_" } | Out-String
 $chkCode = $LASTEXITCODE
 Write-Host $chk
 $p1 = $null

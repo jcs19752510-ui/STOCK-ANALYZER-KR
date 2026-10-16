@@ -6,7 +6,7 @@
 - 모든 작업은 **내부 테스트 결과서를 완벽하게** 작성한다(`docs/qa/`).
 - 보안 이야기는 하지 않는다("보안은 나중에").
 - 운영 변경은 사용자가 요청했을 때만. 응답은 짧고 결과 중심으로.
-- (2026-10-06 재확인) 사용자는 **빠른 응답**을 원한다(느리면 질책). 길게 돌아가지 말고, 오래 걸리는 작업은 시작 때 이유를 한 줄로 말한다. 추측으로 원인을 늘어놓지 않는다(에러 문구를 확인한 뒤에만 원인을 말한다). 사용자 PC·Render·Neon 화면은 볼 수 없으므로 필요한 출력은 **한 번에 한 번만** 요청한다.
+- (2026-10-06 재확인) 사용자는 **빠른 응답**을 원한다(느리면 질책). 길게 돌아가지 말고, 오래 걸리는 작업은 시작 때 이유를 한 줄로 말한다. 추측으로 원인을 늘어놓지 않는다(에러 문구를 확인한 뒤에만 원인을 말한다). 사용자 PC 화면은 볼 수 없으므로 필요한 출력은 **한 번에 한 번만** 요청한다.
 - **(2026-10-06 최상위 목표, 사용자 지시 "절대 잊지 마세요")**: 이 프로젝트의 가장 큰 목적은 **실시간 주식 데이터를 보는 것**이고, 사용자는 그 정보를 분석해 **투자 방향을 스스로 정한다**. 모든 설계·우선순위 판단은 "실시간으로 정확하게 보이는가"를 기준으로 한다(지연·불일치는 명확히 표시). 특이사항이 없으면 되묻지 않고 계속 진행한다. 사이트는 정보 표시 도구이며 투자 권유 표현은 쓰지 않는다(`lint:copy`).
 - **운영 반영(DEC-100, 2026-10-16 변경)**: **Render 서버는 사용하지 않는다. 자동 배포는 없다**(`render.yaml`은 `autoDeployTrigger: "off"`, `render-deploy` 워크플로 삭제). 작업과 확인은 사용자의 로컬 컴퓨터에서 한다. 배포·"자동 배포됨" 보고·Render 화면 안내를 하지 않는다. DB 구조(alembic)를 바꾸는 커밋은 사용자 PC의 로컬 DB에 `alembic upgrade head`가 필요함을 알린다.
 
@@ -21,7 +21,7 @@
 ## 현재 운영 구조 (2026-10-06 전환 완료)
 - Render 서비스 **1개** `stock-analyzer-web` (https://stock-analyzer-web-q7cx.onrender.com): 컨테이너 안에서 API(내부 127.0.0.1:8000)와 웹(공개 PORT)을 `scripts/run_unified.py`가 함께 기동·감시 (DEC-078). 이미지 `deploy/unified.Dockerfile`, 블루프린트 `render.yaml`.
 - 이전 2개 서비스 구성: `deploy/render/render.two-services.yaml`(롤백용). 기존 `stock-analyzer-api` Render 서비스는 **Suspended**(삭제 전, 롤백 경로). 며칠 안정 확인 뒤 사용자가 삭제.
-- DB: Neon Postgres(스키마 `auth`), 배치(내 PC 스케줄러/GitHub Actions)는 DB에 직접 쓴다.
+- DB: 이 노트북의 로컬 Docker PostgreSQL(스키마 `auth` 포함, DEC-105). 배치는 내 PC 작업 스케줄러가 로컬 DB에 직접 쓴다.
 - **요금제: Starter(유료, 월 $7, 0.5 CPU/512MB)로 전환(2026-10-06, 사용자가 Render Compute 화면에서 변경 → `render.yaml`의 `plan: starter`로 동기화).** 15분 유휴 후 잠들지 않아 콜드스타트가 없다. 48시간 평균 메모리 사용률 10~25%. Blueprint 서비스는 대시보드에서만 바꾸면 되돌아갈 수 있어 변경 시 `render.yaml`도 함께 바꾼다.
 - 검증(전환 후): `/auth/status` web ok·api ok, 로그인 401(틀린 비번), 비로그인 차단 확인. 첫 접속(콜드스타트)은 30초대 소요 가능.
 
@@ -47,12 +47,12 @@
 - 시험 환경: 임시 PG를 다시 띄우는 법 — `mkdir -p /tmp/pgsock && chown postgres /tmp/pgsock; su postgres -c "/usr/lib/postgresql/16/bin/pg_ctl -D /var/tmp/pgd2 -o '-p 5544 -k /tmp/pgsock' -l /var/tmp/pgd2.log start"`, 그다음 `source /tmp/claude-0/pgenv.sh; export PATH=/var/tmp/venv312/bin:/usr/lib/postgresql/16/bin:$PATH`. 시스템 파이썬은 3.11이라 `/var/tmp/venv312/bin/python`(3.12)을 쓴다.
 
 ## 사용자가 아직 해야 하는 것
-1. 며칠 사용해 이상 없으면 Render의 `stock-analyzer-api`(Suspended) 삭제.
-2. 내 PC 로컬 로그인: `git pull` → `py -3.12 scripts\setup_local_auth.py` → `scripts\start_local_api.ps1`, `npx next dev -p 4000` 재기동 (DEC-075, 아직 확인 못 받음).
+1. (완료) Render 서비스는 사용자가 직접 삭제했다.
+2. 내 PC 로컬 로그인(DEC-105): `git pull` → `scripts\start_local_api.ps1`로 API를 한 번 시작(마이그레이션 적용) → `py -3.12 scripts\setup_local_auth.py`(로컬 DB에 로그인 계정·관리자 생성) → `scripts\restart_local.ps1`.
 3. (폐기 DEC-100) Render 자동 배포는 사용하지 않는다.
 
 ## 열린 항목
-- (유료 전환으로 콜드스타트 이슈는 사라짐. DEC-077의 재시도는 Neon DB 자동 정지 대비로 유지.)
+- (DEC-077의 재시도는 유휴 정지 DB 대비 코드로 남아 있다. 로컬 DB에서는 쓰이지 않는다.)
 - Render 무료 512MB 안의 통합 서비스 메모리 실측(로컬 측정 약 245MB).
 - 방문자 IP 속도제한이 전 사용자 1버킷(기존 한계, `FRONTEND_TRUSTED_PROXY_HOPS=0`).
 
@@ -66,6 +66,7 @@
 - 결과서: docs/qa/2026-10-16-market-poller-speed-test-result.md. 가이드: docs/ops/local-fast-realtime-guide.md(실측 표 반영).
 - 사용자 PC 확인 항목: **`py -3.12 scripts\kis_speed_probe.py` 한 번 실행**(DEC-102, 실제 지연·한도·권장 `.env` 두 줄 출력). 문제면 `KIS_MARKET_CONCURRENCY=1`로 되돌린다.
 - DEC-103: "확인 못 한 것" 3건 시험 결과 `docs/qa/2026-10-16-unverified-items-test-result.md` — KIS 서버는 이 환경에서 접속 불가, PowerShell 5.1은 정적 점검만 통과, 약관 원문은 미확인(사용자가 KIS Developers 이용약관 확인 필요).
+- 알려진 시험 한계(DEC-105 검증 중 발견): `tests/e2e/local_mode_stack.py --mode on`은 시험 데이터 날짜가 `2026-09-30`로 고정이라, 현재 날짜가 그보다 5거래일 넘게 지나면 3b단계(전 종목 시세 스크리닝)에서 `/local/screen`이 409 `LIVE_BASE_STALE`로 실패한다(실행일 2026-10-16, 이 단계 앞의 20건과 로그인·로컬 DB 준비 검증은 통과). 제품 결함이 아니라 시험 데이터의 날짜 의존이며 수정 전에도 같은 조건이다. 고치려면 시험 데이터 날짜를 오늘 기준으로 만들어야 한다.
 - 새 컨테이너 시험 환경: 파이썬 3.12 venv + `apt` postgresql-16 + `/tmp/claude-0/pw`에 `npm i playwright-core axe-core`(종단 시험용)가 필요했다.
 
 ## 2026-10-07 DEC-097 (최신 데이터 강화)

@@ -231,7 +231,7 @@ def _admin_psql(*extra: str) -> list[str]:
 
 
 def test_migration_succeeds_without_auth_service_role_then_setup_sql_applies_grants(capsys):
-    """PC 로컬 DB처럼 `auth_service`가 없어도 마이그레이션이 실패하지 않아야 하고, 이후 neon-auth-setup.sql이 권한을 채운다."""
+    """PC 로컬 DB처럼 `auth_service`가 없어도 마이그레이션이 실패하지 않아야 하고, 이후 auth-service-setup.sql이 권한을 채운다."""
     _auth_url_probe = os.environ.get("PUBLIC_API_AUTH_DATABASE_URL")
     if not _auth_url_probe:
         pytest.skip("PUBLIC_API_AUTH_DATABASE_URL 미설정")
@@ -249,7 +249,7 @@ def test_migration_succeeds_without_auth_service_role_then_setup_sql_applies_gra
             subprocess.run(_admin_psql("-v", "ON_ERROR_STOP=1", "-c", "ALTER ROLE auth_service_tmp RENAME TO auth_service"), check=True, capture_output=True, text=True)
             renamed = False
             setup = subprocess.run(
-                _admin_psql("-d", tdb.name, "-v", "ON_ERROR_STOP=1", "-v", "auth=authpw", "-f", str(REPO_ROOT / "deploy/render/neon-auth-setup.sql")),
+                _admin_psql("-d", tdb.name, "-v", "ON_ERROR_STOP=1", "-v", "auth=authpw", "-f", str(REPO_ROOT / "deploy/local/auth-service-setup.sql")),
                 capture_output=True, text=True,
             )
             assert setup.returncode == 0, setup.stderr[-400:]
@@ -260,7 +260,7 @@ def test_migration_succeeds_without_auth_service_role_then_setup_sql_applies_gra
                 eng.dispose()
             # 설정 SQL은 여러 번 실행해도 안전하다
             again = subprocess.run(
-                _admin_psql("-d", tdb.name, "-v", "ON_ERROR_STOP=1", "-v", "auth=authpw", "-f", str(REPO_ROOT / "deploy/render/neon-auth-setup.sql")),
+                _admin_psql("-d", tdb.name, "-v", "ON_ERROR_STOP=1", "-v", "auth=authpw", "-f", str(REPO_ROOT / "deploy/local/auth-service-setup.sql")),
                 capture_output=True, text=True,
             )
             assert again.returncode == 0, again.stderr[-400:]

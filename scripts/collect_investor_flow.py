@@ -47,7 +47,7 @@ TODAY_CONFIRM_HOUR = 20  # 이 시각(KST) 이전에는 당일 행을 적재하�
 
 def load_kis_keys_from_dotenv(env_file: Path) -> list[str]:
     """프로젝트 `.env`에서 **증권사 앱키 두 개만** 환경변수로 읽는다(이미 설정돼 있으면 덮어쓰지 않는다).
-    `.env`의 `BATCH_DATABASE_URL`은 일부러 읽지 않는다 — 보통 내 PC의 로컬 DB를 가리키므로, 운영(Neon) 연결은
+    `.env`의 `BATCH_DATABASE_URL`은 일부러 읽지 않는다 — 보통 내 PC의 로컬 DB를 가리키므로, 원격 DB 연결은
     PowerShell에서 직접 지정한 값만 쓴다(엉뚱한 DB에 적재하는 사고 방지). 읽은 키 이름만 돌려준다(값은 출력하지 않는다)."""
     loaded: list[str] = []
     try:

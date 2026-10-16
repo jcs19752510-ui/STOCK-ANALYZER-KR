@@ -91,8 +91,8 @@ def main() -> int:
             )
 
             # --- 2) 로그인 설정 스크립트를 실제로 실행(회원 DB 접속 확인 포함). 끄기 모드는 켠 뒤 --off 까지 실행.
-            setup_env = {**os.environ, sla.AUTH_DB_KEY: auth_db}
-            base = [sys.executable, str(REPO / "scripts" / "setup_local_auth.py"), "--root", str(fake_root), "--api-base", f"http://127.0.0.1:{API_PORT}"]
+            setup_env = {**os.environ, sla.AUTH_DB_KEY: auth_db, sla.OWNER_KEY: TempDb.render(tdb.migrator_url)}
+            base = [sys.executable, str(REPO / "scripts" / "setup_local_auth.py"), "--root", str(fake_root), "--api-base", f"http://127.0.0.1:{API_PORT}", "--no-admin"]
             res = subprocess.run(base, env=setup_env, capture_output=True, text=True)
             print(res.stdout.strip())
             if res.returncode != 0:

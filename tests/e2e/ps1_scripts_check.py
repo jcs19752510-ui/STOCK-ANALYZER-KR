@@ -156,6 +156,10 @@ def main() -> int:
             r_mis = run_ps1("reset_password.ps1", shim, base, "-FromStdin", stdin="n\n")
             rec("reset_password: 대상 DB와 API 로그인 DB가 다르면 경고하고 확인을 묻는다(n이면 변경 없음)", "These are different databases" in r_mis.stdout and r_mis.returncode == 1)
 
+            env_file.write_text(f"AUTH_ADMIN_DATABASE_URL=postgresql+psycopg://o:p@db.example.com:5432/appdb\nPUBLIC_API_AUTH_DATABASE_URL={TempDb.render(auth_url)}\n", encoding="utf-8")
+            r_remote = run_ps1("reset_password.ps1", shim, base, "-ListOnly")
+            rec("reset_password: 대상이 localhost가 아니면(원격 DB) 중단하고 종료코드 2", r_remote.returncode == 2 and "not this computer" in r_remote.stdout and "setup_local_auth.py" in r_remote.stdout)
+
             # 4) restart_local.ps1
             log.write_text("", encoding="utf-8")
             r4 = run_ps1("restart_local.ps1", shim, {**base, "HARNESS_PORTS_BUSY": "1"}, "-NoBrowser")

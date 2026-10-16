@@ -17,7 +17,7 @@
     python scripts/manage_users.py check                                # 계정 권한 점검(운영 반영 전후 확인)
 
 연결: 환경변수 `AUTH_ADMIN_DATABASE_URL`(없으면 `ALEMBIC_DATABASE_URL`). 이 연결은 `auth` 스키마를 쓸 수 있는 소유자/마이그레이터 계정이어야 하며
-`api_service`·`batch_worker` 주소는 쓰지 않는다. 운영(Neon)을 바꿀 때는 소유자 직접 접속 주소(풀러 제외)를 이 변수에 넣는다.
+`api_service`·`batch_worker` 주소는 쓰지 않는다. 이 컴퓨터의 로컬 DB(localhost) 소유자 주소를 쓴다. 비밀번호 재설정은 `scripts\\reset_password.ps1`이 편하다.
 
 비밀번호는 명령줄 인자로 받지 않는다(셸 기록·프로세스 목록에 남는 것을 막기 위해). 자동화·시험용으로 `--password-stdin`(표준입력 한 줄)만 허용한다.
 출력에는 비밀번호·해시를 절대 표시하지 않는다. 종료 코드: 0 성공, 1 실패, 2 설정 오류.
@@ -52,6 +52,22 @@ FALLBACK_URL_ENV = "ALEMBIC_DATABASE_URL"
 
 class UserError(RuntimeError):
     """사용자에게 그대로 보여 줄 수 있는 오류(비밀 정보 없음)."""
+
+
+def _safe_detail(exc: BaseException, eng: Engine | None = None) -> str:
+    """DB 오류의 원인 첫 줄(예: 'password authentication failed for user ...')을 돌려준다. 접속 문자열·비밀번호는 지운다."""
+    import re
+
+    orig = getattr(exc, "orig", None) or exc
+    first = (str(orig).strip().splitlines() or [""])[0]
+    first = re.sub(r"://[^@\s]*@", "://***@", first)
+    try:
+        password = eng.url.password if eng is not None else None
+    except Exception:  # noqa: BLE001 — 상세 표시 실패가 본 오류를 가리면 안 된다
+        password = None
+    if password:
+        first = first.replace(password, "***")
+    return first[:300]
 
 
 def _engine() -> Engine:
@@ -280,7 +296,7 @@ def check_privileges(engine: Engine) -> list[tuple[str, bool, str]]:
             return conn.execute(text(sql), params).scalar()
 
     role_exists = bool(q("SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'auth_service')"))
-    results.append(("auth_service 역할 존재", role_exists, "없으면 deploy/render/neon-auth-setup.sql 실행"))
+    results.append(("auth_service 역할 존재", role_exists, "없으면 py -3.12 scripts\\setup_local_auth.py 실행"))
     if role_exists:
         expect = [
             ("auth_service: auth 스키마 USAGE", "SELECT has_schema_privilege('auth_service', 'auth', 'USAGE')", True),
@@ -431,8 +447,12 @@ def main(argv: list[str] | None = None, *, engine: Engine | None = None) -> int:
         print(f"[오류] {exc}", file=sys.stderr)
         return 1
     except SQLAlchemyError as exc:
-        # 접속 문자열(비밀번호 포함 가능)이 메시지에 섞이지 않도록 원인 종류만 보여 준다.
-        print(f"[DB 오류] {type(exc).__name__}: auth 스키마 접근 권한·마이그레이션 0015 적용 여부를 확인하세요.", file=sys.stderr)
+        # 접속 문자열(비밀번호 포함 가능)이 메시지에 섞이지 않도록 원인 종류와, 비밀값을 지운 첫 줄만 보여 준다.
+        detail = _safe_detail(exc, eng)
+        if type(exc).__name__ == "OperationalError":
+            print(f"[DB 오류] OperationalError: DB에 접속하지 못했습니다(주소·비밀번호·DB 서버 상태 확인).{(' 상세: ' + detail) if detail else ''}", file=sys.stderr)
+        else:
+            print(f"[DB 오류] {type(exc).__name__}: auth 스키마 접근 권한·마이그레이션 0015 적용 여부를 확인하세요.{(' 상세: ' + detail) if detail else ''}", file=sys.stderr)
         return 1
     finally:
         if engine is None:

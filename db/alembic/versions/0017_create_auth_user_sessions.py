@@ -30,7 +30,7 @@ BEGIN
     GRANT SELECT, INSERT ON auth.user_sessions TO auth_service;
     GRANT UPDATE (last_check_at, revoked_at) ON auth.user_sessions TO auth_service;
   ELSE
-    RAISE NOTICE 'auth_service 역할이 없어 GRANT를 건너뜁니다. 역할을 만든 뒤 deploy/render/neon-auth-setup.sql을 실행하세요.';
+    RAISE NOTICE 'auth_service 역할이 없어 GRANT를 건너뜁니다. py -3.12 scripts\\setup_local_auth.py 를 실행하세요.';
   END IF;
 END
 $do$;

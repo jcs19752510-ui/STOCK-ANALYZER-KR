@@ -61,7 +61,7 @@
 ## 5. 확인하지 못한 것
 - **실제 증권사 응답**: 필드 이름(종목코드·이름 키), 0건을 어떤 코드·문구로 돌려주는지, 갱신 주기, 100건 한도의 실제 동작은 모의 서버와 공식 샘플 기준일 뿐 실제로 확인하지 못했다. `fields`와 `empty_message`는 이를 현장에서 확인하기 위한 진단 값이다.
 - **0건과 다른 거절의 구분**: `KisClient`는 HTTP 비정상(500 등)·`rt_cd != 0`을 모두 `UPSTREAM_ERROR`로 던진다. 계약서 §4-3대로 이를 0건(`empty:true`)으로 처리하므로, 증권사의 일시 장애(비 200 응답)나 HTS ID 불일치도 "0건 + 이탈 기록"으로 보일 수 있다. `empty_message`로만 사람이 구분한다. 구분하려면 `KisClient` 오류 코드를 나누어야 하며 이는 이번 범위 밖이다.
-- 실제 PostgreSQL에 대한 `lookup_stock_names` SQL 실행(시험은 주입한 함수로만 검증, DB 없음). SQLAlchemy 문장은 `list_active_stock_codes`와 같은 방식의 단순 SELECT이고 `api_service`의 `public_serving` 읽기 권한은 `deploy/render/neon-setup.sql` 주석(공개 API는 `public_serving` 읽기 전용)으로만 확인했다.
+- 실제 PostgreSQL에 대한 `lookup_stock_names` SQL 실행(시험은 주입한 함수로만 검증, DB 없음). SQLAlchemy 문장은 `list_active_stock_codes`와 같은 방식의 단순 SELECT이고 `api_service`의 `public_serving` 읽기 권한은 `deploy/render/(삭제된 원격 DB 설정 파일)` 주석(공개 API는 `public_serving` 읽기 전용)으로만 확인했다.
 - 실제 웹 서버 대행(BFF)·로그인 포함 종단 시험(메인 담당 단계). `check-auth.mjs`는 경로 허용 규칙만 시험한다.
 - 증권사가 같은 `user_id`를 짧은 시간에 여러 조건으로 조회하는 것을 제한하는지, 조건 20개를 동시에 계속 조회할 때의 호출 한도.
 - 서버 종료 시 정리: 이 API는 백그라운드 작업을 만들지 않아 lifespan 변경이 없다.
