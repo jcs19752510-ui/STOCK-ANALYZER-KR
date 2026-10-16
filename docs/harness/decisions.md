@@ -170,3 +170,8 @@
 - 이력(기록 근거): ① DEC-054(10/03) 개인 로컬 모드의 `InvestorPanel` — 증권사 `주식현재가 투자자` 직접 조회, 30초 갱신. 10/02~03 사용자 PC 실제 증권사 응답으로 30일 수신·단위 검산 통과(`docs/qa/2026-10-03-investor-flow-test-result.md` §7), 사용자가 10/04까지 "정상"이라고 보고. ② DEC-068·074(10/05) 운영 서버용 `OwnerInvestorPanel` — PC가 수집해 DB에 적재한 일별값을 관리자에게만 표시(실시간 아님). ③ 10/05 사용자 보고: 로컬에서 "개인 로컬 모드가 꺼져 있습니다"(F-10), 원인 미확정으로 기록.
 - 현재 원인: 투자자 탭은 `localMode`(웹의 `NEXT_PUBLIC_LOCAL_INTRADAY_ENABLED=true` + 사설/로컬 주소)일 때만 직접 조회 패널, 아니면 관리자에게 저장값 패널을 보인다. 사용자 화면은 저장값 패널이었고(= 이 PC 웹이 로컬 모드 꺼진 상태), 수집 시도 로그에서 `.env`에 `KIS_APP_KEY`·`KIS_APP_SECRET`이 없음이 확인됐다. 저장값 테이블(`investor_flow_daily`)은 원격 DB 폐기(DEC-105)로 로컬 DB에 비어 있을 가능성이 크다(미확인).
 - 조치: 설정 4개를 맞추고 연동 확인·재기동까지 한 번에 하는 `scripts/enable_realtime.ps1` 추가(키가 없으면 `.env.bak-*`에서 복원 또는 숨김 입력, 값 비출력). PowerShell 7 하네스 5건 포함 40/40, 5.1 호환 정적 시험 통과. 실제 증권사 응답·Windows 5.1 실행은 미확인.
+
+## DEC-107 증권사 조건검색 "HTS ID가 설정되지 않았습니다" — 키 전달 목록 누락 수정 (2026-10-16)
+- 증상: `/screener/broker`에서 "HTS ID가 설정되지 않았습니다. .env의 KIS_HTS_ID를 설정한 뒤 API 서버를 다시 시작하세요."
+- 원인 2개: ① `.env`에 `KIS_HTS_ID`가 없음 ② **`start_local_api.ps1`이 `.env`에서 API로 넘기는 키 목록에 `KIS_HTS_ID`가 빠져 있어**, 값을 넣어도 서버에 전달되지 않는 결함(DEC-088에서 조건검색을 만들 때 누락).
+- 수정: 목록에 `KIS_HTS_ID` 추가, 목록 누락을 막는 시험 `tests/unit/test_start_local_api_keys.py` 추가. PowerShell 7 하네스 40/40, 5.1 호환 정적 시험 통과.
