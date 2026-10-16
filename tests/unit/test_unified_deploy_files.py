@@ -1,5 +1,5 @@
 """통합 서비스 배포 파일(DEC-078) 정적 점검. 시험 환경에 Docker가 없어 이미지를 빌드하지 못하므로,
-Dockerfile이 참조하는 경로·실행 명령·블루프린트 환경변수·워크플로 조건이 서로 맞는지 파일 기준으로 확인한다."""
+Dockerfile이 참조하는 경로·실행 명령이 맞는지 파일 기준으로 확인한다. (Render 블루프린트 시험은 DEC-101에서 삭제)"""
 
 # ruff: noqa: E501
 from __future__ import annotations
@@ -7,12 +7,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import yaml
-
 REPO = Path(__file__).resolve().parents[2]
 DOCKERFILE = (REPO / "deploy" / "unified.Dockerfile").read_text(encoding="utf-8")
-BLUEPRINT = yaml.safe_load((REPO / "render.yaml").read_text(encoding="utf-8"))  # 전환 후 운영 블루프린트(통합)
-LIVE_BLUEPRINT = yaml.safe_load((REPO / "deploy" / "render" / "render.two-services.yaml").read_text(encoding="utf-8"))  # 이전 2개 서비스(롤백용)
 
 
 def final_stage() -> str:
@@ -54,44 +50,6 @@ def test_내_PC_전용_기능은_이미지에서_꺼져_있다() -> None:
     assert "NEXT_PUBLIC_LOCAL_INTRADAY_ENABLED" not in re.sub(r"#.*", "", DOCKERFILE)
 
 
-def test_브라우저_번들_빌드_인자가_블루프린트_환경변수와_맞는다() -> None:
-    args = set(re.findall(r"^ARG (NEXT_PUBLIC_[A-Z_]+)", DOCKERFILE, re.M))
-    keys = {e["key"] for e in BLUEPRINT["services"][0]["envVars"]}
-    assert {"NEXT_PUBLIC_BROWSER_API_BASE_URL", "NEXT_PUBLIC_AUTH_ENABLED", "NEXT_PUBLIC_API_BASE_URL"} <= args
-    assert args <= keys  # 빌드 인자는 Render 환경변수(= 빌드 인자로 전달됨)로 모두 공급된다
-
-
-def test_블루프린트는_서비스_1개이고_웹_이름과_주소를_유지한다() -> None:
-    assert len(BLUEPRINT["services"]) == 1
-    svc = BLUEPRINT["services"][0]
-    assert svc["name"] == "stock-analyzer-web" and svc["name"] in {s["name"] for s in LIVE_BLUEPRINT["services"]}
-    assert svc["dockerfilePath"] == "./deploy/unified.Dockerfile" and svc["healthCheckPath"] == "/healthz"
-    assert svc["branch"] == "PROD_SCH" and svc["autoDeployTrigger"] == "off"  # Render 미사용(DEC-100): 자동 배포 금지 and svc["plan"] == "starter"
-
-
-def test_블루프린트가_기존_두_서비스의_환경변수를_빠짐없이_포함한다() -> None:
-    merged = {e["key"] for e in BLUEPRINT["services"][0]["envVars"]}
-    web = {e["key"] for e in next(s for s in LIVE_BLUEPRINT["services"] if s["name"] == "stock-analyzer-web")["envVars"]}
-    api = {e["key"] for e in next(s for s in LIVE_BLUEPRINT["services"] if s["name"] == "stock-analyzer-api")["envVars"]}
-    assert web <= merged, f"웹 값 누락: {web - merged}"
-    # API 쪽에서 통합 후에도 필요한 값(주소·포트·프록시 대역·CORS는 제외: 같은 컨테이너 내부 통신이라 필요 없다)
-    dropped = {"PUBLIC_API_CORS_ALLOWED_ORIGINS", "PUBLIC_API_TRUSTED_PROXY_IPS", "PUBLIC_API_LOG_PEER_IPS", "PUBLIC_API_HOST", "PUBLIC_API_PORT"}
-    assert api - dropped <= merged, f"API 값 누락: {api - dropped - merged}"
-
-
-def test_비밀값은_저장소에_값을_쓰지_않는다() -> None:
-    env = {e["key"]: e for e in BLUEPRINT["services"][0]["envVars"]}
-    for key in ("PUBLIC_API_DATABASE_URL", "PUBLIC_API_AUTH_DATABASE_URL", "PUBLIC_API_INTERNAL_TOKEN", "SESSION_SECRET"):
-        assert env[key].get("sync") is False and "value" not in env[key], key
-
-
-def test_통합_구성의_고정값() -> None:
-    env = {e["key"]: e.get("value") for e in BLUEPRINT["services"][0]["envVars"]}
-    assert env["NEXT_PUBLIC_API_BASE_URL"] == "http://127.0.0.1:8000"  # 같은 컨테이너 내부 API 주소(run_unified.py 기본 포트와 같다)
-    assert env["PUBLIC_API_REQUIRE_INTERNAL_TOKEN"] == "true"
-    assert env["PUBLIC_API_REQUIRE_TRUSTED_PROXY"] == "false"  # true면 프록시 대역이 비어 API가 기동을 거부한다
-    assert env["PORT"] == "3000"
-
-
 def test_자동_배포_워크플로는_없다() -> None:
     assert not (REPO / ".github" / "workflows" / "render-deploy.yml").exists()  # Render 미사용(DEC-100)
+    assert not (REPO / "render.yaml").exists()  # DEC-101: Render 설정 파일 삭제

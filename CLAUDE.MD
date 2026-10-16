@@ -34,7 +34,7 @@ flowchart TD
    - 사용자는 **로컬 컴퓨터에서 작업하고 확인한다.** 이 저장소의 어떤 작업에서도 Render·배포·"자동 배포됨" 보고·Render 화면 안내·Render Deploy Hook/Secrets·`render-deploy` 워크플로를 만들거나 언급하거나 되살리지 않는다.
    - `render.yaml`은 `autoDeployTrigger: "off"`, `.github/workflows/render-deploy.yml`은 삭제됐다. 저장소 쪽에는 푸시로 배포를 일으키는 장치가 없다(Render 대시보드 쪽 설정은 이 환경에서 볼 수 없고 사용자가 관리한다).
    - 새 기능의 확인 방법은 로컬 실행(`docs/ops/local-fast-realtime-guide.md`)이며, DB 구조(alembic)를 바꾸면 "사용자 PC의 로컬 DB에 `alembic upgrade head` 필요"만 알린다.
-   - `deploy/render/*`, `docs/ops/render-neon-guide.md` 등 남아 있는 Render 파일은 과거 기록이다. 지울지는 사용자가 정한다(임의로 지우지 않는다).
+   - Render 설정·절차서(`render.yaml`, `deploy/render/render.two-services.yaml`, `docs/ops/render-neon-guide.md`, `docs/ops/unified-service-guide.md`)는 DEC-101에서 삭제했다. 되살리지 않는다. 단 `deploy/render/{install-pg-client.sh,pre-deploy.sh,neon-*.sql}`는 GitHub Actions `scheduled-batch.yml`(Neon 정기 배치·백업)과 `manage_users.py`가 쓰므로 남겼다 — 정기 배치를 쓰지 않기로 하면 그때 함께 지운다.
 
 ## 시험 환경 만들기 (새 컨테이너에서 처음 한 번, 에이전트가 직접 한다)
 

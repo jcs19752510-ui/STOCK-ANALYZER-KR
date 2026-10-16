@@ -136,3 +136,9 @@
 - 변경: `.github/workflows/render-deploy.yml` 삭제 / `render.yaml`의 `autoDeployTrigger`를 `"off"`로(키 자체를 지우면 Render 기본값이 자동 배포일 수 있어 명시) / `tests/unit/test_unified_deploy_files.py`를 새 상태에 맞춤(워크플로 부재 확인 추가) / `docs/ops/unified-service-guide.md` §7, `docs/HANDOFF.md`의 자동 배포 규칙, `docs/ops/login-rollout-runbook.md`의 확인 단계를 폐기 표기 / `docs/ops/render-neon-guide.md` 상단에 미사용 표기 / `CLAUDE.MD` 상시 규칙 8.
 - 남겨 둔 것(삭제 여부는 사용자 결정): `render.yaml` 본문, `deploy/render/*`, `docs/ops/render-neon-guide.md`, `tests/unit/test_render_neon_support.py`, 과거 `docs/qa/*` 결과서(역사 기록). 코드 주석 속 "Render" 언급.
 - 확인하지 못한 것: Render 쪽(대시보드)에 서비스가 아직 살아 있고 자동 배포가 켜져 있는지는 이 환경에서 볼 수 없다. 서비스가 있다면 사용자가 Render 화면에서 직접 끄거나 삭제해야 한다.
+
+## DEC-101 남은 Render 파일 삭제 (2026-10-16)
+- 사용자 지시: "남은 Render 파일 모두 삭제. 로컬 노트북에서만 확인."
+- 삭제: `render.yaml`, `deploy/render/render.two-services.yaml`, `docs/ops/render-neon-guide.md`, `docs/ops/unified-service-guide.md`, `tests/unit/test_unified_deploy_files.py`의 블루프린트 시험(Dockerfile 시험은 유지, render.yaml 부재 확인 추가).
+- **남긴 것(이유)**: `deploy/render/install-pg-client.sh`·`pre-deploy.sh`(+`deploy/tests/test-pre-deploy.sh`)는 활성 워크플로 `.github/workflows/scheduled-batch.yml`의 DB 백업·배치가 호출하고, `deploy/render/neon-*.sql`은 `scripts/manage_users.py` 안내가 가리킨다. 지우면 정기 배치·백업이 깨진다. 이들은 Render가 아니라 Neon(DB) 용도다. 정기 배치를 쓰지 않기로 하면 사용자 결정으로 함께 지운다.
+- 과거 `docs/qa/*`·`docs/harness/*` 기록과 코드 주석의 Render 언급은 역사 기록이라 그대로 둔다.

@@ -54,7 +54,7 @@ jobs:
           missing=""
           for v in $need; do [ -n "${!v}" ] || missing="$missing $v"; done
           if [ -n "$missing" ]; then
-            echo "::notice::Task '$TASK': Secrets not set (${missing# }) -> skipped. See docs/ops/render-neon-guide.md"
+            echo "::notice::Task '$TASK': Secrets not set (${missing# }) -> skipped. Neon DB를 쓰지 않으면 이 워크플로는 필요 없다(DEC-101)"
             echo "ready=false" >> "$GITHUB_OUTPUT"
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
