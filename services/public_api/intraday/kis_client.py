@@ -22,7 +22,7 @@ from typing import Any
 
 import httpx
 
-from services.public_api.intraday.config import IntradaySettings
+from services.public_api.intraday.config import IntradaySettings, client_min_interval
 
 KST = timezone(timedelta(hours=9))
 
@@ -93,7 +93,7 @@ class KisClient:
         *,
         clock: Callable[[], float] = time.time,
         sleep: Callable[[float], None] = time.sleep,
-        min_interval: float = 0.12,
+        min_interval: float | None = None,
     ) -> None:
         if not settings.configured:
             raise KisError("NOT_CONFIGURED", "증권사 앱키가 설정되지 않았습니다.")
@@ -101,7 +101,8 @@ class KisClient:
         self._http = http or httpx.Client(timeout=10.0)
         self._clock = clock
         self._sleep = sleep
-        self._min_interval = min_interval
+        # 명시하지 않으면 환경설정(KIS_MARKET_MIN_INTERVAL이 0.12보다 작을 때만 그 값)을 따른다 — 폴러 간격만 낮추면 여기서 다시 막힌다
+        self._min_interval = client_min_interval() if min_interval is None else min_interval
         self._lock = threading.Lock()
         self._prio_lock = threading.Lock()  # `_lock`은 호출 간격 대기 중에도 잡혀 있어, 우선순위 카운터는 별도 잠금으로 보호한다
         self._priority_pending = 0  # 지금 진행 중인(대기 포함) 일반(상세 화면) 호출 수

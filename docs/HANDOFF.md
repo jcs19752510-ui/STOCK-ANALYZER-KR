@@ -61,6 +61,12 @@
 - 로그인 E2E: `python tests/e2e/login_stack.py [--unified]`(322건), 로컬 모드: `tests/e2e/local_mode_stack.py --mode on|off`.
 - `pkill -f`/`pgrep -f`로 프로세스를 죽이면 도구 셸이 같이 죽는다(사용 금지, PID/프로세스 그룹으로).
 
+## 2026-10-16 DEC-099 (시세 순환 속도 검토·수정)
+- 발견·수정: `KIS_MARKET_MIN_INTERVAL` 하향이 `KisClient` 내부 간격(0.12)에 막혀 무효였고, 직렬 호출이라 응답 지연이 한 바퀴 시간이 되던 결함. 이제 클라이언트 간격이 설정을 따르고 `KIS_MARKET_CONCURRENCY`(기본 4)로 응답 대기를 겹친다(초당 호출 수는 그대로). 측정 도구 `scripts/bench_market_poller.py`.
+- 결과서: docs/qa/2026-10-16-market-poller-speed-test-result.md. 가이드: docs/ops/local-fast-realtime-guide.md(실측 표 반영).
+- 사용자 PC 확인 항목: 실제 KIS 응답 지연으로 한 바퀴 시간(배너), `RATE_LIMITED` 여부. 문제면 `KIS_MARKET_CONCURRENCY=1`로 되돌린다.
+- 새 컨테이너 시험 환경: 파이썬 3.12 venv + `apt` postgresql-16 + `/tmp/claude-0/pw`에 `npm i playwright-core axe-core`(종단 시험용)가 필요했다.
+
 ## 2026-10-07 DEC-097 (최신 데이터 강화)
 - 구현 완료·테스트 통과: 장중 기준 기본 켜짐, `KIS_MARKET_MIN_INTERVAL`, `kis_daily_bar`(0019) + `collect_kis_daily_bars.py` + 배치 부가 단계 + API 캐시 우선 사용(`base_fill.from_cache`). 결과서: docs/qa/2026-10-07-live-latest-data-test-result.md
 - 사용자 PC 확인 항목(제가 대신 못 함): KIS 실제 응답·한도(`kis_smoke_test.py`, `kis_daily_price_smoke_test.py`), PowerShell 5.1·작업 스케줄러.

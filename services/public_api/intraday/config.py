@@ -98,6 +98,27 @@ def get_settings(env: dict[str, str] | None = None) -> IntradaySettings:
     )
 
 
+CLIENT_DEFAULT_MIN_INTERVAL = 0.12  # KisClient의 기본 호출 간격(초)
+MARKET_MIN_INTERVAL_ENV = "KIS_MARKET_MIN_INTERVAL"
+MARKET_MIN_INTERVAL_FLOOR = 0.06
+
+
+def client_min_interval(env: dict[str, str] | None = None) -> float:
+    """KisClient의 호출 간격. `KIS_MARKET_MIN_INTERVAL`이 기본(0.12)보다 작으면 그 값(하한 0.06)을 따른다.
+
+    시세 순환(폴러)의 간격 설정만 낮추면 클라이언트 내부 간격(0.12초)이 호출을 다시 늦춰 설정이 무력화되므로,
+    두 간격을 같이 움직인다. 설정이 없거나 잘못됐거나 더 크면 기본값을 그대로 쓴다(상세 화면 호출은 느려지지 않는다).
+    """
+    raw = (env if env is not None else os.environ).get(MARKET_MIN_INTERVAL_ENV, "").strip()
+    try:
+        value = float(raw) if raw else CLIENT_DEFAULT_MIN_INTERVAL
+    except ValueError:
+        return CLIENT_DEFAULT_MIN_INTERVAL
+    if value != value:  # NaN
+        return CLIENT_DEFAULT_MIN_INTERVAL
+    return max(MARKET_MIN_INTERVAL_FLOOR, min(CLIENT_DEFAULT_MIN_INTERVAL, value))
+
+
 def client_allowed(host: str | None, settings: IntradaySettings) -> bool:
     """요청 클라이언트 주소가 허용 목록에 있는지. 주소를 해석할 수 없으면 거부한다(fail closed)."""
     if not host:

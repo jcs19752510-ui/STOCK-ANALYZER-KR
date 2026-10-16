@@ -82,6 +82,7 @@ class PollerConfig:
     priority_max: int = 200  # 우선 종목 상한(환경변수 KIS_MARKET_PRIORITY_MAX)
     priority_interval: float = 3.0  # 우선 한 바퀴 시작 간격(초, 환경변수 KIS_MARKET_PRIORITY_SECONDS)
     priority_share: float = 0.5  # 합산 호출 한도 중 우선 순환이 쓸 수 있는 비율(상한)
+    concurrency: int = 1  # 전체 순환에서 동시에 진행하는 호출 수(호출 시작 간격은 그대로 지킨다). 운영 기본값은 환경설정에서 정한다
 
 
 class MarketSnapshotPoller:
@@ -257,37 +258,65 @@ class MarketSnapshotPoller:
 
     # ── 한 바퀴 ───────────────────────────────────────────────────────────────
     async def run_cycle(self) -> bool:
-        """종목 목록 전체를 한 번 순환한다. 모든 묶음이 성공하면 True. 정지 요청이 오면 중간에 멈춘다(False)."""
+        """종목 목록 전체를 한 번 순환한다. 모든 묶음이 성공하면 True. 정지 요청이 오면 중간에 멈춘다(False).
+
+        호출 시작 간격(`min_interval`)은 지키되, 응답을 기다리는 동안 다음 호출을 시작할 수 있도록 최대 `concurrency`건을
+        동시에 진행한다(응답 지연이 간격보다 길어도 한 바퀴 시간이 `호출 수 × 응답 지연`으로 늘어나지 않게). 1이면 직렬이다.
+        """
         codes = list(self._codes)
         batches = chunk_codes(codes, self._cfg.batch_size)
         started = self._clock()
-        failed = 0
+        failures = 0
         interrupted = False
-        for batch in batches:
-            if self._stop.is_set():
-                interrupted = True
-                break
-            await self._pace()
-            if self._stop.is_set():
-                interrupted = True
-                break
-            self._last_call_start = self._clock()
-            self.calls_total += 1
+        slots = asyncio.Semaphore(max(1, self._cfg.concurrency))
+        inflight: set[asyncio.Task[None]] = set()
+
+        async def fetch_one(batch: list[str]) -> None:
+            nonlocal failures
             try:
                 quotes = await asyncio.to_thread(self._fetch, batch)
             except asyncio.CancelledError:
                 raise
             except KisError as exc:
-                failed += 1
+                failures += 1
                 delay = self._register_failure(exc.code)
                 logger.warning("시세 묶음 조회 실패(%s), %.1f초 뒤 재시도 예정", exc.code, delay)
-                continue
             except Exception:  # noqa: BLE001 — 한 묶음의 예기치 못한 오류가 순환 전체를 멈추면 안 된다
-                failed += 1
+                failures += 1
                 delay = self._register_failure("UNEXPECTED")
                 logger.exception("시세 묶음 조회 중 예기치 못한 오류, %.1f초 뒤 재시도 예정", delay)
-                continue
-            self._ingest(batch, quotes)
+            else:
+                self._ingest(batch, quotes)
+            finally:
+                slots.release()
+
+        try:
+            for batch in batches:
+                if self._stop.is_set():
+                    interrupted = True
+                    break
+                await slots.acquire()  # 동시 진행 수 제한(1이면 직전 응답을 기다린 뒤 다음 호출)
+                if self._stop.is_set():
+                    slots.release()
+                    interrupted = True
+                    break
+                await self._pace()
+                if self._stop.is_set():
+                    slots.release()
+                    interrupted = True
+                    break
+                self._last_call_start = self._clock()
+                self.calls_total += 1
+                task = asyncio.get_running_loop().create_task(fetch_one(batch), name="market-snapshot-fetch")
+                inflight.add(task)
+                task.add_done_callback(inflight.discard)
+            if inflight:
+                await asyncio.gather(*list(inflight), return_exceptions=True)
+        except asyncio.CancelledError:
+            for task in list(inflight):
+                task.cancel()
+            raise
+        failed = failures
         self.last_cycle_seconds = self._clock() - started
         if interrupted:
             return False

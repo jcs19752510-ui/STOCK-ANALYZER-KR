@@ -78,6 +78,7 @@ def _env_number(name: str, default: float, *, minimum: float) -> float:
 
 
 DEFAULT_ENV_MIN_INTERVAL = 0.125
+DEFAULT_ENV_CONCURRENCY = 4
 
 
 def poller_config_from_env() -> PollerConfig:
@@ -88,6 +89,8 @@ def poller_config_from_env() -> PollerConfig:
         priority_interval=_env_number("KIS_MARKET_PRIORITY_SECONDS", base.priority_interval, minimum=0.5),
         # 실전 계좌 기본 한도(초당 20건, 검색 자료 기준·공식 문서 미확인)의 40%인 초당 약 8건. 전 종목 한 바퀴 ≈ 12초. 모의 계좌는 한도가 훨씬 낮으니 키우세요(DEC-097).
         min_interval=_env_number("KIS_MARKET_MIN_INTERVAL", DEFAULT_ENV_MIN_INTERVAL, minimum=0.06),
+        # 응답이 간격보다 느려도 호출 시작 간격(초당 호출 수)은 그대로 두고 동시에 진행하는 호출 수만 늘린다(1~8, 1이면 직렬).
+        concurrency=int(min(8.0, _env_number("KIS_MARKET_CONCURRENCY", float(DEFAULT_ENV_CONCURRENCY), minimum=1))),
     )
 
 
