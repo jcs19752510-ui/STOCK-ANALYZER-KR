@@ -27,7 +27,7 @@ import {
   type PatternQuery,
 } from "@/lib/patternApi";
 import { stripLiveParams } from "@/lib/liveScreen/logic";
-import { useAutoApplyPending, useLiveScreen, useLiveScreenAccess, useLiveToggle, useNewCodes } from "@/lib/liveScreen/react";
+import { useAutoApplyTimer, useLiveScreen, useLiveScreenAccess, useLiveToggle, useNewCodes } from "@/lib/liveScreen/react";
 import { fillTemplate } from "@/lib/patternFormat";
 import {
   PATTERN_FIELD_IDS,
@@ -178,17 +178,8 @@ export function PatternScreenerClient() {
     void runQuery(toQuery(values, 1));
   }
 
-  // 자동 갱신이 끝날 때마다, 왼쪽에서 바꾼(그리고 유효한) 조건이 있으면 "조건 적용"을 대신 실행한다(오류 표시·포커스 이동 없이).
-  useAutoApplyPending({
-    enabled: liveOn,
-    paused: live.view.paused,
-    refreshStamp: live.view.receivedAt,
-    editKey: values,
-    isPending: () =>
-      validatePatternForm(values, { requiredError: copy.pattern.requiredError, numberError: copy.pattern.numberError }).length === 0 &&
-      stripLiveParams(buildPatternSearchParams(toQuery(values, 1))) !== stripLiveParams(buildPatternSearchParams({ ...applied, page: 1 })),
-    apply: applyLive,
-  });
+  // 자동 갱신 주기마다 "조건 적용" 버튼을 누른 것과 같은 동작을 실행한다.
+  useAutoApplyTimer({ enabled: liveOn && !live.view.paused, intervalSec: live.view.refreshSeconds, apply: handleSubmit });
 
   function handleToggleRequired(id: PatternConditionId) {
     setValues((prev) => ({ ...prev, required: toggleRequired(prev.required, id) }));

@@ -7,8 +7,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  AUTO_APPLY_IDLE_MS, EMPTY_CHANGE_LOG, MAX_BACKOFF_MS, NEW_WINDOW_SEC, applyChanges, bannerNotices, changeRows, clampRefreshSeconds,
-  dataAgeSeconds, isDelayed, mergeNames, newCodes, nextBackoffMs, nextNewExpiryMs, shouldAutoApply, statusKey, stripLiveParams,
+  EMPTY_CHANGE_LOG, MAX_BACKOFF_MS, NEW_WINDOW_SEC, applyChanges, bannerNotices, changeRows, clampRefreshSeconds,
+  dataAgeSeconds, isDelayed, mergeNames, newCodes, nextBackoffMs, nextNewExpiryMs, statusKey, stripLiveParams,
 } from "../src/lib/liveScreen/logic.ts";
 import {
   TOGGLE_STORAGE_KEY, buildLiveUrl, clearsData, mapLiveError, parseLiveMeta, parseLiveSuccess, readStoredToggle, retryPolicy, writeStoredToggle,
@@ -479,13 +479,4 @@ test("뷰 번호(seq)는 상태가 바뀔 때마다 증가하고 가짜 시계 �
   const h = harness(); h.queue.push(snap(1)); h.ctl.setQuery(Q); await h.settle();
   const seqs = h.views.map((v) => v.seq); assert.deepEqual(seqs, [...seqs].sort((a, b) => a - b)); assert.equal(new Set(seqs).size, seqs.length);
   h.ctl.stop();
-});
-
-// ── 자동 적용(왼쪽에서 바꾼 조건을 자동 갱신 때 적용) ─────────────────────────
-test("자동 적용: 바꾼 조건이 있고 입력이 잠잠할 때만 적용한다", () => {
-  const ok = { paused: false, pending: true, msSinceEdit: AUTO_APPLY_IDLE_MS };
-  assert.equal(shouldAutoApply(ok), true);
-  assert.equal(shouldAutoApply({ ...ok, pending: false }), false, "바뀐 입력이 없으면 적용하지 않는다(보던 쪽을 1쪽으로 되돌리지 않기 위해)");
-  assert.equal(shouldAutoApply({ ...ok, msSinceEdit: AUTO_APPLY_IDLE_MS - 1 }), false, "입력한 지 2초가 안 됐으면 다음 갱신으로 미룬다");
-  assert.equal(shouldAutoApply({ ...ok, paused: true }), false, "일시정지 중에는 적용하지 않는다");
 });

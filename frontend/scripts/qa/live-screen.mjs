@@ -281,9 +281,11 @@ async function dev(browser) {
     await page.evaluate(() => window.scrollTo(0, 400));
     const y0 = await page.evaluate(() => window.scrollY);
     const n0 = liveCount(t);
-    await until(() => liveCount(t) >= n0 + 3, 20000);
-    const reqs = t.live.slice(-3);
-    const gaps = reqs.slice(1).map((r, i) => (r.at - reqs[i].at) / 1000);
+    await until(() => liveCount(t) >= n0 + 6, 25000);
+    // DEC-109: 주기마다 "조건 적용"이 실행되어 한 주기에 요청이 최대 2건(1.5초 안에 붙어서) 나간다 → 붙은 요청은 한 묶음으로 본다.
+    const recent = t.live.slice(n0);
+    const starts = recent.filter((r, i) => i === 0 || r.at - recent[i - 1].at > 1500).map((r) => r.at);
+    const gaps = starts.slice(1, 3).map((a, i) => (a - starts[i]) / 1000);
     rec("자동 갱신: refresh_seconds(5초) 간격으로 요청", gaps.length === 2 && gaps.every((g) => g >= 4 && g <= 7.5), `간격 ${gaps.map((g) => g.toFixed(1)).join(", ")}초`);
     rec("자동 갱신: 요청마다 snapshot_id 없음(최신 요청)", t.live.every((r) => !r.q.has("snapshot_id")));
     const y1 = await page.evaluate(() => window.scrollY);
@@ -307,14 +309,15 @@ async function dev(browser) {
     const nPage = liveCount(t);
     await until(() => liveCount(t) >= nPage + 2, 15000);
     const lastReqs = t.live.slice(-2);
-    rec("쪽 유지: 2쪽에서 자동 갱신 요청이 모두 page=2", lastReqs.every((r) => r.q.get("page") === "2"), lastReqs.map((r) => r.q.get("page")).join(","));
-    rec("쪽 유지: 갱신 후에도 2쪽 표시('51–')", /51–/.test(await page.textContent(".pagination__summary")));
+    // DEC-109: 갱신 주기마다 "조건 적용"(= 1쪽부터)이 실행되므로 2쪽에서도 주기가 오면 1쪽으로 돌아간다.
+    rec("자동 적용(조건 적용과 같은 동작): 2쪽에서 주기가 오면 page=1로 요청", lastReqs.every((r) => r.q.get("page") === "1"), lastReqs.map((r) => r.q.get("page")).join(","));
+    rec("자동 적용: 주기 뒤 1쪽 표시('1–')", /중 1–/.test(await page.textContent(".pagination__summary")), (await page.textContent(".pagination__summary")).trim().slice(0, 20));
     rec("자동 갱신: 페이지 오류·콘솔 오류 0", t.pageErrors.length === 0 && t.consoleErrors.length === 0, [...t.pageErrors, ...t.consoleErrors].join("; ").slice(0, 200));
     await ctx.close();
     void start;
   }
 
-  // ── D-2. 자동 적용: 왼쪽에서 바꾼 조건을 "조건 적용"을 누르지 않아도 다음 자동 갱신 때 적용(사용자 요청, DEC-108) ──
+  // ── D-2. 자동 적용: 자동 갱신 주기마다 "조건 적용"과 같은 동작이 실행된다(사용자 요청, DEC-109) ──
   {
     await resetCtl();
     await setCtl("refresh=5&minInterval=3");
@@ -325,32 +328,12 @@ async function dev(browser) {
     const want = String(1234 * 1e8); // 억원 → 원
     const capOf = (r) => r.q.get("market_cap_min");
     const n0 = liveCount(t);
-    // (1) 입력만 바꾼다(조건 적용 클릭 없음)
-    await page.fill(CAP, "1234");
-    await sleep(1200);
-    rec("자동 적용: 입력 직후(2초 이내)에는 적용하지 않음(입력 중 보호)", !t.live.slice(n0).some((r) => capOf(r) === want), `새 요청 ${t.live.length - n0}건`);
-    // (2) 다음 자동 갱신에서 새 조건으로 요청이 나간다
+    await page.fill(CAP, "1234"); // "조건 적용"은 누르지 않는다
     const applied = await until(() => t.live.slice(n0).some((r) => capOf(r) === want), 14000);
-    rec("자동 적용: '조건 적용'을 누르지 않아도 다음 자동 갱신에서 새 시가총액 조건(1234억)으로 요청", applied, t.live.slice(n0).map(capOf).join(","));
-    const appliedReq = t.live.slice(n0).find((r) => capOf(r) === want);
-    rec("자동 적용: 새 조건 요청은 1쪽부터", !!appliedReq && appliedReq.q.get("page") === "1", appliedReq?.q.get("page"));
-    // (3) 이후 갱신도 새 조건을 유지(되돌아가지 않음)
+    rec("자동 적용: '조건 적용'을 누르지 않아도 갱신 주기에 새 시가총액 조건(1234억)으로 요청", applied, t.live.slice(n0).map(capOf).join(","));
     const n1 = liveCount(t);
     await until(() => liveCount(t) >= n1 + 2, 15000);
     rec("자동 적용: 그 뒤 갱신도 새 조건 유지", t.live.slice(n1).length >= 2 && t.live.slice(n1).every((r) => capOf(r) === want), t.live.slice(n1).map(capOf).join(","));
-    // (4) 잘못된 값은 적용하지 않고, 오류 문구도 띄우지 않는다
-    await page.fill("#screen-market-cap-max", "1"); // 최소(1234) > 최대(1) → 검증 오류인 입력
-    const n2 = liveCount(t);
-    await until(() => liveCount(t) >= n2 + 2, 15000);
-    rec("자동 적용: 잘못된 입력(최소>최대)은 적용하지 않음(이전 조건으로 계속 갱신)", t.live.slice(n2).length >= 2 && t.live.slice(n2).every((r) => capOf(r) === want && !r.q.has("market_cap_max")), t.live.slice(n2).map((r) => `${capOf(r)}/${r.q.get("market_cap_max")}`).join(","));
-    rec("자동 적용: 자동 적용은 오류 문구를 띄우지 않음", (await countSel(page, ".field-error, [role=\"alert\"]")) === 0);
-    // (5) 일시정지 중에는 적용하지 않는다
-    await page.fill("#screen-market-cap-max", "");
-    await page.fill(CAP, "777");
-    await clickLive(page, "일시정지");
-    const n3 = liveCount(t);
-    await sleep(8000);
-    rec("자동 적용: 일시정지 중에는 적용하지 않음", !t.live.slice(n3).some((r) => capOf(r) === String(777 * 1e8)), `새 요청 ${t.live.length - n3}건`);
     rec("자동 적용: 페이지 오류·콘솔 오류 0", t.pageErrors.length === 0 && t.consoleErrors.length === 0, [...t.pageErrors, ...t.consoleErrors].join("; ").slice(0, 200));
     await ctx.close();
   }
