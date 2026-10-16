@@ -64,7 +64,7 @@
 ## 2026-10-16 DEC-099 (시세 순환 속도 검토·수정)
 - 발견·수정: `KIS_MARKET_MIN_INTERVAL` 하향이 `KisClient` 내부 간격(0.12)에 막혀 무효였고, 직렬 호출이라 응답 지연이 한 바퀴 시간이 되던 결함. 이제 클라이언트 간격이 설정을 따르고 `KIS_MARKET_CONCURRENCY`(기본 4)로 응답 대기를 겹친다(초당 호출 수는 그대로). 측정 도구 `scripts/bench_market_poller.py`.
 - 결과서: docs/qa/2026-10-16-market-poller-speed-test-result.md. 가이드: docs/ops/local-fast-realtime-guide.md(실측 표 반영).
-- 사용자 PC 확인 항목: 실제 KIS 응답 지연으로 한 바퀴 시간(배너), `RATE_LIMITED` 여부. 문제면 `KIS_MARKET_CONCURRENCY=1`로 되돌린다.
+- 사용자 PC 확인 항목: **`py -3.12 scripts\kis_speed_probe.py` 한 번 실행**(DEC-102, 실제 지연·한도·권장 `.env` 두 줄 출력). 문제면 `KIS_MARKET_CONCURRENCY=1`로 되돌린다.
 - 새 컨테이너 시험 환경: 파이썬 3.12 venv + `apt` postgresql-16 + `/tmp/claude-0/pw`에 `npm i playwright-core axe-core`(종단 시험용)가 필요했다.
 
 ## 2026-10-07 DEC-097 (최신 데이터 강화)

@@ -142,3 +142,8 @@
 - 삭제: `render.yaml`, `deploy/render/render.two-services.yaml`, `docs/ops/render-neon-guide.md`, `docs/ops/unified-service-guide.md`, `tests/unit/test_unified_deploy_files.py`의 블루프린트 시험(Dockerfile 시험은 유지, render.yaml 부재 확인 추가).
 - **남긴 것(이유)**: `deploy/render/install-pg-client.sh`·`pre-deploy.sh`(+`deploy/tests/test-pre-deploy.sh`)는 활성 워크플로 `.github/workflows/scheduled-batch.yml`의 DB 백업·배치가 호출하고, `deploy/render/neon-*.sql`은 `scripts/manage_users.py` 안내가 가리킨다. 지우면 정기 배치·백업이 깨진다. 이들은 Render가 아니라 Neon(DB) 용도다. 정기 배치를 쓰지 않기로 하면 사용자 결정으로 함께 지운다.
 - 과거 `docs/qa/*`·`docs/harness/*` 기록과 코드 주석의 Render 언급은 역사 기록이라 그대로 둔다.
+
+## DEC-102 실제 KIS 속도·한도 측정 도구 (2026-10-16)
+- 사용자 요청: "실제 KIS 응답 지연과 호출 한도를 빨리 확인." 이 환경에는 앱키가 없고 증권사 응답은 에이전트가 할 수 없는 항목(CLAUDE.MD 규칙 2)이라, 사용자 PC에서 한 번에 재고 권장값까지 내는 `scripts/kis_speed_probe.py`를 만들었다(읽기 전용, 비밀값 비출력).
+- 개발 중 발견·수정한 결함: ① 첫 호출에 토큰 발급이 섞여 지연이 부풀려짐 → 워밍업 호출 제외, ② 클라이언트 간격 대기가 지연에 섞임 → 간격 0으로 측정, ③ `KisClient`가 한도 오류를 1초 쉬고 자동 재시도해 오류가 가려짐 → 호출률이 목표의 85% 아래면 한도 신호로 판정.
+- 검증: 모의 서버(지연·초당 한도) 5건 단위시험 + 실제 명령을 모의 서버에 붙인 종단 실행(종료코드 0/1, 출력에 비밀값 0건). 실제 KIS 응답은 미측정.
