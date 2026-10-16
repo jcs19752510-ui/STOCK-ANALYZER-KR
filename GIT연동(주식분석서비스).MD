@@ -26,7 +26,7 @@ git switch PROD_SCH
 git add .
 
 # 10. 로컬 add한 소스 commit 항목에 추가(코멘트 추가)
-git commit -m "법률조회 프로그램"
+git commit -m "주식 분석 프로그램"
 
 # 11. 로컬 commit한 항목 리모트 브랜치에 push
 git push origin PROD_SCH
